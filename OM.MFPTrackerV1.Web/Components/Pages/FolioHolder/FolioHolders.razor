@@ -1,0 +1,386 @@
+﻿@page "/folio-holders"
+@using Microsoft.EntityFrameworkCore
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+@inject IJSRuntime JS
+@inject IFolioHolderRepo Repo
+
+<h3>Folio Holders</h3>
+
+<!-- Actions -->
+<div class="d-flex gap-2 mb-3">
+    <button class="btn btn-sm btn-success" @onclick="OpenAdd">Add Folio Holder</button>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label mb-0">Name contains</label>
+                <input class="form-control" @bind="filterName" placeholder="First or Last" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-0">Signature contains</label>
+                <input class="form-control" @bind="filterSignature" placeholder="e.g., DS" />
+            </div>
+            <div class="col-md-5 d-flex gap-2">
+                <button class="btn btn-primary" @onclick="ApplyFilters">Search</button>
+                <button class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(filterMessage))
+        {
+            <div class="alert alert-warning mt-2 py-1">@filterMessage</div>
+        }
+    </div>
+</div>
+
+<!-- Table -->
+<table class="table table-sm table-striped align-middle">
+    <thead>
+        <tr>
+            <th>First</th>
+            <th>Last</th>
+            <th>DOB</th>
+            <th>Signature</th>
+@*             <th>Created (UTC)</th>
+            <th>Updated (UTC)</th> *@
+            <th style="width:140px;"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (_items is null)
+        {
+            <tr><td colspan="7">Loading...</td></tr>
+        }
+        else if (_items.Count == 0)
+        {
+            <tr><td colspan="7">No data</td></tr>
+        }
+        else
+        {
+            @foreach (var x in _items)
+            {
+                <tr>
+                    <td>@x.FirstName</td>
+                    <td>@x.LastName</td>
+                    <td>@x.DateOfBirth.ToString("dd-MMM-yyyy")</td>
+                    <td>@x.Signature</td>
+@*                     <td>@x.InDate.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@x.UpdateDate.ToString("yyyy-MM-dd HH:mm")</td> *@
+                    <td class="text-end">
+                        <button class="btn btn-outline-secondary btn-sm me-1" @onclick="() => OpenEdit(x)">Edit</button>
+@*                         <button class="btn btn-outline-danger btn-sm" @onclick="() => Delete(x.FolioHolderId)">Delete</button> *@
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => ConfirmDelete(x.FolioHolderId)">Delete</button>
+                     </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<!-- Pagination -->
+<div class="d-flex align-items-center justify-content-between">
+    <div>
+        Showing @FromRow–@ToRow of @totalCount
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="input-group input-group-sm" style="width:auto;">
+            <span class="input-group-text">Page size</span>
+            <!-- @bind with setter avoids duplicate onchange -->
+            <select class="form-select form-select-sm" style="width:auto" @bind="PageSize">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(pageNumber == 1 ? "disabled" : null)">
+                    <button class="page-link" @onclick="FirstPage">«</button>
+                </li>
+                <li class="page-item @(pageNumber == 1 ? "disabled" : null)">
+                    <button class="page-link" @onclick="PrevPage">‹</button>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Page @pageNumber of @totalPages</span>
+                </li>
+                <li class="page-item @(pageNumber >= totalPages ? "disabled" : null)">
+                    <button class="page-link" @onclick="NextPage">›</button>
+                </li>
+                <li class="page-item @(pageNumber >= totalPages ? "disabled" : null)">
+                    <button class="page-link" @onclick="LastPage">»</button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+@* ---------------- Modal (JS-free; Add & Edit) — Two-Column Form ---------------- *@
+@if (showModal)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" tabindex="0" @onkeydown="HandleKeyDown">
+                <div class="modal-header">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button class="btn-close" @onclick="CloseModal"></button>
+                </div>
+
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(validationMessage))
+                    {
+                        <div class="alert alert-danger py-1">@validationMessage</div>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name</label>
+                            <input class="form-control" @bind="editModel.FirstName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name</label>
+                            <input class="form-control" @bind="editModel.LastName" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Date of Birth</label>
+                            <InputDate @bind-Value="editModel.DateOfBirth" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Signature</label>
+                            <input class="form-control" @bind="editModel.Signature" />
+                            <small class="text-muted">2–5 chars (per your attribute)</small>
+                        </div>
+@*                         <div class="col-md-4">
+                            <label class="form-label">Notes</label>
+                            <input class="form-control" value="—" disabled />
+                        </div> *@
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-success" @onclick="Save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Backdrop *@
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<FolioHolder>? _items;
+
+    // Filters
+    private string? filterName;
+    private string? filterSignature;
+    private string? filterMessage;
+
+    // Paging
+    private int pageNumber = 1;
+    private int _pageSize = 10;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize == value) return;
+            _pageSize = value;
+            pageNumber = 1;
+            _ = Reload(); // fire-and-forget; no awaiting in setter
+        }
+    }
+
+    private int totalCount;
+    private int totalPages => Math.Max(1, (int)Math.Ceiling((double)totalCount / _pageSize));
+    private int FromRow => totalCount == 0 ? 0 : ((pageNumber - 1) * _pageSize) + 1;
+    private int ToRow => Math.Min(pageNumber * _pageSize, totalCount);
+
+    // Modal state + model
+    private bool showModal = false;
+    private bool isEdit = false;
+    private string modalTitle = "Add Folio Holder";
+    private string? validationMessage;
+    private FolioHolder editModel = new();
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        var skip = (pageNumber - 1) * _pageSize;
+        var (items, total) = await Repo.GetAsync(
+            nameContains: filterName,
+            signatureContains: filterSignature,
+            skip: skip,
+            take: _pageSize);
+
+        _items = items.ToList();
+        totalCount = total;
+
+        if (pageNumber > totalPages && totalPages > 0)
+        {
+            pageNumber = totalPages;
+            await Reload();
+            return;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ApplyFilters()
+    {
+        filterMessage = null;
+        pageNumber = 1;
+        await Reload();
+    }
+
+    private async Task ClearFilters()
+    {
+        filterName = filterSignature = null;
+        filterMessage = null;
+        pageNumber = 1;
+        await Reload();
+    }
+
+    // Pagination
+    private async Task FirstPage() { if (pageNumber != 1) { pageNumber = 1; await Reload(); } }
+    private async Task PrevPage() { if (pageNumber > 1) { pageNumber--; await Reload(); } }
+    private async Task NextPage() { if (pageNumber < totalPages) { pageNumber++; await Reload(); } }
+    private async Task LastPage() { if (pageNumber < totalPages) { pageNumber = totalPages; await Reload(); } }
+
+    // Modal open/close
+    private void OpenAdd()
+    {
+        isEdit = false;
+        modalTitle = "Add Folio Holder";
+        validationMessage = null;
+
+        editModel = new FolioHolder
+        {
+            DateOfBirth = DateTime.Today.AddYears(-20) // sensible default in the past
+        };
+
+        showModal = true;
+    }
+
+    private void OpenEdit(FolioHolder src)
+    {
+        isEdit = true;
+        modalTitle = "Edit Folio Holder";
+        validationMessage = null;
+
+        // Clone into edit model (avoid mutating table row instance)
+        editModel = new FolioHolder
+        {
+            FolioHolderId = src.FolioHolderId,
+            FirstName = src.FirstName,
+            LastName = src.LastName,
+            DateOfBirth = src.DateOfBirth,
+            Signature = src.Signature,
+            InDate = src.InDate,
+            UpdateDate = src.UpdateDate
+        };
+
+        showModal = true;
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Escape" or "Esc")
+            showModal = false;
+    }
+
+    // Save (Add or Update): minimal validation (pragmatic)
+    private bool saving = false;
+
+    private async Task Save()
+    {
+        validationMessage = null;
+
+        // Minimal client-side checks
+        if (string.IsNullOrWhiteSpace(editModel.FirstName))
+        {
+            validationMessage = "First Name is required.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(editModel.LastName))
+        {
+            validationMessage = "Last Name is required.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(editModel.Signature))
+        {
+            validationMessage = "Signature is required.";
+            return;
+        }
+        if (editModel.DateOfBirth.Date >= DateTime.Today)
+        {
+            validationMessage = "Date of Birth must be in the past.";
+            return;
+        }
+
+        try
+        {
+            saving = true;
+
+            if (isEdit)
+                await Repo.UpdateAsync(editModel);
+            else
+                await Repo.AddAsync(editModel);
+
+            showModal = false;     // close modal on success
+            await Reload();        // refresh grid
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Friendly domain/uniqueness messages thrown by the repo
+            // e.g., "Signature already exists" or "holder with same name and DOB exists"
+            validationMessage = ex.Message;
+            // keep modal open so the user can correct values
+        }
+        catch (DbUpdateException)
+        {
+            // DB-enforced uniqueness / other persistence issues (race/edge cases)
+            validationMessage = "Save failed due to a unique constraint or database error. Please review your input and try again.";
+        }
+        catch (Exception ex)
+        {
+            // Generic safety net for unexpected exceptions
+            validationMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+    private async Task ConfirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Are you sure to delete?"))
+        {
+            await Repo.DeleteAsync(id);
+
+            // If last row removed, go back a page
+            if (_items?.Count == 1 && pageNumber > 1)
+                pageNumber--;
+
+            await Reload();
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        await Repo.DeleteAsync(id);
+        if (_items?.Count == 1 && pageNumber > 1) { pageNumber--; }
+        await Reload();
+    }
+}

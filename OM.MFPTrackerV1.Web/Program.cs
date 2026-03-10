@@ -1,3 +1,7 @@
+using Microsoft.EntityFrameworkCore;
+using OM.MFPTrackerV1.Data;
+using OM.MFPTrackerV1.Data.Models;
+using OM.MFPTrackerV1.Data.Services;
 using OM.MFPTrackerV1.Web.Components;
 
 namespace OM.MFPTrackerV1.Web
@@ -14,8 +18,17 @@ namespace OM.MFPTrackerV1.Web
 
 			var dbPath = Path.Combine(builder.Environment.ContentRootPath, dbFolder, dbFile);
 			Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+
+			// Register DbContext
+			builder.Services.AddDbContext<MFPTrackerDbContext>(options => options.UseSqlite($"Data Source={dbPath}")
+			.EnableDetailedErrors()             //For DEV ONLY
+			.EnableSensitiveDataLogging()       //For DEV ONLY
+			);
+
+			// Register repository
+			builder.Services.AddScoped<IFolioHolderRepo, FolioHolderRepo>();
 			/////////////END DK Added /////////////
-            
+
 			// Add services to the container.
 			builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();

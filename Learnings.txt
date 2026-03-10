@@ -1,0 +1,85 @@
+﻿Leanring for EF Core 9.0
+
+##Running Migrations
+# Add a migration
+dotnet ef migrations add InitialCreate --project OM.MFPTracker.Data --startup-project ConsoleApp.Test
+dotnet ef migrations add InitBlazor --project OM.MFPTracker.Data --startup-project OM.MFPTracker.Web
+
+# Update the database
+dotnet ef database update --project OM.MFPTracker.Data --startup-project ConsoleApp.Test
+dotnet ef database update --project OM.MFPTracker.Data --startup-project OM.MFPTracker.Web
+
+##Delete the Database
+dotnet ef database drop --project OM.MFPTracker.Data --startup-project ConsoleApp.Test
+
+##Remove the Last Migration
+dotnet ef migrations remove --project OM.MFPTracker.Data --startup-project ConsoleApp.Test
+
+
+##delete the migrations folder & re-initialize
+dotnet ef migrations add InitialCreate --project OM.MFPTracker.Data --startup-project ConsoleApp.Test
+dotnet ef database update --project OM.MFPTracker.Data --startup-project ConsoleApp.Test
+
+An alternative option (faster)
+Open Package Manager Console (Tools → NuGet Package Manager → Package Manager Console)
+select Data project (the project has dbcontext)
+setp1: Add-Migration InitialCreate
+step2: Update-Database
+
+useful tsqls
+=============
+SELECT Id, SchemeName, AmcId FROM TMutualFunds WHERE AmcId NOT IN (SELECT Id FROM TAmc);
+SELECT * FROM TAmc
+SELECT Id, SchemeName, AmcId FROM TMutualFunds
+
+MF NAV History
+https://www.advisorkhoj.com/mutual-funds-research/historical-NAV/Nippon%20India%20Small%20Cap%20Gr%20Gr?start_date=02-02-2025&end_date=02-02-2026
+https://www.indianfundbazaar.com/historical-nav/
+https://portal.amfiindia.com/spages/NAVOpen.txt (download current date NAV of all MF)
+MF List
+https://nsdl.co.in/mutual-fund-popup.htm
+
+AMC Name
+Category
+Scheme Name
+
+
+Work on the below topic bit later:
+- OperationalStatus: Table shows all fields, NAV/Transaction allowed as Yes/No
+
+========Type of MF=====
+Equity - High growth potential with market-linked returns
+Debt - Stable returns with lower risk
+Hybrid - Best of both equity and debt
+Tax Saver - Save tax under Section 80C
+High Risk - High returns
+Medium Risk - Medium returns
+Low Risk - Low returns
+Flexi Cap - Flexi Cap Funds
+
+
+
+
+Trnsecation
+===========
+✔ Multiple funds per folio
+✔ Switch transactions
+✔ Dividends
+✔ Tax reports
+✔ Capital gain FIFO logic (later)
+✔ XIRR calculation
+✔ Portfolio performance
+
+improvements
+=============
+FIFO lot tracking
+
+Capital gains calculation
+
+XIRR engine
+
+NAV price history table
+
+Performance charts
+
+Asset allocation view
