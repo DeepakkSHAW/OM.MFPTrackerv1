@@ -1,0 +1,122 @@
+﻿@* <div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">OM.MFPTrackerV1.Web</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="counter">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="weather">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+ *@
+
+
+@inject NavigationManager Navigation
+
+<div class="nav-scrollable">
+    <nav class="nav flex-column">
+
+        <!-- Home -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill"></span> Home
+            </NavLink>
+        </div>
+
+        <!-- People Group -->
+        <div class="nav-item px-3">
+            <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
+                    @onclick="TogglePeople">
+                <span><span class="oi oi-people"></span> People</span>
+                <span class="chevron @(isPeopleOpen ? "rotate" : "")">▾</span>
+            </button>
+            @if (isPeopleOpen)
+            {
+                <div class="ps-3">
+                    <NavLink class="nav-link" href="people">List People</NavLink>
+                    <NavLink class="nav-link" href="add-person">Add Person</NavLink>
+                </div>
+            }
+        </div>
+
+        <!-- Mutual Funds Group -->
+        <div class="nav-item px-3">
+            <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
+                    @onclick="ToggleFunds">
+                <span><span class="oi oi-people"></span> Mutual Funds</span>
+                <span class="chevron @(isFundsOpen ? "rotate" : "")">▾</span>
+            </button>
+            @if (isFundsOpen)
+            {
+                <div class="ps-3">
+                    <NavLink class="nav-link" href="operational-status">operational status</NavLink>
+                    <NavLink class="nav-link" href="amclanding">AMC</NavLink>
+                    <NavLink class="nav-link" href="categories">Categories</NavLink>
+                    <NavLink class="nav-link" href="funds">Funds</NavLink>
+                    <NavLink class="nav-link" href="folios">Folios</NavLink>
+                    <NavLink class="nav-link" href="/buy-list/2">Buy</NavLink>
+                    <NavLink class="nav-link" href="mf-transactions">Buy MF</NavLink>
+                    <NavLink class="nav-link" href="/transactions">Transactions</NavLink>
+
+                </div>
+            }
+        </div>
+
+        <!-- NAVs Group -->
+        <div class="nav-item px-3">
+            <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
+                    @onclick="ToggleNavs">
+                <span><span class="oi oi-people"></span> NAVs</span>
+                <span class="chevron @(isNavsOpen ? "rotate" : "")">▾</span>
+            </button>
+            @if (isNavsOpen)
+            {
+                <div class="ps-3">
+                    <NavLink class="nav-link" href="navs">NAV List</NavLink>
+                    <NavLink class="nav-link" href="/navs/navimport">Nav Import</NavLink>
+                    <NavLink class="nav-link" href="special-events">Special Events</NavLink>
+                </div>
+            }
+        </div>
+
+    </nav>
+</div>
+
+@code {
+    private bool isPeopleOpen;
+    private bool isFundsOpen;
+    private bool isNavsOpen;
+
+    protected override void OnInitialized()
+    {
+        // Auto-expand group based on current route
+        var uri = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (uri.StartsWith("people", StringComparison.OrdinalIgnoreCase)) isPeopleOpen = true;
+        if (uri.StartsWith("funds") || uri.StartsWith("categories", StringComparison.OrdinalIgnoreCase)) isFundsOpen = true;
+        if (uri.StartsWith("navs", StringComparison.OrdinalIgnoreCase)) isNavsOpen = true;
+    }
+
+    private void TogglePeople() => isPeopleOpen = !isPeopleOpen;
+    private void ToggleFunds() => isFundsOpen = !isFundsOpen;
+    private void ToggleNavs() => isNavsOpen = !isNavsOpen;
+}
