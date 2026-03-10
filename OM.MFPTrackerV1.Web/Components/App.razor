@@ -15,9 +15,9 @@
 </head>
 
 <body>
-    <Routes />
-    <ReconnectModal />
-    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="@Assets["lib/bootstrap/dist/js/bootstrap.bundle.min.js"]"></script> <!-- Ensure Bootstrap JS is included -->
+    <script src="_framework/blazor.web.js"></script> <!-- Blazor WebAssembly script -->
 </body>
 
 </html>
