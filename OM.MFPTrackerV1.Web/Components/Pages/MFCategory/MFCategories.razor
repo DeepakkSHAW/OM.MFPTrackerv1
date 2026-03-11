@@ -1,0 +1,344 @@
+﻿@page "/mf-categories"
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.EntityFrameworkCore
+
+@inject IMFCategoryRepo Repo
+@inject IJSRuntime JS
+
+<h3>Mutual Fund Categories</h3>
+
+<!-- Actions -->
+<div class="d-flex gap-2 mb-3">
+    <button class="btn btn-sm btn-success" @onclick="OpenAdd">Add Category</button>
+</div>
+
+<!-- Filter -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label mb-0">Category contains</label>
+                <input class="form-control" @bind="filterName" placeholder="e.g., Equity" />
+            </div>
+            <div class="col-md-8 d-flex gap-2">
+                <button class="btn btn-primary" @onclick="ApplyFilters">Search</button>
+                <button class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(filterMessage))
+        {
+            <div class="alert alert-warning mt-2 py-1">@filterMessage</div>
+        }
+    </div>
+</div>
+
+<!-- Table -->
+<table class="table table-sm table-striped align-middle">
+    <thead>
+        <tr>
+            @*             <th style="width:90px;">Id</th> *@
+            <th aria-sort="@AriaSort("CategoryName")">Category Name <button type="button" class="btn btn-link p-0" @onclick='() => Sort("CategoryName")'>@SortGlyph("CategoryName")</button>
+            </th>
+            <th style="width:140px;"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (_items is null)
+        {
+            <tr><td colspan="3">Loading...</td></tr>
+        }
+        else if (_items.Count == 0)
+        {
+            <tr><td colspan="3">No data</td></tr>
+        }
+        else
+        {
+            @foreach (var x in _items)
+            {
+                <tr>
+                    @*                     <td>@x.MFCatId</td> *@
+                    <td>@x.CategoryName</td>
+                    <td class="text-end">
+                        <button class="btn btn-outline-secondary btn-sm me-1" @onclick="() => OpenEdit(x)">Edit</button>
+
+                        <!-- Small JS confirm: simplest -->
+                        @*                         <button class="btn btn-outline-danger btn-sm"
+                                @onclick='() => ConfirmDelete(x.MFCatId, x.CategoryName)'>
+                            Delete
+                        </button> *@
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<!-- Pagination -->
+<div class="d-flex align-items-center justify-content-between">
+    <div>
+        Showing @FromRow–@ToRow of @totalCount
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="input-group input-group-sm" style="width:auto;">
+            <span class="input-group-text">Page size</span>
+            <select class="form-select form-select-sm" style="width:auto" @bind="PageSize">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(pageNumber == 1 ? "disabled" : null)">
+                    <button class="page-link" @onclick="FirstPage">«</button>
+                </li>
+                <li class="page-item @(pageNumber == 1 ? "disabled" : null)">
+                    <button class="page-link" @onclick="PrevPage">‹</button>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Page @pageNumber of @totalPages</span>
+                </li>
+                <li class="page-item @(pageNumber >= totalPages ? "disabled" : null)">
+                    <button class="page-link" @onclick="NextPage">›</button>
+                </li>
+                <li class="page-item @(pageNumber >= totalPages ? "disabled" : null)">
+                    <button class="page-link" @onclick="LastPage">»</button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+@* ---------------- Modal (JS-free; Add & Edit) ---------------- *@
+@if (showModal)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog">
+            <div class="modal-content" tabindex="0" @onkeydown="HandleKeyDown">
+                <div class="modal-header">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button class="btn-close" @onclick="CloseModal" disabled="@saving"></button>
+                </div>
+
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(validationMessage))
+                    {
+                        <div class="alert alert-danger py-1">@validationMessage</div>
+                    }
+
+                    <div class="mb-2">
+                        <label class="form-label">Category Name</label>
+                        <input class="form-control" @bind="editModel.CategoryName" />
+                        <small class="text-muted">8–50 characters (case-insensitive unique)</small>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" @onclick="CloseModal" disabled="@saving">Cancel</button>
+                    <button class="btn btn-success" @onclick="Save" disabled="@saving">
+                        @(saving ? "Saving..." : "Save")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<MFCategory>? _items;
+
+    // Filter
+    private string? filterName;
+    private string? filterMessage;
+
+    // Sorting
+    private string sortBy = "CategoryName";
+    private bool sortDesc = false;
+
+    // Paging
+    private int pageNumber = 1;
+    private int _pageSize = 10;
+    private int PageSize
+    {
+        get => _pageSize;
+        set { if (_pageSize == value) return; _pageSize = value; pageNumber = 1; _ = Reload(); }
+    }
+
+    private int totalCount;
+    private int totalPages => Math.Max(1, (int)Math.Ceiling((double)totalCount / _pageSize));
+    private int FromRow => totalCount == 0 ? 0 : ((pageNumber - 1) * _pageSize) + 1;
+    private int ToRow => Math.Min(pageNumber * _pageSize, totalCount);
+
+    // Modal state
+    private bool showModal = false;
+    private bool isEdit = false;
+    private string modalTitle = "Add Category";
+    private string? validationMessage;
+    private bool saving = false;
+
+    private MFCategory editModel = new();
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        var skip = (pageNumber - 1) * _pageSize;
+        var (items, total) = await Repo.GetAsync(
+            nameContains: filterName,
+            skip: skip,
+            take: _pageSize,
+            sortBy: sortBy,
+            desc: sortDesc);
+
+        _items = items.ToList();
+        totalCount = total;
+
+        if (pageNumber > totalPages && totalPages > 0)
+        {
+            pageNumber = totalPages;
+            await Reload();
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ApplyFilters()
+    {
+        filterMessage = null;
+        pageNumber = 1;
+        await Reload();
+    }
+
+    private async Task ClearFilters()
+    {
+        filterName = null;
+        filterMessage = null;
+        pageNumber = 1;
+        await Reload();
+    }
+
+    // Sorting
+    private async Task Sort(string column)
+    {
+        if (sortBy == column) sortDesc = !sortDesc;
+        else { sortBy = column; sortDesc = false; } // default ascending for text
+
+        pageNumber = 1;
+        await Reload();
+    }
+
+    private MarkupString SortGlyph(string column)
+    {
+        if (sortBy != column) return new MarkupString(string.Empty);
+        var glyph = sortDesc ? "▼" : "▲";
+        return new MarkupString($"<span class=\"ms-1\">{glyph}</span>");
+    }
+
+    private string AriaSort(string column)
+        => sortBy != column ? "none" : (sortDesc ? "descending" : "ascending");
+
+    // Paging handlers
+    private async Task FirstPage() { if (pageNumber != 1) { pageNumber = 1; await Reload(); } }
+    private async Task PrevPage() { if (pageNumber > 1) { pageNumber--; await Reload(); } }
+    private async Task NextPage() { if (pageNumber < totalPages) { pageNumber++; await Reload(); } }
+    private async Task LastPage() { if (pageNumber < totalPages) { pageNumber = totalPages; await Reload(); } }
+
+    // Modal open/close
+    private void OpenAdd()
+    {
+        isEdit = false;
+        modalTitle = "Add Category";
+        validationMessage = null;
+
+        editModel = new MFCategory();
+
+        showModal = true;
+    }
+
+    private void OpenEdit(MFCategory src)
+    {
+        isEdit = true;
+        modalTitle = "Edit Category";
+        validationMessage = null;
+
+        editModel = new MFCategory
+        {
+            MFCatId = src.MFCatId,
+            CategoryName = src.CategoryName
+        };
+
+        showModal = true;
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Escape" or "Esc")
+            showModal = false;
+    }
+
+    // Save with friendly uniqueness handling
+    private async Task Save()
+    {
+        validationMessage = null;
+
+        // Minimal UI checks complementing DataAnnotations
+        if (string.IsNullOrWhiteSpace(editModel.CategoryName))
+        {
+            validationMessage = "Category Name is required.";
+            return;
+        }
+        if (editModel.CategoryName.Length < 8 || editModel.CategoryName.Length > 50)
+        {
+            validationMessage = "Category Name should be between 8 and 50 characters.";
+            return;
+        }
+
+        try
+        {
+            saving = true;
+
+            if (isEdit) await Repo.UpdateAsync(editModel);
+            else await Repo.AddAsync(editModel);
+
+            showModal = false;
+            await Reload();
+        }
+        catch (InvalidOperationException ex)
+        {
+            validationMessage = ex.Message; // duplicate friendly message from repo
+        }
+        catch (DbUpdateException)
+        {
+            validationMessage = "Save failed due to a unique constraint or database error. Please check the category name.";
+        }
+        catch (Exception ex)
+        {
+            validationMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    // JS confirm (1-liner)
+    private async Task ConfirmDelete(int id, string display)
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete “{display}”?");
+        if (!ok) return;
+
+        await Repo.DeleteAsync(id);
+        if (_items?.Count == 1 && pageNumber > 1) pageNumber--;
+        await Reload();
+    }
+}

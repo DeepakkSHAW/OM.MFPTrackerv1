@@ -28,6 +28,18 @@ namespace OM.MFPTrackerV1.Data.Models
 		public DateTime InDate { get; set; }//only for audit purposes
 		public DateTime UpdateDate { get; set; }//only for audit purposes
 
+		// Navigation
 		//public ICollection<Folio> Folios { get; set; } = new List<Folio>();
+	}
+	public class MFCategory
+	{
+		[Key]
+		public int MFCatId { get; set; }
+		[Required(ErrorMessage = "Category Name is Required")]
+		[StringLength(50, MinimumLength = 8, ErrorMessage = "Category Name should be between 50 to 8 characters long")]
+		public string CategoryName { get; set; } = null!;
+
+		// Navigation
+		//public ICollection<MutualFund> MutualFunds { get; set; } = new List<MutualFund>();
 	}
 }

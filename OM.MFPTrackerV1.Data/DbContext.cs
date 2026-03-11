@@ -7,6 +7,7 @@ namespace OM.MFPTrackerV1.Data
 	{
 		public MFPTrackerDbContext(DbContextOptions<MFPTrackerDbContext> options) : base(options) { }
 		public DbSet<FolioHolder> FolioHolders => Set<FolioHolder>();
+		public DbSet<MFCategory> MFCategories => Set<MFCategory>();
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			modelBuilder.Entity<FolioHolder>(entity =>
@@ -36,6 +37,33 @@ namespace OM.MFPTrackerV1.Data
 				new FolioHolder() { FolioHolderId = 5, FirstName = "Durga Prasad", LastName = "Shaw", Signature = "DP" },
 				new FolioHolder() { FolioHolderId = 6, FirstName = "Radha", LastName = "Shaw", Signature = "RD" }
 				);
+			});
+			modelBuilder.Entity<MFCategory>(entity =>
+			{
+				entity.ToTable("TMFCategory");
+				entity.HasKey(p => p.MFCatId);                 // Set key for entity
+				entity.Property(p => p.CategoryName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
+				// Recommended indexes & Unique constraints
+				entity.HasIndex(c => c.CategoryName).IsUnique();
+				entity.HasData(
+				   new MFCategory() { MFCatId = 1, CategoryName = "Equity-Multi Cap " },
+				   new MFCategory() { MFCatId = 2, CategoryName = "Equity-Flexi Cap" },
+				   new MFCategory() { MFCatId = 3, CategoryName = "Equity-Large & MidCap" },
+				   new MFCategory() { MFCatId = 4, CategoryName = "Equity-Large Cap" },
+				   new MFCategory() { MFCatId = 5, CategoryName = "Equity-Mid Cap" },
+				   new MFCategory() { MFCatId = 6, CategoryName = "Equity-Small Cap" },
+				   new MFCategory() { MFCatId = 7, CategoryName = "Equity-ELSS" },
+				   new MFCategory() { MFCatId = 8, CategoryName = "Equity-Dividend Yield" },
+				   new MFCategory() { MFCatId = 9, CategoryName = "Equity-Contra" },
+				   new MFCategory() { MFCatId = 10, CategoryName = "Equity-Sectoral" },
+				   new MFCategory() { MFCatId = 11, CategoryName = "Equity-Value Oriented" },
+				   new MFCategory() { MFCatId = 12, CategoryName = "Debt-Liquid Fund" },
+				   new MFCategory() { MFCatId = 13, CategoryName = "Debt-Overnight Funds" },
+				   new MFCategory() { MFCatId = 14, CategoryName = "Debt-Money Market Funds" },
+				   new MFCategory() { MFCatId = 15, CategoryName = "Debt-Corporate Bond Funds" },
+				   new MFCategory() { MFCatId = 16, CategoryName = "Debt-Gilt Funds" },
+				   new MFCategory() { MFCatId = 17, CategoryName = "Hybrid Fund" }
+					);
 			});
 		}
 	}

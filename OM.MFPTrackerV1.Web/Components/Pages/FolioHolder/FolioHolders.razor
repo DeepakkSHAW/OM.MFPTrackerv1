@@ -47,7 +47,7 @@
             <th>Last</th>
             <th>DOB</th>
             <th>Signature</th>
-@*             <th>Created (UTC)</th>
+            @*             <th>Created (UTC)</th>
             <th>Updated (UTC)</th> *@
             <th style="width:140px;"></th>
         </tr>
@@ -70,13 +70,13 @@
                     <td>@x.LastName</td>
                     <td>@x.DateOfBirth.ToString("dd-MMM-yyyy")</td>
                     <td>@x.Signature</td>
-@*                     <td>@x.InDate.ToString("yyyy-MM-dd HH:mm")</td>
+                    @*                     <td>@x.InDate.ToString("yyyy-MM-dd HH:mm")</td>
                     <td>@x.UpdateDate.ToString("yyyy-MM-dd HH:mm")</td> *@
                     <td class="text-end">
                         <button class="btn btn-outline-secondary btn-sm me-1" @onclick="() => OpenEdit(x)">Edit</button>
-@*                         <button class="btn btn-outline-danger btn-sm" @onclick="() => Delete(x.FolioHolderId)">Delete</button> *@
-                        <button class="btn btn-outline-danger btn-sm" @onclick="() => ConfirmDelete(x.FolioHolderId)">Delete</button>
-                     </td>
+                        @*                         <button class="btn btn-outline-danger btn-sm" @onclick="() => ConfirmDelete(x.FolioHolderId)">Delete</button> *@
+                        <button class="btn btn-outline-danger btn-sm" @onclick="@(() => ConfirmDelete(x.FolioHolderId, $"{x.FirstName} {x.LastName}"))">Delete</button>
+                    </td>
                 </tr>
             }
         }
@@ -158,7 +158,7 @@
                             <input class="form-control" @bind="editModel.Signature" />
                             <small class="text-muted">2–5 chars (per your attribute)</small>
                         </div>
-@*                         <div class="col-md-4">
+                        @*                         <div class="col-md-4">
                             <label class="form-label">Notes</label>
                             <input class="form-control" value="—" disabled />
                         </div> *@
@@ -363,18 +363,31 @@
             saving = false;
         }
     }
-    private async Task ConfirmDelete(int id)
+    // private async Task ConfirmDelete(int id)
+    // {
+    //     if (await JS.InvokeAsync<bool>("confirm", "Are you sure to delete?"))
+    //     {
+    //         await Repo.DeleteAsync(id);
+
+    //         // If last row removed, go back a page
+    //         if (_items?.Count == 1 && pageNumber > 1)
+    //             pageNumber--;
+
+    //         await Reload();
+    //     }
+    // }
+    private async Task ConfirmDelete(int holderId, string display)
     {
-        if (await JS.InvokeAsync<bool>("confirm", "Are you sure to delete?"))
-        {
-            await Repo.DeleteAsync(id);
+        var ok = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete “{display}”?");
+        if (!ok) return;
 
-            // If last row removed, go back a page
-            if (_items?.Count == 1 && pageNumber > 1)
-                pageNumber--;
+        await Repo.DeleteAsync(holderId);
 
-            await Reload();
-        }
+        // If last row on the page was deleted, go back a page
+        if (_items?.Count == 1 && pageNumber > 1)
+            pageNumber--;
+
+        await Reload();
     }
 
     private async Task Delete(int id)
