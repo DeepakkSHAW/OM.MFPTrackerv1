@@ -8,6 +8,7 @@ namespace OM.MFPTrackerV1.Data
 		public MFPTrackerDbContext(DbContextOptions<MFPTrackerDbContext> options) : base(options) { }
 		public DbSet<FolioHolder> FolioHolders => Set<FolioHolder>();
 		public DbSet<MFCategory> MFCategories => Set<MFCategory>();
+		public DbSet<Fund> Funds => Set<Fund>();
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			modelBuilder.Entity<FolioHolder>(entity =>
@@ -63,6 +64,36 @@ namespace OM.MFPTrackerV1.Data
 				   new MFCategory() { MFCatId = 15, CategoryName = "Debt-Corporate Bond Funds" },
 				   new MFCategory() { MFCatId = 16, CategoryName = "Debt-Gilt Funds" },
 				   new MFCategory() { MFCatId = 17, CategoryName = "Hybrid Fund" }
+					);
+			});
+			modelBuilder.Entity<Fund>(entity =>
+			{
+				entity.ToTable("TFund");
+				entity.HasKey(p => p.FundId);                   // Set key for entity
+
+				entity.Property(p => p.FundName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
+				entity.Property(p => p.SchemeCode).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
+				entity.Property(p => p.ISIN).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
+				entity.Property(p => p.AMCName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
+				entity.Property(p => p.IsTransactionAllowed).IsRequired().HasDefaultValue(true); 
+				entity.Property(p => p.IsNavAllowed).IsRequired().HasDefaultValue(true); 
+				entity.Property(p => p.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
+				entity.Property(p => p.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAddOrUpdate();
+				// Recommended indexes & Unique constraints
+				entity.HasIndex(c => c.FundName).IsUnique();
+				entity.HasIndex(c => c.SchemeCode).IsUnique();
+				entity.HasIndex(c => c.ISIN).IsUnique();
+
+				// Helpful indexes optional
+				entity.HasIndex(c => c.AMCName);
+				entity.HasIndex(c => c.MFCatId);
+			
+				// Relationship with Mutual Fund Category 
+				entity.HasOne(f => f.Category).WithMany().HasForeignKey(f => f.MFCatId).OnDelete(DeleteBehavior.Restrict);
+				//Data Seeding
+				entity.HasData(
+					new Fund { FundId = 1, ISIN = "INF846K01K35", SchemeCode = "125354", AMCName = "AXIS MF", FundName = "AXIS SMALL CAP Fund - DIRECT PLAN - GROWTH", IsTransactionAllowed = true, IsNavAllowed = true, MFCatId = 1 },
+					new Fund { FundId = 2, ISIN = "INF194KB1AJ8", SchemeCode = "147944", AMCName = "BANDHAN MF", FundName = "BANDHAN SMALL CAP FUND - REGULAR PLAN GROWTH", IsTransactionAllowed = true, IsNavAllowed = true, MFCatId = 1 }
 					);
 			});
 		}
