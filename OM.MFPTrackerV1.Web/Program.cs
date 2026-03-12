@@ -29,6 +29,8 @@ namespace OM.MFPTrackerV1.Web
 			builder.Services.AddScoped<IFolioHolderRepo, FolioHolderRepo>();
 			builder.Services.AddScoped<IMFCategoryRepo, MFCategoryRepo>();
 			builder.Services.AddScoped<IFundRepo, FundRepo>();
+			builder.Services.AddScoped<IFolioRepo, FolioRepo>();
+
 			/////////////END DK Added /////////////
 
 			// Add services to the container.

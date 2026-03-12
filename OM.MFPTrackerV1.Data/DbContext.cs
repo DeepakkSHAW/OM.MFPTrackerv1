@@ -9,6 +9,7 @@ namespace OM.MFPTrackerV1.Data
 		public DbSet<FolioHolder> FolioHolders => Set<FolioHolder>();
 		public DbSet<MFCategory> MFCategories => Set<MFCategory>();
 		public DbSet<Fund> Funds => Set<Fund>();
+		public DbSet<Folio> Folios => Set<Folio>();
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			modelBuilder.Entity<FolioHolder>(entity =>
@@ -29,6 +30,8 @@ namespace OM.MFPTrackerV1.Data
 
 				// Relationship with AMC
 				//entity.HasOne(m => m.Amc).WithMany(a => a.MutualFunds).HasForeignKey(m => m.AmcId).OnDelete(DeleteBehavior.Restrict);
+				// 1 Holder -> many Folios (Restrict delete to protect Folios)
+				entity.HasMany(h => h.Folios).WithOne(x => x.Holder).HasForeignKey(x => x.FolioHolderId).OnDelete(DeleteBehavior.Restrict);
 				// Data seeding
 				entity.HasData(
 				new FolioHolder() { FolioHolderId = 1, FirstName = "Rupam", LastName = "Shaw", DateOfBirth = DateTime.Parse("1/1/2002"), Signature = "RS" },
@@ -46,7 +49,7 @@ namespace OM.MFPTrackerV1.Data
 				entity.Property(p => p.CategoryName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
 				// Recommended indexes & Unique constraints
 				entity.HasIndex(c => c.CategoryName).IsUnique();
-				// (Optional explicit mapping)
+				// 1 Category -> many Funds (Restrict delete to protect Funds)
 				entity.HasMany(c => c.Funds).WithOne(f => f.Category).HasForeignKey(f => f.MFCatId).OnDelete(DeleteBehavior.Restrict);
 				entity.HasData(
 				   new MFCategory() { MFCatId = 1, CategoryName = "Equity-Multi Cap " },
@@ -92,10 +95,42 @@ namespace OM.MFPTrackerV1.Data
 
 				// Relationship with Mutual Fund Category 
 				entity.HasOne(f => f.Category).WithMany().HasForeignKey(f => f.MFCatId).OnDelete(DeleteBehavior.Restrict);
+
+				// 1 Fund → many Folios (Restrict deletion)
+				entity.HasMany(f => f.Folios).WithOne(x => x.Fund).HasForeignKey(x => x.FundId).OnDelete(DeleteBehavior.Restrict);
+
 				//Data Seeding
 				entity.HasData(
 					new Fund { FundId = 1, ISIN = "INF846K01K35", SchemeCode = "125354", AMCName = "AXIS MF", FundName = "AXIS SMALL CAP Fund - DIRECT PLAN - GROWTH", IsTransactionAllowed = true, IsNavAllowed = true, MFCatId = 1 },
 					new Fund { FundId = 2, ISIN = "INF194KB1AJ8", SchemeCode = "147944", AMCName = "BANDHAN MF", FundName = "BANDHAN SMALL CAP FUND - REGULAR PLAN GROWTH", IsTransactionAllowed = true, IsNavAllowed = true, MFCatId = 1 }
+					);
+			});
+			modelBuilder.Entity<Folio>(entity =>
+			{
+				entity.ToTable("TFolio");
+				entity.HasKey(x => x.FolioId);
+
+				entity.Property(x => x.FolioNumber).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
+				entity.Property(x => x.FolioPurpose).UseCollation("NOCASE").HasMaxLength(100);
+				entity.Property(x => x.AttachedBank).UseCollation("NOCASE").HasMaxLength(50);
+				entity.Property(p => p.IsActive).HasDefaultValue(true);
+				// Audit
+				entity.Property(x => x.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
+				entity.Property(x => x.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();               // SQLite won’t auto-update on UPDATE without trigger—set in repo
+
+				// Relationships (Restrict delete)
+				// or .WithMany(h => h.Folios) if you add nav on FolioHolder
+				entity.HasOne(f => f.Holder).WithMany().HasForeignKey(f => f.FolioHolderId).OnDelete(DeleteBehavior.Restrict);
+				// or .WithMany(f => f.Folios) if you add nav on Fund
+				entity.HasOne(f => f.Fund).WithMany().HasForeignKey(f => f.FundId).OnDelete(DeleteBehavior.Restrict);
+
+				// Case-insensitive unique composite (prevents duplicates)
+				entity.HasIndex(x => new { x.FolioHolderId, x.FundId, x.FolioNumber }).IsUnique();
+				//Data Seeding
+				entity.HasData(
+					new Folio { FolioId = 1, FolioHolderId = 1, FundId = 1, FolioNumber = "FOLIO123", FolioPurpose = "Investment in Axis Small Cap Fund" },
+					new Folio { FolioId = 2, FolioHolderId = 2, FundId = 1, FolioNumber = "FOLIO456", FolioPurpose = "Investment in Axis Small Cap Fund" },
+					new Folio { FolioId = 3, FolioHolderId = 3, FundId = 2, FolioNumber = "FOLIO789", FolioPurpose = "Investment in Bandhan Small Cap Fund" }
 					);
 			});
 		}

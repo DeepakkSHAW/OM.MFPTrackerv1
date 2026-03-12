@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OM.MFPTrackerV1.Data;
 
@@ -10,9 +11,11 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    partial class MFPTrackerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312032242_AddedFolio")]
+    partial class AddedFolio
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
@@ -31,9 +34,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     b.Property<int>("FolioHolderId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("FolioHolderId1")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("FolioNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -46,9 +46,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         .UseCollation("NOCASE");
 
                     b.Property<int>("FundId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("FundId1")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("InDate")
@@ -68,11 +65,7 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.HasKey("FolioId");
 
-                    b.HasIndex("FolioHolderId1");
-
                     b.HasIndex("FundId");
-
-                    b.HasIndex("FundId1");
 
                     b.HasIndex("FolioHolderId", "FundId", "FolioNumber")
                         .IsUnique();
@@ -449,19 +442,11 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.FolioHolder", null)
-                        .WithMany("Folios")
-                        .HasForeignKey("FolioHolderId1");
-
                     b.HasOne("OM.MFPTrackerV1.Data.Models.Fund", "Fund")
                         .WithMany()
                         .HasForeignKey("FundId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.Fund", null)
-                        .WithMany("Folios")
-                        .HasForeignKey("FundId1");
 
                     b.Navigation("Fund");
 
@@ -481,16 +466,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         .HasForeignKey("MFCategoryMFCatId");
 
                     b.Navigation("Category");
-                });
-
-            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.FolioHolder", b =>
-                {
-                    b.Navigation("Folios");
-                });
-
-            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Fund", b =>
-                {
-                    b.Navigation("Folios");
                 });
 
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.MFCategory", b =>

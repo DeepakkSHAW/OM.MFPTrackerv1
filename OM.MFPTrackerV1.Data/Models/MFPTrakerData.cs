@@ -30,7 +30,7 @@ namespace OM.MFPTrackerV1.Data.Models
 		public DateTime UpdateDate { get; set; }//only for audit purposes
 
 		// Navigation
-		//public ICollection<Folio> Folios { get; set; } = new List<Folio>();
+		public ICollection<Folio> Folios { get; set; } = new List<Folio>();
 	}
 	public class MFCategory
 	{
@@ -76,9 +76,38 @@ namespace OM.MFPTrackerV1.Data.Models
 		// ==========================
 		public int MFCatId { get; set; } // Foreign Key
 		public MFCategory? Category { get; set; }// Navigation
+
+		// 🔹 Inverse navigation (1 Fund → many Folios)
+		public ICollection<Folio> Folios { get; set; } = new List<Folio>();
+
 		// ==========================
 		// 🔹 audit purposes
 		// ==========================
+		public DateTime InDate { get; set; }
+		public DateTime UpdateDate { get; set; }
+	}
+	public class Folio
+	{
+		[Key]
+		public int FolioId { get; set; }
+		[Required(ErrorMessage = "Folio Number is Required")]
+		[StringLength(50, MinimumLength = 5, ErrorMessage = "Folio Number should be between 50 to 5 characters long")]
+		public string FolioNumber { get; set; } = null!;
+		
+		[MaxLength(100, ErrorMessage = "Folio Purpose shouldn't be more than 100 characters long")]
+		public string? FolioPurpose { get; set; }
+
+		public bool IsActive { get; set; } = true;
+
+		[MaxLength(50, ErrorMessage = "Attached Bank to this Folio shouldn't be more than 50 characters long")]
+		public string? AttachedBank { get; set; }
+		// ==========================
+		// 🔹 Foreign Keys
+		// ==========================
+		public int FolioHolderId { get; set; } // Foreign Key
+		public FolioHolder? Holder { get; set; } // Navigation
+		public int FundId { get; set; } // Foreign Key
+		public Fund? Fund { get; set; } // Navigation
 		public DateTime InDate { get; set; }
 		public DateTime UpdateDate { get; set; }
 	}

@@ -17,7 +17,7 @@
 </div>
 
 <!-- Filters -->
-<div class="card mb-3">
+@* <div class="card mb-3">
     <div class="card-body">
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
@@ -31,6 +31,10 @@
             <div class="col-md-2">
                 <label class="form-label mb-0">Scheme code contains</label>
                 <input class="form-control" @bind="filterScheme" placeholder="e.g., 125" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-0">ISIN contains</label>
+                <input class="form-control" @bind="filterISIN" placeholder="e.g., INF" />
             </div>
             <div class="col-md-2">
                 <label class="form-label mb-0">Category</label>
@@ -62,8 +66,63 @@
             <button class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
         </div>
     </div>
-</div>
+</div> *@
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
 
+        <!-- Row 1: Text filters -->
+        <div class="row g-2 mb-2">
+            <div class="col-md-3">
+                <label class="form-label mb-0 small fw-semibold">Fund name</label>
+                <input class="form-control form-control-sm" @bind="filterName" placeholder="e.g., Small Cap" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-0 small fw-semibold">AMC</label>
+                <input class="form-control form-control-sm" @bind="filterAMC" placeholder="e.g., Axis" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-0 small fw-semibold">Scheme code</label>
+                <input class="form-control form-control-sm" @bind="filterScheme" placeholder="e.g., 125" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-0 small fw-semibold">ISIN</label>
+                <input class="form-control form-control-sm" @bind="filterISIN" placeholder="e.g., INF" />
+            </div>
+        </div>
+
+        <!-- Row 2: Category + Flags + Buttons -->
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-0 small fw-semibold">Category</label>
+                <select class="form-select form-select-sm" @bind="filterCatId">
+                    <option value="0">All</option>
+                    @foreach (var c in _cats ?? Enumerable.Empty<MFCategory>())
+                    {
+                        <option value="@c.MFCatId">@c.CategoryName</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex align-items-center gap-3">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="txnOnly" @bind="filterTxnOnly" />
+                    <label class="form-check-label small" for="txnOnly">Txn Allowed</label>
+                </div>
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="navOnly" @bind="filterNavOnly" />
+                    <label class="form-check-label small" for="navOnly">NAV Allowed</label>
+                </div>
+            </div>
+
+            <div class="col-md-6 d-flex justify-content-end gap-2">
+                <button class="btn btn-sm btn-primary" @onclick="ApplyFilters">Search</button>
+                <button class="btn btn-sm btn-secondary" @onclick="ClearFilters">Clear</button>
+            </div>
+        </div>
+
+    </div>
+</div>
 <!-- Table -->
 <table class="table table-sm table-striped align-middle">
     <thead class="table-head-sm-bold">
@@ -280,6 +339,7 @@
     private string? filterAMC;
     private string? filterScheme;
     private int filterCatId = 0;
+    private string? filterISIN;   
     private bool filterTxnOnly = false;
     private bool filterNavOnly = false;
 
@@ -319,6 +379,7 @@
     private async Task Reload()
     {
         var skip = (pageNumber - 1) * _pageSize;
+
         var (items, total) = await FundRepo.GetAsync(
             nameContains: filterName,
             amcContains: filterAMC,
@@ -329,8 +390,9 @@
             skip: skip,
             take: _pageSize,
             sortBy: sortBy,
-            desc: sortDesc);
-
+            desc: sortDesc,
+            isinContains: filterISIN      // <-- NEW optional param
+);
         _items = items.ToList();
         totalCount = total;
 
@@ -351,13 +413,12 @@
 
     private async Task ClearFilters()
     {
-        filterName = filterAMC = filterScheme = null;
+        filterName = filterAMC = filterScheme = filterISIN = null;
         filterCatId = 0;
         filterTxnOnly = filterNavOnly = false;
         pageNumber = 1;
         await Reload();
     }
-
     private async Task Sort(string column)
     {
         if (sortBy == column) sortDesc = !sortDesc;

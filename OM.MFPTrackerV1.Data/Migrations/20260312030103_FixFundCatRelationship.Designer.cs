@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OM.MFPTrackerV1.Data;
 
@@ -10,110 +11,14 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    partial class MFPTrackerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312030103_FixFundCatRelationship")]
+    partial class FixFundCatRelationship
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
-
-            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Folio", b =>
-                {
-                    b.Property<int>("FolioId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("AttachedBank")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT")
-                        .UseCollation("NOCASE");
-
-                    b.Property<int>("FolioHolderId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("FolioHolderId1")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("FolioNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT")
-                        .UseCollation("NOCASE");
-
-                    b.Property<string>("FolioPurpose")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT")
-                        .UseCollation("NOCASE");
-
-                    b.Property<int>("FundId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("FundId1")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("InDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(true);
-
-                    b.Property<DateTime>("UpdateDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.HasKey("FolioId");
-
-                    b.HasIndex("FolioHolderId1");
-
-                    b.HasIndex("FundId");
-
-                    b.HasIndex("FundId1");
-
-                    b.HasIndex("FolioHolderId", "FundId", "FolioNumber")
-                        .IsUnique();
-
-                    b.ToTable("TFolio", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            FolioId = 1,
-                            FolioHolderId = 1,
-                            FolioNumber = "FOLIO123",
-                            FolioPurpose = "Investment in Axis Small Cap Fund",
-                            FundId = 1,
-                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsActive = true,
-                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            FolioId = 2,
-                            FolioHolderId = 2,
-                            FolioNumber = "FOLIO456",
-                            FolioPurpose = "Investment in Axis Small Cap Fund",
-                            FundId = 1,
-                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsActive = true,
-                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            FolioId = 3,
-                            FolioHolderId = 3,
-                            FolioNumber = "FOLIO789",
-                            FolioPurpose = "Investment in Bandhan Small Cap Fund",
-                            FundId = 2,
-                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsActive = true,
-                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        });
-                });
 
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.FolioHolder", b =>
                 {
@@ -441,33 +346,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Folio", b =>
-                {
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.FolioHolder", "Holder")
-                        .WithMany()
-                        .HasForeignKey("FolioHolderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.FolioHolder", null)
-                        .WithMany("Folios")
-                        .HasForeignKey("FolioHolderId1");
-
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.Fund", "Fund")
-                        .WithMany()
-                        .HasForeignKey("FundId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.Fund", null)
-                        .WithMany("Folios")
-                        .HasForeignKey("FundId1");
-
-                    b.Navigation("Fund");
-
-                    b.Navigation("Holder");
-                });
-
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Fund", b =>
                 {
                     b.HasOne("OM.MFPTrackerV1.Data.Models.MFCategory", "Category")
@@ -481,16 +359,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         .HasForeignKey("MFCategoryMFCatId");
 
                     b.Navigation("Category");
-                });
-
-            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.FolioHolder", b =>
-                {
-                    b.Navigation("Folios");
-                });
-
-            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Fund", b =>
-                {
-                    b.Navigation("Folios");
                 });
 
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.MFCategory", b =>
