@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 
 namespace OM.MFPTrackerV1.Data.Models
@@ -39,8 +40,11 @@ namespace OM.MFPTrackerV1.Data.Models
 		[StringLength(50, MinimumLength = 8, ErrorMessage = "Category Name should be between 50 to 8 characters long")]
 		public string CategoryName { get; set; } = null!;
 
-		// Navigation
-		//public ICollection<MutualFund> MutualFunds { get; set; } = new List<MutualFund>();
+		//Navigation
+		public ICollection<Fund> Funds { get; set; } = new List<Fund>();
+
+		// (Optional) convenience for UI; set at runtime
+		[NotMapped] public int FundCount { get; set; }
 	}
 	public class Fund
 	{

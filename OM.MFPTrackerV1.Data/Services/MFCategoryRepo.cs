@@ -18,6 +18,9 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task UpdateAsync(MFCategory entity, CancellationToken ct = default);
 
 		Task DeleteAsync(int id, CancellationToken ct = default);
+
+		//ONLY for UI to display counts (without DTOs)
+		Task<Dictionary<int, int>> GetFundCountsAsync(CancellationToken ct = default);
 	}
 	public class MFCategoryRepo : IMFCategoryRepo
 	{
@@ -88,7 +91,7 @@ namespace OM.MFPTrackerV1.Data.Services
 			await _db.SaveChangesAsync(ct);
 		}
 
-		public async Task DeleteAsync(int id, CancellationToken ct = default)
+		public async Task DeleteAsyncv0(int id, CancellationToken ct = default)
 		{
 			var row = await _db.Set<MFCategory>().FindAsync(new object?[] { id }, ct);
 			if (row is null) return;
@@ -96,7 +99,27 @@ namespace OM.MFPTrackerV1.Data.Services
 			_db.Set<MFCategory>().Remove(row);
 			await _db.SaveChangesAsync(ct);
 		}
+		public async Task DeleteAsync(int id, CancellationToken ct = default)
+		{
+			// prevent deleting categories with funds (and provide a friendly message)
+			var hasFunds = await _db.Set<Fund>().AsNoTracking().AnyAsync(f => f.MFCatId == id, ct);
+			if (hasFunds)
+				throw new InvalidOperationException("Cannot delete this category because it has one or more linked funds.");
 
+			var row = await _db.Set<MFCategory>().FindAsync(new object?[] { id }, ct);
+			if (row is null) return;
+
+			_db.Set<MFCategory>().Remove(row);
+			await _db.SaveChangesAsync(ct);
+		}
+		public async Task<Dictionary<int, int>> GetFundCountsAsync(CancellationToken ct = default)
+		{
+			return await _db.Set<Fund>()
+				.AsNoTracking()
+				.GroupBy(f => f.MFCatId)
+				.Select(g => new { g.Key, Cnt = g.Count() })
+				.ToDictionaryAsync(x => x.Key, x => x.Cnt, ct);
+		}
 		private static void Validate(MFCategory e)
 		{
 			if (string.IsNullOrWhiteSpace(e.CategoryName))

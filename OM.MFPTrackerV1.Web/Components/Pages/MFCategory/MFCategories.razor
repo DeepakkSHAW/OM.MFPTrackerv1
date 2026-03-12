@@ -4,13 +4,11 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.EntityFrameworkCore
-
 @inject IMFCategoryRepo Repo
 @inject IJSRuntime JS
 
 <h3>Mutual Fund Categories</h3>
 
-<!-- Actions -->
 <div class="d-flex gap-2 mb-3">
     <button class="btn btn-sm btn-success" @onclick="OpenAdd">Add Category</button>
 </div>
@@ -28,21 +26,24 @@
                 <button class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
             </div>
         </div>
-        @if (!string.IsNullOrEmpty(filterMessage))
-        {
-            <div class="alert alert-warning mt-2 py-1">@filterMessage</div>
-        }
     </div>
 </div>
 
 <!-- Table -->
 <table class="table table-sm table-striped align-middle">
-    <thead>
+    <thead class="table-head-sm-bold">
         <tr>
-            @*             <th style="width:90px;">Id</th> *@
-            <th aria-sort="@AriaSort("CategoryName")">Category Name <button type="button" class="btn btn-link p-0" @onclick='() => Sort("CategoryName")'>@SortGlyph("CategoryName")</button>
+            <th aria-sort="@AriaSort("CategoryName")">
+                <div class="th-sort d-flex align-items-center"
+                     role="button"
+                     title="Sort by Category"
+                     @onclick='() => Sort("CategoryName")'>
+                    <span class="th-title">Category</span>
+                    <span class="th-caret">@((MarkupString)SortGlyph("CategoryName").Value)</span>
+                </div>
             </th>
-            <th style="width:140px;"></th>
+            <th style="width:120px;">Funds</th>
+            <th style="width:160px;"></th>
         </tr>
     </thead>
     <tbody>
@@ -58,17 +59,25 @@
         {
             @foreach (var x in _items)
             {
+                var count = _counts.TryGetValue(x.MFCatId, out var c) ? c : 0;
+
                 <tr>
-                    @*                     <td>@x.MFCatId</td> *@
                     <td>@x.CategoryName</td>
+                    <td>@count</td>
                     <td class="text-end">
                         <button class="btn btn-outline-secondary btn-sm me-1" @onclick="() => OpenEdit(x)">Edit</button>
 
-                        <!-- Small JS confirm: simplest -->
-                        @*                         <button class="btn btn-outline-danger btn-sm"
-                                @onclick='() => ConfirmDelete(x.MFCatId, x.CategoryName)'>
-                            Delete
-                        </button> *@
+                        @if (count > 0)
+                        {
+                            <button class="btn btn-outline-danger btn-sm" disabled title="Cannot delete: category has linked funds">Delete</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-danger btn-sm"
+                                    @onclick='() => ConfirmDelete(x.MFCatId, x.CategoryName)'>
+                                Delete
+                            </button>
+                        }
                     </td>
                 </tr>
             }
@@ -78,9 +87,7 @@
 
 <!-- Pagination -->
 <div class="d-flex align-items-center justify-content-between">
-    <div>
-        Showing @FromRow–@ToRow of @totalCount
-    </div>
+    <div>Showing @FromRow–@ToRow of @totalCount</div>
     <div class="d-flex align-items-center gap-2">
         <div class="input-group input-group-sm" style="width:auto;">
             <span class="input-group-text">Page size</span>
@@ -134,15 +141,13 @@
                     <div class="mb-2">
                         <label class="form-label">Category Name</label>
                         <input class="form-control" @bind="editModel.CategoryName" />
-                        <small class="text-muted">8–50 characters (case-insensitive unique)</small>
+                        <small class="text-muted">8–50 characters; unique (case-insensitive)</small>
                     </div>
                 </div>
 
                 <div class="modal-footer">
                     <button class="btn btn-outline-secondary" @onclick="CloseModal" disabled="@saving">Cancel</button>
-                    <button class="btn btn-success" @onclick="Save" disabled="@saving">
-                        @(saving ? "Saving..." : "Save")
-                    </button>
+                    <button class="btn btn-success" @onclick="Save" disabled="@saving">@(saving ? "Saving..." : "Save")</button>
                 </div>
             </div>
         </div>
@@ -151,12 +156,43 @@
     <div class="modal-backdrop fade show"></div>
 }
 
+<style>
+    /* small & bold headers + tidy caret, consistent with Funds page */
+    .table-head-sm-bold th {
+        font-weight: 600;
+        font-size: .85rem;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    th .th-sort {
+        user-select: none;
+        cursor: pointer;
+        gap: .35rem;
+        padding-right: .25rem;
+        color: inherit;
+    }
+
+        th .th-sort:hover .th-title {
+            color: #0d6efd;
+            text-decoration: none;
+        }
+
+    th .th-caret {
+        display: inline-flex;
+        width: .9rem;
+        justify-content: center;
+        align-items: center;
+        color: #6c757d;
+    }
+</style>
+
 @code {
     private List<MFCategory>? _items;
+    private Dictionary<int, int> _counts = new();
 
     // Filter
     private string? filterName;
-    private string? filterMessage;
 
     // Sorting
     private string sortBy = "CategoryName";
@@ -176,13 +212,12 @@
     private int FromRow => totalCount == 0 ? 0 : ((pageNumber - 1) * _pageSize) + 1;
     private int ToRow => Math.Min(pageNumber * _pageSize, totalCount);
 
-    // Modal state
+    // Modal
     private bool showModal = false;
     private bool isEdit = false;
+    private bool saving = false;
     private string modalTitle = "Add Category";
     private string? validationMessage;
-    private bool saving = false;
-
     private MFCategory editModel = new();
 
     protected override async Task OnInitializedAsync() => await Reload();
@@ -190,6 +225,7 @@
     private async Task Reload()
     {
         var skip = (pageNumber - 1) * _pageSize;
+
         var (items, total) = await Repo.GetAsync(
             nameContains: filterName,
             skip: skip,
@@ -199,6 +235,9 @@
 
         _items = items.ToList();
         totalCount = total;
+
+        // get counts (no DTOs; just a lookup)
+        _counts = await Repo.GetFundCountsAsync();
 
         if (pageNumber > totalPages && totalPages > 0)
         {
@@ -212,7 +251,6 @@
 
     private async Task ApplyFilters()
     {
-        filterMessage = null;
         pageNumber = 1;
         await Reload();
     }
@@ -220,17 +258,14 @@
     private async Task ClearFilters()
     {
         filterName = null;
-        filterMessage = null;
         pageNumber = 1;
         await Reload();
     }
 
-    // Sorting
     private async Task Sort(string column)
     {
         if (sortBy == column) sortDesc = !sortDesc;
-        else { sortBy = column; sortDesc = false; } // default ascending for text
-
+        else { sortBy = column; sortDesc = false; }
         pageNumber = 1;
         await Reload();
     }
@@ -238,28 +273,22 @@
     private MarkupString SortGlyph(string column)
     {
         if (sortBy != column) return new MarkupString(string.Empty);
-        var glyph = sortDesc ? "▼" : "▲";
+        var glyph = sortDesc ? "▾" : "▴";
         return new MarkupString($"<span class=\"ms-1\">{glyph}</span>");
     }
-
-    private string AriaSort(string column)
-        => sortBy != column ? "none" : (sortDesc ? "descending" : "ascending");
-
+    private string AriaSort(string column) => sortBy != column ? "none" : (sortDesc ? "descending" : "ascending");
+    
     // Paging handlers
     private async Task FirstPage() { if (pageNumber != 1) { pageNumber = 1; await Reload(); } }
     private async Task PrevPage() { if (pageNumber > 1) { pageNumber--; await Reload(); } }
     private async Task NextPage() { if (pageNumber < totalPages) { pageNumber++; await Reload(); } }
     private async Task LastPage() { if (pageNumber < totalPages) { pageNumber = totalPages; await Reload(); } }
-
-    // Modal open/close
     private void OpenAdd()
     {
         isEdit = false;
         modalTitle = "Add Category";
         validationMessage = null;
-
         editModel = new MFCategory();
-
         showModal = true;
     }
 
@@ -268,13 +297,7 @@
         isEdit = true;
         modalTitle = "Edit Category";
         validationMessage = null;
-
-        editModel = new MFCategory
-        {
-            MFCatId = src.MFCatId,
-            CategoryName = src.CategoryName
-        };
-
+        editModel = new MFCategory { MFCatId = src.MFCatId, CategoryName = src.CategoryName };
         showModal = true;
     }
 
@@ -282,26 +305,16 @@
 
     private void HandleKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key is "Escape" or "Esc")
-            showModal = false;
+        if (e.Key is "Escape" or "Esc") showModal = false;
     }
 
-    // Save with friendly uniqueness handling
     private async Task Save()
     {
         validationMessage = null;
 
-        // Minimal UI checks complementing DataAnnotations
-        if (string.IsNullOrWhiteSpace(editModel.CategoryName))
-        {
-            validationMessage = "Category Name is required.";
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(editModel.CategoryName)) { validationMessage = "Category Name is required."; return; }
         if (editModel.CategoryName.Length < 8 || editModel.CategoryName.Length > 50)
-        {
-            validationMessage = "Category Name should be between 8 and 50 characters.";
-            return;
-        }
+        { validationMessage = "Category Name should be between 8 and 50 characters."; return; }
 
         try
         {
@@ -315,15 +328,11 @@
         }
         catch (InvalidOperationException ex)
         {
-            validationMessage = ex.Message; // duplicate friendly message from repo
+            validationMessage = ex.Message; // duplicate; or delete-guard message (if ever bubbled)
         }
         catch (DbUpdateException)
         {
             validationMessage = "Save failed due to a unique constraint or database error. Please check the category name.";
-        }
-        catch (Exception ex)
-        {
-            validationMessage = $"Unexpected error: {ex.Message}";
         }
         finally
         {
@@ -331,14 +340,27 @@
         }
     }
 
-    // JS confirm (1-liner)
     private async Task ConfirmDelete(int id, string display)
     {
-        var ok = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete “{display}”?");
-        if (!ok) return;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete “{display}”?")) return;
 
-        await Repo.DeleteAsync(id);
-        if (_items?.Count == 1 && pageNumber > 1) pageNumber--;
-        await Reload();
+        try
+        {
+            await Repo.DeleteAsync(id);
+            if (_items?.Count == 1 && pageNumber > 1) pageNumber--;
+            await Reload();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Friendly message: category has linked funds
+            // Keep list state; show message (you can also show a toast)
+            // Light approach: Set filterMessage just below the filter bar
+            filterName ??= string.Empty;
+            filterMessageTemp = ex.Message; // or reuse a banner
+            StateHasChanged();
+        }
     }
+
+    // optional banner if you want to surface delete guard message in the filter area
+    private string? filterMessageTemp;
 }

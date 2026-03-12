@@ -46,6 +46,8 @@ namespace OM.MFPTrackerV1.Data
 				entity.Property(p => p.CategoryName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
 				// Recommended indexes & Unique constraints
 				entity.HasIndex(c => c.CategoryName).IsUnique();
+				// (Optional explicit mapping)
+				entity.HasMany(c => c.Funds).WithOne(f => f.Category).HasForeignKey(f => f.MFCatId).OnDelete(DeleteBehavior.Restrict);
 				entity.HasData(
 				   new MFCategory() { MFCatId = 1, CategoryName = "Equity-Multi Cap " },
 				   new MFCategory() { MFCatId = 2, CategoryName = "Equity-Flexi Cap" },
@@ -75,8 +77,8 @@ namespace OM.MFPTrackerV1.Data
 				entity.Property(p => p.SchemeCode).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
 				entity.Property(p => p.ISIN).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
 				entity.Property(p => p.AMCName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
-				entity.Property(p => p.IsTransactionAllowed).IsRequired().HasDefaultValue(true); 
-				entity.Property(p => p.IsNavAllowed).IsRequired().HasDefaultValue(true); 
+				entity.Property(p => p.IsTransactionAllowed).IsRequired().HasDefaultValue(true);
+				entity.Property(p => p.IsNavAllowed).IsRequired().HasDefaultValue(true);
 				entity.Property(p => p.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
 				entity.Property(p => p.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAddOrUpdate();
 				// Recommended indexes & Unique constraints
@@ -87,7 +89,7 @@ namespace OM.MFPTrackerV1.Data
 				// Helpful indexes optional
 				entity.HasIndex(c => c.AMCName);
 				entity.HasIndex(c => c.MFCatId);
-			
+
 				// Relationship with Mutual Fund Category 
 				entity.HasOne(f => f.Category).WithMany().HasForeignKey(f => f.MFCatId).OnDelete(DeleteBehavior.Restrict);
 				//Data Seeding
