@@ -39,23 +39,20 @@ https://portal.amfiindia.com/spages/NAVOpen.txt (download current date NAV of al
 MF List
 https://nsdl.co.in/mutual-fund-popup.htm
 
-AMC Name
-Category
-Scheme Name
+8) What I can deliver next (your call)
 
+🔧 Updated OnModelCreating file assembled as one block for your solution.
+🧩 Repo implementations for AMC, Fund, Category, Folio, Transactions (with uniqueness guards & AMC match).
+🖥️ Pages for AMC / Folio / Transactions aligned to your two‑row filters, small/bold headers, JS confirm delete, JS‑free modals, NOCASE filters.
+🗂️ Migration plan with example Up/Down steps to safely evolve from the previous schema.
 
-Work on the below topic bit later:
-- OperationalStatus: Table shows all fields, NAV/Transaction allowed as Yes/No
+If you want to start incrementally, I suggest:
 
-========Type of MF=====
-Equity - High growth potential with market-linked returns
-Debt - Stable returns with lower risk
-Hybrid - Best of both equity and debt
-Tax Saver - Save tax under Section 80C
-High Risk - High returns
-Medium Risk - Medium returns
-Low Risk - Low returns
-Flexi Cap - Flexi Cap Funds
+Apply AMC + Folio (with AMCId) and adjust Transactions;
+Then update Fund repo/UI to respect AMCId;
+Finally adjust Transactions page to use the AMC‑safe selectors.
+
+Tell me where you want to begin (e.g., Folio + Fluent + Repo + Page), and I’ll generate the drop‑in code.
 
 
 

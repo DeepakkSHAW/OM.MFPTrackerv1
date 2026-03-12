@@ -26,10 +26,18 @@ namespace OM.MFPTrackerV1.Web
 			);
 
 			// Register repository
-			builder.Services.AddScoped<IFolioHolderRepo, FolioHolderRepo>();
+			//builder.Services.AddScoped<IFolioHolderRepo, FolioHolderRepo>();
+			//builder.Services.AddScoped<IMFCategoryRepo, MFCategoryRepo>();
+			//builder.Services.AddScoped<IFundRepo, FundRepo>();
+			//builder.Services.AddScoped<IFolioRepo, FolioRepo>();
+
+			builder.Services.AddScoped<IAMCRepo, AMCRepo>();
 			builder.Services.AddScoped<IMFCategoryRepo, MFCategoryRepo>();
-			builder.Services.AddScoped<IFundRepo, FundRepo>();
+			builder.Services.AddScoped<IMFFundRepo, MFFundRepo>();
+			builder.Services.AddScoped<IFolioHolderRepo, FolioHolderRepo>();
 			builder.Services.AddScoped<IFolioRepo, FolioRepo>();
+			builder.Services.AddScoped<IMFTransactionRepo, MFTransactionRepo>();
+
 
 			/////////////END DK Added /////////////
 

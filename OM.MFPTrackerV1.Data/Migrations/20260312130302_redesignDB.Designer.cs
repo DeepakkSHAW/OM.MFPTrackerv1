@@ -11,8 +11,8 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    [Migration("20260312050308_Foliorelationshipfixed")]
-    partial class Foliorelationshipfixed
+    [Migration("20260312130302_redesignDB")]
+    partial class redesignDB
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -20,10 +20,53 @@ namespace OM.MFPTrackerV1.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
 
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.AMC", b =>
+                {
+                    b.Property<int>("AMCId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AMCName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("AMCId");
+
+                    b.HasIndex("AMCName")
+                        .IsUnique();
+
+                    b.ToTable("TAMC", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AMC_AMCName_Len", "length(AMCName) BETWEEN 2 AND 100");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            AMCId = 1,
+                            AMCName = "Axis Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 2,
+                            AMCName = "Bandhan Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 3,
+                            AMCName = "HDFC Mutual Fund"
+                        });
+                });
+
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Folio", b =>
                 {
                     b.Property<int>("FolioId")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AMCId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("AttachedBank")
@@ -32,9 +75,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         .UseCollation("NOCASE");
 
                     b.Property<int>("FolioHolderId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("FolioHolderId1")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("FolioNumber")
@@ -47,12 +87,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT")
                         .UseCollation("NOCASE");
-
-                    b.Property<int>("FundId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("FundId1")
-                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("InDate")
                         .ValueGeneratedOnAdd()
@@ -71,25 +105,30 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.HasKey("FolioId");
 
-                    b.HasIndex("FolioHolderId1");
+                    b.HasIndex("AMCId");
 
-                    b.HasIndex("FundId");
+                    b.HasIndex("FolioHolderId");
 
-                    b.HasIndex("FundId1");
-
-                    b.HasIndex("FolioHolderId", "FundId", "FolioNumber")
+                    b.HasIndex("AMCId", "FolioNumber")
                         .IsUnique();
 
-                    b.ToTable("TFolio", (string)null);
+                    b.ToTable("TFolio", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Folio_Bank_Len", "AttachedBank IS NULL OR length(AttachedBank) <= 50");
+
+                            t.HasCheckConstraint("CK_Folio_Number_Len", "length(FolioNumber) BETWEEN 5 AND 50");
+
+                            t.HasCheckConstraint("CK_Folio_Purpose_Len", "FolioPurpose IS NULL OR length(FolioPurpose) <= 100");
+                        });
 
                     b.HasData(
                         new
                         {
                             FolioId = 1,
-                            FolioHolderId = 1,
-                            FolioNumber = "FOLIO123",
-                            FolioPurpose = "Investment in Axis Small Cap Fund",
-                            FundId = 1,
+                            AMCId = 1,
+                            FolioHolderId = 2,
+                            FolioNumber = "1234567",
+                            FolioPurpose = "Investment Portfolio",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
@@ -97,21 +136,10 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             FolioId = 2,
-                            FolioHolderId = 2,
-                            FolioNumber = "FOLIO456",
-                            FolioPurpose = "Investment in Axis Small Cap Fund",
-                            FundId = 1,
-                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            IsActive = true,
-                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            FolioId = 3,
-                            FolioHolderId = 3,
-                            FolioNumber = "FOLIO789",
-                            FolioPurpose = "Investment in Bandhan Small Cap Fund",
-                            FundId = 2,
+                            AMCId = 2,
+                            FolioHolderId = 1,
+                            FolioNumber = "2233445",
+                            FolioPurpose = "Family Holdings",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
@@ -151,16 +179,11 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         .UseCollation("NOCASE");
 
                     b.Property<DateTime>("UpdateDate")
-                        .ValueGeneratedOnAddOrUpdate()
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.HasKey("FolioHolderId");
-
-                    b.HasIndex("FirstName")
-                        .IsUnique();
-
-                    b.HasIndex("FolioHolderId");
 
                     b.HasIndex("Signature")
                         .IsUnique();
@@ -168,7 +191,14 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     b.HasIndex("FirstName", "LastName", "DateOfBirth")
                         .IsUnique();
 
-                    b.ToTable("TFolioHolder", (string)null);
+                    b.ToTable("TFolioHolder", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 1 AND 100");
+
+                            t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 1 AND 100");
+
+                            t.HasCheckConstraint("CK_FH_Signature_Len", "length(Signature) BETWEEN 2 AND 5");
+                        });
 
                     b.HasData(
                         new
@@ -190,46 +220,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                             LastName = "Shaw",
                             Signature = "DK",
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            FolioHolderId = 3,
-                            DateOfBirth = new DateTime(1974, 4, 21, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            FirstName = "Jagruti",
-                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            LastName = "Shaw",
-                            Signature = "JS",
-                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            FolioHolderId = 4,
-                            DateOfBirth = new DateTime(2001, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            FirstName = "Divyam",
-                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            LastName = "Shaw",
-                            Signature = "DS",
-                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            FolioHolderId = 5,
-                            DateOfBirth = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            FirstName = "Durga Prasad",
-                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            LastName = "Shaw",
-                            Signature = "DP",
-                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
-                        },
-                        new
-                        {
-                            FolioHolderId = 6,
-                            DateOfBirth = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            FirstName = "Radha",
-                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            LastName = "Shaw",
-                            Signature = "RD",
-                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
 
@@ -237,6 +227,9 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 {
                     b.Property<int>("FundId")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AMCId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("AMCName")
@@ -275,9 +268,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     b.Property<int>("MFCatId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("MFCategoryMFCatId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("SchemeCode")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -285,13 +275,13 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         .UseCollation("NOCASE");
 
                     b.Property<DateTime>("UpdateDate")
-                        .ValueGeneratedOnAddOrUpdate()
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.HasKey("FundId");
 
-                    b.HasIndex("AMCName");
+                    b.HasIndex("AMCId");
 
                     b.HasIndex("FundName")
                         .IsUnique();
@@ -301,19 +291,27 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.HasIndex("MFCatId");
 
-                    b.HasIndex("MFCategoryMFCatId");
-
                     b.HasIndex("SchemeCode")
                         .IsUnique();
 
-                    b.ToTable("TFund", (string)null);
+                    b.ToTable("TFund", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Fund_AMCName_Len", "length(AMCName) BETWEEN 1 AND 100");
+
+                            t.HasCheckConstraint("CK_Fund_FundName_Len", "length(FundName) BETWEEN 5 AND 100");
+
+                            t.HasCheckConstraint("CK_Fund_ISIN_Len", "length(ISIN) BETWEEN 1 AND 20");
+
+                            t.HasCheckConstraint("CK_Fund_SchemeCode_Len", "length(SchemeCode) BETWEEN 1 AND 20");
+                        });
 
                     b.HasData(
                         new
                         {
                             FundId = 1,
-                            AMCName = "AXIS MF",
-                            FundName = "AXIS SMALL CAP Fund - DIRECT PLAN - GROWTH",
+                            AMCId = 1,
+                            AMCName = "Axis MF",
+                            FundName = "Axis Small Cap Fund - Direct Plan - Growth",
                             ISIN = "INF846K01K35",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsNavAllowed = true,
@@ -325,8 +323,9 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             FundId = 2,
-                            AMCName = "BANDHAN MF",
-                            FundName = "BANDHAN SMALL CAP FUND - REGULAR PLAN GROWTH",
+                            AMCId = 2,
+                            AMCName = "Bandhan MF",
+                            FundName = "Bandhan Small Cap Fund - Regular Plan - Growth",
                             ISIN = "INF194KB1AJ8",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsNavAllowed = true,
@@ -354,144 +353,178 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     b.HasIndex("CategoryName")
                         .IsUnique();
 
-                    b.ToTable("TMFCategory", (string)null);
+                    b.ToTable("TMFCategory", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MFCat_Name_Len", "length(CategoryName) BETWEEN 3 AND 50");
+                        });
 
                     b.HasData(
                         new
                         {
                             MFCatId = 1,
-                            CategoryName = "Equity-Multi Cap "
+                            CategoryName = "Equity - Small Cap"
                         },
                         new
                         {
                             MFCatId = 2,
-                            CategoryName = "Equity-Flexi Cap"
+                            CategoryName = "Equity - Multi Cap"
                         },
                         new
                         {
                             MFCatId = 3,
-                            CategoryName = "Equity-Large & MidCap"
+                            CategoryName = "Debt - Liquid"
                         },
                         new
                         {
                             MFCatId = 4,
-                            CategoryName = "Equity-Large Cap"
-                        },
+                            CategoryName = "Hybrid - Aggressive"
+                        });
+                });
+
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.MutualFundTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FolioId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FundId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("InDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<decimal>("NAV")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<int>("TxnType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Units")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("FolioId");
+
+                    b.HasIndex("FundId");
+
+                    b.ToTable("TMFTransaction", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Txn_Note_Len", "Note IS NULL OR length(Note) <= 100");
+
+                            t.HasCheckConstraint("CK_Txn_Source_Len", "Source IS NULL OR length(Source) <= 50");
+                        });
+
+                    b.HasData(
                         new
                         {
-                            MFCatId = 5,
-                            CategoryName = "Equity-Mid Cap"
-                        },
-                        new
-                        {
-                            MFCatId = 6,
-                            CategoryName = "Equity-Small Cap"
-                        },
-                        new
-                        {
-                            MFCatId = 7,
-                            CategoryName = "Equity-ELSS"
-                        },
-                        new
-                        {
-                            MFCatId = 8,
-                            CategoryName = "Equity-Dividend Yield"
-                        },
-                        new
-                        {
-                            MFCatId = 9,
-                            CategoryName = "Equity-Contra"
-                        },
-                        new
-                        {
-                            MFCatId = 10,
-                            CategoryName = "Equity-Sectoral"
-                        },
-                        new
-                        {
-                            MFCatId = 11,
-                            CategoryName = "Equity-Value Oriented"
-                        },
-                        new
-                        {
-                            MFCatId = 12,
-                            CategoryName = "Debt-Liquid Fund"
-                        },
-                        new
-                        {
-                            MFCatId = 13,
-                            CategoryName = "Debt-Overnight Funds"
-                        },
-                        new
-                        {
-                            MFCatId = 14,
-                            CategoryName = "Debt-Money Market Funds"
-                        },
-                        new
-                        {
-                            MFCatId = 15,
-                            CategoryName = "Debt-Corporate Bond Funds"
-                        },
-                        new
-                        {
-                            MFCatId = 16,
-                            CategoryName = "Debt-Gilt Funds"
-                        },
-                        new
-                        {
-                            MFCatId = 17,
-                            CategoryName = "Hybrid Fund"
+                            Id = 1,
+                            AmountPaid = 480m,
+                            Date = new DateTime(2024, 10, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FolioId = 1,
+                            FundId = 1,
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            NAV = 12m,
+                            Source = "Kotak Bank NRO",
+                            TxnType = 1,
+                            Units = 40m,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
 
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Folio", b =>
                 {
+                    b.HasOne("OM.MFPTrackerV1.Data.Models.AMC", "AMC")
+                        .WithMany("Folios")
+                        .HasForeignKey("AMCId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("OM.MFPTrackerV1.Data.Models.FolioHolder", "Holder")
-                        .WithMany()
+                        .WithMany("Folios")
                         .HasForeignKey("FolioHolderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.FolioHolder", null)
-                        .WithMany("Folios")
-                        .HasForeignKey("FolioHolderId1");
-
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.Fund", "Fund")
-                        .WithMany()
-                        .HasForeignKey("FundId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.Fund", null)
-                        .WithMany("Folios")
-                        .HasForeignKey("FundId1");
-
-                    b.Navigation("Fund");
+                    b.Navigation("AMC");
 
                     b.Navigation("Holder");
                 });
 
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Fund", b =>
                 {
+                    b.HasOne("OM.MFPTrackerV1.Data.Models.AMC", "AMC")
+                        .WithMany("Funds")
+                        .HasForeignKey("AMCId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("OM.MFPTrackerV1.Data.Models.MFCategory", "Category")
-                        .WithMany()
+                        .WithMany("Funds")
                         .HasForeignKey("MFCatId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("OM.MFPTrackerV1.Data.Models.MFCategory", null)
-                        .WithMany("Funds")
-                        .HasForeignKey("MFCategoryMFCatId");
+                    b.Navigation("AMC");
 
                     b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.FolioHolder", b =>
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.MutualFundTransaction", b =>
                 {
-                    b.Navigation("Folios");
+                    b.HasOne("OM.MFPTrackerV1.Data.Models.Folio", "Folio")
+                        .WithMany()
+                        .HasForeignKey("FolioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OM.MFPTrackerV1.Data.Models.Fund", "Fund")
+                        .WithMany()
+                        .HasForeignKey("FundId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Folio");
+
+                    b.Navigation("Fund");
                 });
 
-            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Fund", b =>
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.AMC", b =>
+                {
+                    b.Navigation("Folios");
+
+                    b.Navigation("Funds");
+                });
+
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.FolioHolder", b =>
                 {
                     b.Navigation("Folios");
                 });
