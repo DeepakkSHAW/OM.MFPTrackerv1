@@ -126,7 +126,9 @@ namespace OM.MFPTrackerV1.Data.Models
 		[Key] public int AMCId { get; set; }
 
 		//[Required, StringLength(100, MinimumLength = 2, ErrorMessage = "AMC Name should be between 2 to 100 Characters long.")]
-		[RegularExpression(@"^[A-Za-z0-9 ]{2,100}$", ErrorMessage = "AMC Name must be alphanumeric (letters, numbers, spaces only) and 2–100 characters.")]
+		[Required]
+		[StringLength(100, MinimumLength = 2, ErrorMessage = "AMC Name should be between 2 and 100 characters.")]
+		[RegularExpression(@"^[A-Za-z0-9 _-]{2,100}$", ErrorMessage = "AMC Name must be alphanumeric (letters, numbers, spaces only) and 2–100 characters.")]
 		public string AMCName { get; set; } = null!;
 
 		public ICollection<Fund> Funds { get; set; } = new List<Fund>();
@@ -138,7 +140,9 @@ namespace OM.MFPTrackerV1.Data.Models
 		[Key] public int MFCatId { get; set; }
 
 		//[Required, StringLength(50, MinimumLength = 3)]
-		[RegularExpression(@"^[A-Za-z0-9 ]{3,50}$", ErrorMessage = "Category Name must be alphanumeric (letters, numbers, spaces only) and 3–50 characters.")]
+		[Required]
+		[StringLength(50, MinimumLength = 3, ErrorMessage = "Category should be between 3 and 50 characters.")]
+		[RegularExpression(@"^[A-Za-z0-9 _-]{3,50}$", ErrorMessage = "Category Name must be alphanumeric (letters, numbers, spaces only) and 3–50 characters.")]
 		public string CategoryName { get; set; } = null!;
 
 		public ICollection<Fund> Funds { get; set; } = new List<Fund>();
@@ -148,7 +152,9 @@ namespace OM.MFPTrackerV1.Data.Models
 	{
 		[Key] public int FundId { get; set; }
 
-		[RegularExpression(@"^[A-Za-z0-9 ]{5,100}$", ErrorMessage = "Fund Name must be alphanumeric (letters, numbers, spaces only) and 5–100 characters.")]
+		[Required]
+		[StringLength(100, MinimumLength = 5, ErrorMessage = "Fund Name should be between 5 and 100 characters.")]
+		[RegularExpression(@"^[A-Za-z0-9 _-]{5,100}$", ErrorMessage = "Fund Name must be alphanumeric (letters, numbers, spaces only) and 5–100 characters.")]
 		//[Required, StringLength(100, MinimumLength = 5)]
 		public string FundName { get; set; } = null!;
 
@@ -175,17 +181,22 @@ namespace OM.MFPTrackerV1.Data.Models
 	{
 		[Key] public int FolioHolderId { get; set; }
 
-		//[Required, MaxLength(100)]
-		[RegularExpression(@"^[A-Za-z0-9 ]{5,100}$", ErrorMessage = "Name must be alphanumeric (letters, numbers, spaces only) and 5–100 characters.")]
+		[Required]
+		[StringLength(50, MinimumLength = 3,ErrorMessage = "First Name should be between 3 and 50 characters.")]
+		[RegularExpression(@"^[A-Za-z0-9 \-\_]{3,50}$", ErrorMessage = "Name must be alphanumeric (letters, numbers, spaces only) and 3–50 characters.")]
 		public string FirstName { get; set; } = null!;
-		[RegularExpression(@"^[A-Za-z0-9 ]{5,100}$", ErrorMessage = "Last Name must be alphanumeric (letters, numbers, spaces only) and 5–100 characters.")]
+		[Required]
+		[StringLength(50, MinimumLength = 3, ErrorMessage = "Last Name should be between 3 and 50 characters.")]
+		[RegularExpression(@"^[A-Za-z0-9 \-\_]{3,50}$", ErrorMessage = "Last Name must be alphanumeric (letters, numbers, spaces only) and 3–50 characters.")]
 		public string LastName { get; set; } = null!;
 
-		[DataType(DataType.Date)]
-		[DateInPastAttribute(ErrorMessage = "Date of Birth must be in the past")]
+		//[DataType(DataType.Date)]
+		//[DateInPastAttribute(ErrorMessage = "Date of Birth must be in the past")]
 		public DateTime DateOfBirth { get; set; }
 
-		[Required, StringLength(5, MinimumLength = 2, ErrorMessage = "Only 2-5 characters allowed")]
+		[Required]
+		[StringLength(5, MinimumLength = 2, ErrorMessage = "Signature should be between 2 and 5 characters.")]
+		[RegularExpression(@"^[A-Za-z0-9 ]{2,5}$", ErrorMessage = "Only 2-5 characters allowed")]
 		public string Signature { get; set; } = null!;
 
 		public DateTime InDate { get; set; }
@@ -197,7 +208,8 @@ namespace OM.MFPTrackerV1.Data.Models
 	public class Folio
 	{
 		[Key] public int FolioId { get; set; }
-
+		[Required]
+		[StringLength(50, MinimumLength = 5, ErrorMessage = "Folio Number should be between 5 and 50 characters.")]
 		[RegularExpression(@"^[A-Za-z0-9 ]{5,50}$", ErrorMessage = "Folio Number Name must be alphanumeric (letters, numbers, spaces only) and 5–50 characters.")]
 		public string FolioNumber { get; set; } = null!;
 

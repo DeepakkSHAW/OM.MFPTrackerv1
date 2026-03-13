@@ -169,7 +169,7 @@
 
                         <div class="mb-2">
                             <label class="form-label">AMC Name</label>
-                            <InputText class="form-control" @bind-Value="editModel.AMCName" maxlength="100" title="Only letters, numbers, spaces; 2–100 characters" />
+                            <InputText class="form-control" @bind-Value="editModel.AMCName" maxlength="100" pattern="[A-Za-z0-9 \-&() _-]{2,100}" title="Only letters, numbers, spaces; 2–100 characters" />
                            @*  <ValidationMessage For="@(() => editModel.AMCName)" /> *@
                             <small class="text-muted">2–100 characters; unique (case-insensitive)</small>
                         </div>

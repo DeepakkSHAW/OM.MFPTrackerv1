@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OM.MFPTrackerV1.Data;
 
@@ -10,9 +11,11 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    partial class MFPTrackerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260313002407_datafiledchanged")]
+    partial class datafiledchanged
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
@@ -190,9 +193,9 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.ToTable("TFolioHolder", null, t =>
                         {
-                            t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 3 AND 50");
+                            t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 1 AND 50");
 
-                            t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 3 AND 50");
+                            t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 1 AND 50");
 
                             t.HasCheckConstraint("CK_FH_Signature_Len", "length(Signature) BETWEEN 2 AND 5");
                         });

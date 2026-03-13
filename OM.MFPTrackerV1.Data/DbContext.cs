@@ -246,8 +246,8 @@ namespace OM.MFPTrackerV1.Data
 				//e.ToTable("TFolioHolder");
 				e.HasKey(x => x.FolioHolderId);
 
-				e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
-				e.Property(x => x.LastName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
+				e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
+				e.Property(x => x.LastName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
 				e.Property(x => x.Signature).IsRequired().UseCollation("NOCASE").HasMaxLength(5);
 
 				e.Property(x => x.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
@@ -261,8 +261,8 @@ namespace OM.MFPTrackerV1.Data
 
 				e.ToTable("TFolioHolder", t =>
 				{
-					t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 1 AND 100");
-					t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 1 AND 100");
+					t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 3 AND 50");
+					t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 3 AND 50");
 					t.HasCheckConstraint("CK_FH_Signature_Len", "length(Signature) BETWEEN 2 AND 5");
 				});
 
