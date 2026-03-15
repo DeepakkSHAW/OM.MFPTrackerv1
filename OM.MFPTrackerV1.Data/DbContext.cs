@@ -12,6 +12,7 @@ namespace OM.MFPTrackerV1.Data
 		public DbSet<FolioHolder> FolioHolders => Set<FolioHolder>();
 		public DbSet<Folio> Folios => Set<Folio>();
 		public DbSet<MutualFundTransaction> MutualFundTransactions => Set<MutualFundTransaction>();
+		public DbSet<FolioOwner> folioOwners => Set<FolioOwner>();
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			//modelBuilder.Entity<FolioHolder>(entity =>
@@ -240,8 +241,21 @@ namespace OM.MFPTrackerV1.Data
 				);
 			});
 
-			// -------------------- FolioHolder --------------------
-			modelBuilder.Entity<FolioHolder>(e =>
+			// -------------------- FolioOwner Only for Bug fixing --------------------
+			modelBuilder.Entity<FolioOwner>(e =>
+			{
+				e.ToTable("TFolioOwner");
+				e.HasKey(x => x.FolioOwnerId);
+
+				e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
+
+				e.HasData( 
+					new FolioOwner { FolioOwnerId = 1, FirstName = "Rupam" },
+					new FolioOwner { FolioOwnerId = 2, FirstName = "Deepak" }
+				);
+			});
+				// -------------------- FolioHolder --------------------
+				modelBuilder.Entity<FolioHolder>(e =>
 			{
 				//e.ToTable("TFolioHolder");
 				e.HasKey(x => x.FolioHolderId);

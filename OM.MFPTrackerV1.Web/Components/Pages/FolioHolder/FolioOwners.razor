@@ -1,0 +1,361 @@
+﻿@page "/folio-owners"
+
+@* ===== Required usings ===== *@
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.EntityFrameworkCore
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@using Microsoft.JSInterop
+
+@inject IFolioOwnerRepository Repo
+@inject IJSRuntime JS
+
+<h4 class="mt-2 mb-3">Folio Owners</h4>
+
+@* ===== Top Toolbar: Search + Clear (left), Add (right) ===== *@
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-md-6 col-lg-7">
+        <label class="form-label small fw-bold">Search</label>
+        <div class="input-group">
+            <input class="form-control"
+                   @bind="search"
+                   @bind:event="oninput"
+                   placeholder="Type a name to filter..." />
+            <button class="btn btn-outline-primary" type="button" @onclick="SearchAsync">Search</button>
+            <button class="btn btn-outline-secondary" type="button" @onclick="ClearAsync">Clear</button>
+        </div>
+    </div>
+    <div class="col text-end">
+        <label class="form-label small fw-bold d-block">&nbsp;</label>
+        <button class="btn btn-primary" @onclick="OpenAdd">Add Folio Owner</button>
+    </div>
+</div>
+
+@* ===== Table ===== *@
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-2">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 60px;"><strong class="small">#</strong></th>
+                <th role="button"
+                    @onclick="() => SortBy(nameof(FolioOwner.FirstName))"
+                    title="Sort by First Name">
+                    <strong class="small">First Name</strong>
+                    @if (sortBy == nameof(FolioOwner.FirstName))
+                    {
+                        <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
+                    }
+                </th>
+                <th style="width: 160px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (items is null || items.Count == 0)
+            {
+                <tr>
+                    <td colspan="3" class="text-center text-muted">No records found.</td>
+                </tr>
+            }
+            else
+            {
+                var rowIndexStart = ((pageNumber - 1) * pageSize);
+                @foreach (var x in items.Select((it, idx) => new { it, idx }))
+                {
+                    <tr>
+                        <td>@(rowIndexStart + x.idx + 1)</td>
+                        <td>@x.it.FirstName</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-secondary btn-sm me-2" @onclick="@(() => OpenEdit(x.it))">Edit</button>
+                            <button class="btn btn-outline-danger btn-sm"
+                                    @onclick="@(() => ConfirmDelete(x.it.FolioOwnerId, x.it.FirstName))">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@* ===== Footer: total (left), pagination + page size (right) ===== *@
+<div class="d-flex align-items-center gap-2">
+    <span class="text-muted small">Total: @totalCount</span>
+
+    <div class="ms-auto d-flex align-items-center gap-2">
+        <div class="btn-group">
+            <button class="btn btn-sm btn-outline-primary" @onclick="FirstPage" disabled="@(@pageNumber == 1)">« First</button>
+            <button class="btn btn-sm btn-outline-primary" @onclick="PrevPage" disabled="@(@pageNumber == 1)">‹ Prev</button>
+            <span class="btn btn-sm btn-outline-secondary disabled">Page @pageNumber</span>
+            <button class="btn btn-sm btn-outline-primary" @onclick="NextPage" disabled="@((pageNumber * pageSize) >= totalCount)">Next ›</button>
+        </div>
+
+        <div class="ms-2">
+            <label class="form-label small fw-bold mb-0 me-1">Page Size</label>
+            @* Use @bind only; no @onchange to prevent duplicate 'onchange' *@
+            <select class="form-select form-select-sm d-inline-block" style="width: 90px;"
+                    @bind="pageSize">
+                <option>5</option>
+                <option>10</option>
+                <option>20</option>
+                <option>50</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+@* ===== Add/Edit Modal (JS-free) ===== *@
+@if (showModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,.2);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@editModel" OnValidSubmit="@SaveAsync">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">First Name</label>
+                            <InputText class="form-control"
+                                       @bind-Value="editModel.FirstName"
+                                       maxlength="50"
+                                       title="Letters, numbers, spaces only; 5–50 characters"
+                                       pattern="^[A-Za-z0-9 ]{5,50}$" />
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(serverError))
+                        {
+                            <div class="alert alert-danger py-2">
+                                @serverError
+                            </div>
+                        }
+
+                        <div class="text-end">
+                            <button type="button" class="btn btn-outline-secondary me-2" @onclick="CloseModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ===== List state =====
+    private List<FolioOwner> items = new();
+    private int totalCount = 0;
+
+    private string? search;
+    private string sortBy = nameof(FolioOwner.FirstName);
+    private bool sortDesc = false;
+
+    private int pageNumber = 1;
+
+    // Backing field + property to reload on change (prevents duplicate 'onchange' errors)
+    private int _pageSize = 10;
+    private int pageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                pageNumber = 1;     // Reset to first page on size change
+                _ = Reload();       // Fire-and-forget reload
+            }
+        }
+    }
+
+    // ===== Modal state =====
+    private bool showModal = false;
+    private string modalTitle = "Add Folio Owner";
+    private EditModel editModel = new();
+    private string? serverError;
+
+    // ===== Lifecycle =====
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+    }
+
+    // ===== Data reload =====
+    private async Task Reload()
+    {
+        var result = await Repo.GetAsync(search, sortBy, sortDesc, pageNumber, pageSize);
+        items = result.Items.ToList();
+        totalCount = result.TotalCount;
+        StateHasChanged();
+    }
+
+    // ===== Search/Clear =====
+    private async Task SearchAsync()
+    {
+        pageNumber = 1;
+        await Reload();
+    }
+
+    private async Task ClearAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = string.Empty;
+            pageNumber = 1;
+            await Reload();
+        }
+    }
+
+    // ===== Sorting =====
+    private void SortBy(string field)
+    {
+        if (sortBy == field)
+        {
+            sortDesc = !sortDesc;
+        }
+        else
+        {
+            sortBy = field;
+            sortDesc = false;
+        }
+        _ = Reload();
+    }
+
+    // ===== Paging =====
+    private async Task FirstPage()
+    {
+        if (pageNumber != 1)
+        {
+            pageNumber = 1;
+            await Reload();
+        }
+    }
+
+    private async Task PrevPage()
+    {
+        if (pageNumber > 1)
+        {
+            pageNumber--;
+            await Reload();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if ((pageNumber * pageSize) < totalCount)
+        {
+            pageNumber++;
+            await Reload();
+        }
+    }
+
+    // ===== Modal actions =====
+    private void OpenAdd()
+    {
+        serverError = null;
+        modalTitle = "Add Folio Owner";
+        editModel = new();
+        showModal = true;
+    }
+
+    private void OpenEdit(FolioOwner entity)
+    {
+        serverError = null;
+        modalTitle = "Edit Folio Owner";
+        editModel = new EditModel
+        {
+            FolioOwnerId = entity.FolioOwnerId,
+            FirstName = entity.FirstName
+        };
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        serverError = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        serverError = null;
+
+        // Case-insensitive uniqueness (SQLite NOCASE collation on FirstName)
+        var excludeId = editModel.FolioOwnerId == 0 ? (int?)null : editModel.FolioOwnerId;
+        if (await Repo.ExistsByNameAsync(editModel.FirstName, excludeId))
+        {
+            serverError = "A folio owner with the same name already exists.";
+            return;
+        }
+
+        try
+        {
+            if (editModel.FolioOwnerId == 0)
+            {
+                var entity = new FolioOwner
+                {
+                    FirstName = editModel.FirstName.Trim()
+                };
+                await Repo.AddAsync(entity);
+            }
+            else
+            {
+                var entity = new FolioOwner
+                {
+                    FolioOwnerId = editModel.FolioOwnerId,
+                    FirstName = editModel.FirstName.Trim()
+                };
+                await Repo.UpdateAsync(entity);
+            }
+
+            showModal = false;
+            await Reload();
+        }
+        catch (DbUpdateException dbx)
+        {
+            serverError = $"Database error: {dbx.GetBaseException().Message}";
+        }
+        catch (Exception ex)
+        {
+            serverError = ex.Message;
+        }
+    }
+
+    // ===== Delete with confirmation =====
+    private async Task ConfirmDelete(int id, string name)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{name}'?"))
+        {
+            try
+            {
+                await Repo.DeleteAsync(id);
+                await Reload();
+            }
+            catch (DbUpdateException dbx)
+            {
+                await JS.InvokeVoidAsync("alert", $"Delete failed: {dbx.GetBaseException().Message}");
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("alert", ex.Message);
+            }
+        }
+    }
+
+    // ===== UI Edit model with validation (keeps entity clean) =====
+    public sealed class EditModel
+    {
+        public int FolioOwnerId { get; set; }
+
+        [Required]
+        [StringLength(50, MinimumLength = 1, ErrorMessage = "First Name must be 5–50 characters.")]
+        [RegularExpression(@"^[A-Za-z0-9 ]{1,50}$", ErrorMessage = "Only letters, numbers, and spaces are allowed.")]
+        public string FirstName { get; set; } = string.Empty;
+    }
+}

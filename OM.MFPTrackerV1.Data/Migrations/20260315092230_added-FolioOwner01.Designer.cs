@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OM.MFPTrackerV1.Data;
 
@@ -10,9 +11,11 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    partial class MFPTrackerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260315092230_added-FolioOwner01")]
+    partial class addedFolioOwner01
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.3");

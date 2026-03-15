@@ -4,6 +4,128 @@ using OM.MFPTrackerV1.Data.Models;
 
 namespace OM.MFPTrackerV1.Data.Services
 {
+	public interface IFolioOwnerRepository
+	{
+		Task<(IReadOnlyList<FolioOwner> Items, int TotalCount)> GetAsync(
+	string? search,
+	string? sortBy,
+	bool sortDesc,
+	int pageNumber,
+	int pageSize);
+
+		Task<FolioOwner?> GetByIdAsync(int id);
+		Task<bool> ExistsByNameAsync(string firstName, int? excludeId = null);
+		Task<FolioOwner> AddAsync(FolioOwner entity);
+		Task<FolioOwner> UpdateAsync(FolioOwner entity);
+		Task DeleteAsync(int id);
+		Task<int> CountAsync();
+	}
+	public class FolioOwnerRepository : IFolioOwnerRepository
+	{
+		private readonly MFPTrackerDbContext _db;
+
+		public FolioOwnerRepository(MFPTrackerDbContext db)
+		{
+			_db = db;
+		}
+
+		public async Task<(IReadOnlyList<FolioOwner> Items, int TotalCount)> GetAsync(
+			string? search, string? sortBy, bool sortDesc, int pageNumber, int pageSize)
+		{
+			if (pageNumber < 1) pageNumber = 1;
+			if (pageSize < 1) pageSize = 10;
+
+			IQueryable<FolioOwner> q = _db.Set<FolioOwner>().AsNoTracking();
+
+			// Filter (case-insensitive; SQLite column uses NOCASE which helps)
+			if (!string.IsNullOrWhiteSpace(search))
+			{
+				var pattern = $"%{search}%";
+				q = q.Where(x =>
+					(x.FirstName != null && EF.Functions.Like(EF.Functions.Collate(x.FirstName, "NOCASE"), pattern)) //||
+					//(x.LastName != null && EF.Functions.Like(EF.Functions.Collate(x.LastName, "NOCASE"), pattern))
+				);
+			}
+			//if (!string.IsNullOrWhiteSpace(search))
+			//{
+			//	var s = search.Trim();
+			//	q = q.Where(x => x.FirstName.Contains(s));
+			//}
+
+			// Sorting
+			q = (sortBy?.ToLowerInvariant()) switch
+			{
+				"firstname" => (sortDesc ? q.OrderByDescending(x => x.FirstName)
+										 : q.OrderBy(x => x.FirstName)),
+				_ => (sortDesc ? q.OrderByDescending(x => x.FolioOwnerId)
+							   : q.OrderBy(x => x.FolioOwnerId))
+			};
+
+			var total = await q.CountAsync();
+
+			var items = await q
+				.Skip((pageNumber - 1) * pageSize)
+				.Take(pageSize)
+				.ToListAsync();
+
+			return (items, total);
+		}
+
+		public async Task<FolioOwner?> GetByIdAsync(int id)
+		{
+			return await _db.Set<FolioOwner>().FirstOrDefaultAsync(x => x.FolioOwnerId == id);
+		}
+
+		public async Task<bool> ExistsByNameAsync(string firstName, int? excludeId = null)
+		{
+			if (string.IsNullOrWhiteSpace(firstName))
+				return false;
+
+			var query = _db.Set<FolioOwner>().AsQueryable();
+
+			if (excludeId.HasValue)
+				query = query.Where(x => x.FolioOwnerId != excludeId.Value);
+
+			// SQLite column collation NOCASE aids here, Contains/Equals are case-insensitive per collation
+			return await query.AnyAsync(x => x.FirstName == firstName.Trim());
+		}
+
+		public async Task<FolioOwner> AddAsync(FolioOwner entity)
+		{
+			_db.Set<FolioOwner>().Add(entity);
+			await _db.SaveChangesAsync();
+			return entity;
+		}
+
+		public async Task<FolioOwner> UpdateAsync(FolioOwner entity)
+		{
+			var existing = await _db.Set<FolioOwner>().FirstOrDefaultAsync(x => x.FolioOwnerId == entity.FolioOwnerId);
+			if (existing == null)
+				throw new InvalidOperationException($"FolioOwner id {entity.FolioOwnerId} not found.");
+
+			// Only update allowed fields
+			existing.FirstName = entity.FirstName;
+
+			await _db.SaveChangesAsync();
+			return existing;
+		}
+
+		public async Task DeleteAsync(int id)
+		{
+			var existing = await _db.Set<FolioOwner>().FirstOrDefaultAsync(x => x.FolioOwnerId == id);
+			if (existing == null)
+				return;
+
+			_db.Set<FolioOwner>().Remove(existing);
+			await _db.SaveChangesAsync();
+		}
+
+		public Task<int> CountAsync() => _db.Set<FolioOwner>().CountAsync();
+	}
+
+
+	/// /////////////////////////
+	/// 
 	public interface IFolioHolderRepo
 	{
 		Task<(IReadOnlyList<FolioHolder> Items, int TotalCount)> GetAsync(

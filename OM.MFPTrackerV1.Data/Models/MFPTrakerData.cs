@@ -177,7 +177,14 @@ namespace OM.MFPTrackerV1.Data.Models
 		public DateTime UpdateDate { get; set; }
 	}
 
-	public class FolioHolder
+	public class FolioOwner
+	{
+		[Key] public int FolioOwnerId { get; set; }
+
+		[Required]
+		public string FirstName { get; set; } = null!;
+	}
+		public class FolioHolder
 	{
 		[Key] public int FolioHolderId { get; set; }
 
