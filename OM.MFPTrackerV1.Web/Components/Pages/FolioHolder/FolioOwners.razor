@@ -51,6 +51,13 @@
                         <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
                     }
                 </th>
+                <th role="button" @onclick="() => SortBy(nameof(FolioOwner.DateOfBirth))" title="Sort by Date Of Birth">
+                    <strong class="small">Date Of Birth</strong>
+                    @if (sortBy == nameof(FolioOwner.DateOfBirth))
+                    {
+                        <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
+                    }
+                </th>
                 <th style="width: 160px;"></th>
             </tr>
         </thead>
@@ -70,6 +77,7 @@
                         <td>@(rowIndexStart + x.idx + 1)</td>
                         <td>@x.it.FirstName</td>
                         <td>@x.it.LastName</td>
+                        <td>@x.it.DateOfBirth.ToString("dd-MMM-yyyy")</td>
                         <td class="text-end">
                             <button class="btn btn-outline-secondary btn-sm me-2" @onclick="@(() => OpenEdit(x.it))">Edit</button>
                             <button class="btn btn-outline-danger btn-sm"
@@ -141,6 +149,10 @@
                                        maxlength="50"
                                        title="Letters, numbers, spaces only; 2–50 characters"
                                        pattern="^[A-Za-z0-9 ]{2,50}$" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Date of Birth</label>
+                            <InputDate @bind-Value="editModel.DateOfBirth" class="form-control" />
                         </div>
                         @if (!string.IsNullOrWhiteSpace(serverError))
                         {
@@ -273,7 +285,12 @@
     {
         serverError = null;
         modalTitle = "Add Folio Owner";
-        editModel = new();
+        //editModel = new();
+        editModel = new EditModel
+        {
+            //FirstName = "DK",
+            DateOfBirth = DateTime.Today.AddYears(-20) // sensible default
+        };
         showModal = true;
     }
 
@@ -285,7 +302,8 @@
         {
             FolioOwnerId = entity.FolioOwnerId,
             FirstName = entity.FirstName,
-            LastName = entity.LastName
+            LastName = entity.LastName,
+            DateOfBirth = entity.DateOfBirth
         };
         showModal = true;
     }
@@ -307,6 +325,13 @@
             serverError = "A folio owner with the same name already exists.";
             return;
         }
+        //if (e.DateOfBirth.Date >= DateTime.UtcNow.Date) throw new ArgumentOutOfRangeException(nameof(e.DateOfBirth), "Date of Birth must be in the past.");
+        // Check the DOB is NOT in the future
+        if (editModel.DateOfBirth >= DateTime.Now)
+        {
+            serverError = "Date of Birth must be in the past.";
+            return;   
+        }
 
         try
         {
@@ -315,7 +340,8 @@
                 var entity = new FolioOwner
                 {
                     FirstName = editModel.FirstName.Trim(),
-                    LastName = editModel.LastName.Trim()
+                    LastName = editModel.LastName.Trim(),
+                    DateOfBirth = editModel.DateOfBirth
                 };
                 await Repo.AddAsync(entity);
             }
@@ -325,7 +351,8 @@
                 {
                     FolioOwnerId = editModel.FolioOwnerId,
                     FirstName = editModel.FirstName.Trim(),
-                    LastName = editModel.LastName.Trim()
+                    LastName = editModel.LastName.Trim(),
+                    DateOfBirth = editModel.DateOfBirth
                 };
                 await Repo.UpdateAsync(entity);
             }
@@ -378,5 +405,7 @@
         [StringLength(50, MinimumLength = 1, ErrorMessage = "last Name must be 2–50 characters.")]
         [RegularExpression(@"^[A-Za-z0-9 ]{2,50}$", ErrorMessage = "Only letters, numbers, and spaces are allowed.")]
         public string LastName { get; set; } = string.Empty;
+
+        public DateTime DateOfBirth { get; set; }
     }
 }

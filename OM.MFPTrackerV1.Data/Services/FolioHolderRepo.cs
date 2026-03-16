@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using OM.MFPTrackerV1.Data;
 using OM.MFPTrackerV1.Data.Models;
 
@@ -50,26 +51,63 @@ namespace OM.MFPTrackerV1.Data.Services
 
 				//var pattern = $"%{search}%";
 				q = q.Where(x =>
-					(x.FirstName != null && EF.Functions.Like(EF.Functions.Collate(x.FirstName, "NOCASE"), pattern))
-					||
+					(x.FirstName != null && EF.Functions.Like(EF.Functions.Collate(x.FirstName, "NOCASE"), pattern))||
 					(x.LastName != null && EF.Functions.Like(EF.Functions.Collate(x.LastName, "NOCASE"), pattern))
 				);
 			}
-			//if (!string.IsNullOrWhiteSpace(search))
-			//{
-			//	var s = search.Trim();
-			//	q = q.Where(x => x.FirstName.Contains(s));
-			//}
+
 
 			// Sorting
-			q = (sortBy?.ToLowerInvariant()) switch
-			{
-				"firstname" => (sortDesc ? q.OrderByDescending(x => x.FirstName)
-										 : q.OrderBy(x => x.FirstName)),
-				_ => (sortDesc ? q.OrderByDescending(x => x.FolioOwnerId)
-							   : q.OrderBy(x => x.FolioOwnerId))
-			};
+			//q = (sortBy?.ToLowerInvariant()) switch
+			//{
+			//	"firstname" => (sortDesc ? q.OrderByDescending(x => x.FirstName)
+			//							 : q.OrderBy(x => x.FirstName)),
+			//	_ => (sortDesc ? q.OrderByDescending(x => x.FolioOwnerId)
+			//				   : q.OrderBy(x => x.FolioOwnerId))
+			//};
 
+			// ------------------------------
+			// Sorting
+			// ------------------------------
+			// Normalize the incoming sort key
+			var key = (sortBy ?? "LastName").Trim();
+			q = (key, sortDesc) switch
+			{
+				// FirstName
+				(nameof(FolioHolder.FirstName), true) =>
+					q.OrderByDescending(x => EF.Functions.Collate(x.FirstName ?? string.Empty, "NOCASE"))
+					 .ThenBy(x => x.FolioOwnerId),
+
+				(nameof(FolioHolder.FirstName), false) =>
+					q.OrderBy(x => EF.Functions.Collate(x.FirstName ?? string.Empty, "NOCASE"))
+					 .ThenBy(x => x.FolioOwnerId),
+
+				// LastName
+				(nameof(FolioHolder.LastName), true) =>
+					q.OrderByDescending(x => EF.Functions.Collate(x.LastName ?? string.Empty, "NOCASE"))
+					 .ThenBy(x => x.FolioOwnerId),
+
+				(nameof(FolioHolder.LastName), false) =>
+					q.OrderBy(x => EF.Functions.Collate(x.LastName ?? string.Empty, "NOCASE"))
+					 .ThenBy(x => x.FolioOwnerId),
+
+				// DateOfBirth (example of non-string)
+				(nameof(FolioHolder.DateOfBirth), true) =>
+					q.OrderByDescending(x => x.DateOfBirth)
+					 .ThenBy(x => x.FolioOwnerId),
+
+				(nameof(FolioHolder.DateOfBirth), false) =>
+					q.OrderBy(x => x.DateOfBirth)
+					 .ThenBy(x => x.FolioOwnerId),
+				// Fallback: LastName ascending (stable)
+				(_, true) =>
+					q.OrderByDescending(x => EF.Functions.Collate(x.LastName ?? string.Empty, "NOCASE"))
+					 .ThenBy(x => x.FolioOwnerId),
+
+				_ =>
+					q.OrderBy(x => EF.Functions.Collate(x.LastName ?? string.Empty, "NOCASE"))
+					 .ThenBy(x => x.FolioOwnerId),
+			};
 			var total = await q.CountAsync();
 
 			var items = await q
@@ -114,7 +152,8 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			// Only update allowed fields
 			existing.FirstName = entity.FirstName;
-			existing.LastName = entity.LastName; 
+			existing.LastName = entity.LastName;
+			existing.DateOfBirth = entity.DateOfBirth;
 			await _db.SaveChangesAsync();
 			return existing;
 		}

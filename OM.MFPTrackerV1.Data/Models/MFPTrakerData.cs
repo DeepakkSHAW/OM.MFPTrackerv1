@@ -187,6 +187,7 @@ namespace OM.MFPTrackerV1.Data.Models
 		[Required]
 		[StringLength(50, MinimumLength = 2, ErrorMessage = "last Name should be between 2 and 50 characters.")]
 		public string LastName { get; set; } = null!;
+		public DateTime DateOfBirth { get; set; }
 	}
 		public class FolioHolder
 	{
