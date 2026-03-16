@@ -248,10 +248,11 @@ namespace OM.MFPTrackerV1.Data
 				e.HasKey(x => x.FolioOwnerId);
 
 				e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
+				e.Property(x => x.LastName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
 
 				e.HasData( 
-					new FolioOwner { FolioOwnerId = 1, FirstName = "Rupam" },
-					new FolioOwner { FolioOwnerId = 2, FirstName = "Deepak" }
+					new FolioOwner { FolioOwnerId = 1, FirstName = "Rupam", LastName = "Sachin" },
+					new FolioOwner { FolioOwnerId = 2, FirstName = "Deepak", LastName = "Ganguly" }
 				);
 			});
 				// -------------------- FolioHolder --------------------

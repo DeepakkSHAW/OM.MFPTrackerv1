@@ -182,7 +182,11 @@ namespace OM.MFPTrackerV1.Data.Models
 		[Key] public int FolioOwnerId { get; set; }
 
 		[Required]
+		[StringLength(50, MinimumLength = 2, ErrorMessage = "First Name should be between 2 and 50 characters.")]
 		public string FirstName { get; set; } = null!;
+		[Required]
+		[StringLength(50, MinimumLength = 2, ErrorMessage = "last Name should be between 2 and 50 characters.")]
+		public string LastName { get; set; } = null!;
 	}
 		public class FolioHolder
 	{

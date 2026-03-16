@@ -32,18 +32,27 @@ namespace OM.MFPTrackerV1.Data.Services
 		public async Task<(IReadOnlyList<FolioOwner> Items, int TotalCount)> GetAsync(
 			string? search, string? sortBy, bool sortDesc, int pageNumber, int pageSize)
 		{
+			// Guardrails
 			if (pageNumber < 1) pageNumber = 1;
 			if (pageSize < 1) pageSize = 10;
+			if (pageSize > 200) pageSize = 200; // optional cap for safety
 
 			IQueryable<FolioOwner> q = _db.Set<FolioOwner>().AsNoTracking();
 
 			// Filter (case-insensitive; SQLite column uses NOCASE which helps)
 			if (!string.IsNullOrWhiteSpace(search))
 			{
-				var pattern = $"%{search}%";
+				var term = search.Trim();
+				static string EscapeLike(string input) => input.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
+				var escaped = EscapeLike(term);
+				var pattern = $"%{escaped}%";
+
+				//var pattern = $"%{search}%";
 				q = q.Where(x =>
-					(x.FirstName != null && EF.Functions.Like(EF.Functions.Collate(x.FirstName, "NOCASE"), pattern)) //||
-					//(x.LastName != null && EF.Functions.Like(EF.Functions.Collate(x.LastName, "NOCASE"), pattern))
+					(x.FirstName != null && EF.Functions.Like(EF.Functions.Collate(x.FirstName, "NOCASE"), pattern))
+					||
+					(x.LastName != null && EF.Functions.Like(EF.Functions.Collate(x.LastName, "NOCASE"), pattern))
 				);
 			}
 			//if (!string.IsNullOrWhiteSpace(search))
@@ -105,7 +114,7 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			// Only update allowed fields
 			existing.FirstName = entity.FirstName;
-
+			existing.LastName = entity.LastName; 
 			await _db.SaveChangesAsync();
 			return existing;
 		}
