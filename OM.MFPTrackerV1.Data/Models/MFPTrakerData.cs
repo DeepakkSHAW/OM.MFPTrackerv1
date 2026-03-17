@@ -188,8 +188,36 @@ namespace OM.MFPTrackerV1.Data.Models
 		[StringLength(50, MinimumLength = 2, ErrorMessage = "last Name should be between 2 and 50 characters.")]
 		public string LastName { get; set; } = null!;
 		public DateTime DateOfBirth { get; set; }
+
+        [Required]
+		[StringLength(5, MinimumLength = 2, ErrorMessage = "Signature should be between 2 and 5 characters.")]
+		public string Signature { get; set; } = null!;
 	}
-		public class FolioHolder
+	public class FolioHolder
+	{
+		[Key] public int FolioHolderId { get; set; }
+
+		[Required]
+		[StringLength(50, MinimumLength = 3, ErrorMessage = "First Name should be between 3 and 50 characters.")]
+		public string FirstName { get; set; } = null!;
+
+		[Required]
+		[StringLength(50, MinimumLength = 3, ErrorMessage = "Last Name should be between 3 and 50 characters.")]
+		public string LastName { get; set; } = null!;
+
+		public DateTime DateOfBirth { get; set; }
+
+		[Required]
+		[StringLength(5, MinimumLength = 2, ErrorMessage = "Signature should be between 2 and 5 characters.")]
+		public string Signature { get; set; } = null!;
+
+		public DateTime InDate { get; set; }
+		public DateTime UpdateDate { get; set; }
+
+		public ICollection<Folio> Folios { get; set; } = new List<Folio>();
+	}
+
+	public class FolioHolder_v1
 	{
 		[Key] public int FolioHolderId { get; set; }
 

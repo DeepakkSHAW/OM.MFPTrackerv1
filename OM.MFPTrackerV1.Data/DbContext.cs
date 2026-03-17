@@ -249,16 +249,50 @@ namespace OM.MFPTrackerV1.Data
 
 				e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
 				e.Property(x => x.LastName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
+				e.Property(x => x.Signature).IsRequired().UseCollation("NOCASE").HasMaxLength(5);
+
+				e.HasIndex(x => x.Signature).IsUnique();
+				e.HasIndex(x => new { x.FirstName, x.LastName, x.DateOfBirth }).IsUnique();
 
 				e.HasData( 
-					new FolioOwner { FolioOwnerId = 1, FirstName = "Rupam", LastName = "Sachin", DateOfBirth = new DateTime(2002, 5, 15) },
-					new FolioOwner { FolioOwnerId = 2, FirstName = "Deepak", LastName = "Ganguly", DateOfBirth = new DateTime(2010, 12, 1) }
+					new FolioOwner { FolioOwnerId = 1, FirstName = "Rupam", LastName = "Sachin", DateOfBirth = new DateTime(2002, 5, 15), Signature = "DK" },
+					new FolioOwner { FolioOwnerId = 2, FirstName = "Deepak", LastName = "Ganguly", DateOfBirth = new DateTime(2010, 12, 1), Signature = "RS" }
 				);
 			});
-				// -------------------- FolioHolder --------------------
-				modelBuilder.Entity<FolioHolder>(e =>
+			// -------------------- FolioHolder --------------------
+			//	modelBuilder.Entity<FolioHolder>(e =>
+			//{
+			//	//e.ToTable("TFolioHolder");
+			//	e.HasKey(x => x.FolioHolderId);
+
+			//	e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
+			//	e.Property(x => x.LastName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
+			//	e.Property(x => x.Signature).IsRequired().UseCollation("NOCASE").HasMaxLength(5);
+
+			//	e.Property(x => x.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
+			//	e.Property(x => x.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
+
+			//	// Uniqueness: per your rule (names NOCASE via column collation)
+			//	e.HasIndex(x => x.Signature).IsUnique();
+			//	e.HasIndex(x => new { x.FirstName, x.LastName, x.DateOfBirth }).IsUnique();
+
+			//	e.HasMany(h => h.Folios).WithOne(f => f.Holder).HasForeignKey(f => f.FolioHolderId).OnDelete(DeleteBehavior.Restrict);
+
+			//	e.ToTable("TFolioHolder", t =>
+			//	{
+			//		t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 3 AND 50");
+			//		t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 3 AND 50");
+			//		t.HasCheckConstraint("CK_FH_Signature_Len", "length(Signature) BETWEEN 2 AND 5");
+			//	});
+
+			//	e.HasData(
+			//		new FolioHolder { FolioHolderId = 1, FirstName = "Rupam", LastName = "Shaw", DateOfBirth = new DateTime(2002, 1, 1), Signature = "RS" },
+			//		new FolioHolder { FolioHolderId = 2, FirstName = "Deepak", LastName = "Shaw", DateOfBirth = new DateTime(1981, 12, 10), Signature = "DK" }
+			//	);
+			//});
+			modelBuilder.Entity<FolioHolder>(e =>
 			{
-				//e.ToTable("TFolioHolder");
+				e.ToTable("TFolioHolder");
 				e.HasKey(x => x.FolioHolderId);
 
 				e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
@@ -274,15 +308,8 @@ namespace OM.MFPTrackerV1.Data
 
 				e.HasMany(h => h.Folios).WithOne(f => f.Holder).HasForeignKey(f => f.FolioHolderId).OnDelete(DeleteBehavior.Restrict);
 
-				e.ToTable("TFolioHolder", t =>
-				{
-					t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 3 AND 50");
-					t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 3 AND 50");
-					t.HasCheckConstraint("CK_FH_Signature_Len", "length(Signature) BETWEEN 2 AND 5");
-				});
-
 				e.HasData(
-					new FolioHolder { FolioHolderId = 1, FirstName = "Rupam", LastName = "Shaw", DateOfBirth = new DateTime(2002, 1, 1), Signature = "RS" },
+					new FolioHolder { FolioHolderId = 1, FirstName = "Rupam", LastName = "Shaw", DateOfBirth = new DateTime(2012, 1, 1), Signature = "RS" },
 					new FolioHolder { FolioHolderId = 2, FirstName = "Deepak", LastName = "Shaw", DateOfBirth = new DateTime(1981, 12, 10), Signature = "DK" }
 				);
 			});

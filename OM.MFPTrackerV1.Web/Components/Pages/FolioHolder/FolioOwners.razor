@@ -58,6 +58,13 @@
                         <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
                     }
                 </th>
+                <th role="button" @onclick="() => SortBy(nameof(FolioOwner.Signature))" title="Sort by Date Of Signature">
+                    <strong class="small">Signature</strong>
+                    @if (sortBy == nameof(FolioOwner.Signature))
+                    {
+                        <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
+                    }
+                </th>
                 <th style="width: 160px;"></th>
             </tr>
         </thead>
@@ -78,6 +85,7 @@
                         <td>@x.it.FirstName</td>
                         <td>@x.it.LastName</td>
                         <td>@x.it.DateOfBirth.ToString("dd-MMM-yyyy")</td>
+                        <td>@x.it.Signature</td>
                         <td class="text-end">
                             <button class="btn btn-outline-secondary btn-sm me-2" @onclick="@(() => OpenEdit(x.it))">Edit</button>
                             <button class="btn btn-outline-danger btn-sm"
@@ -133,26 +141,33 @@
                     <EditForm Model="@editModel" OnValidSubmit="@SaveAsync">
                         <DataAnnotationsValidator />
                         <ValidationSummary />
-
-                        <div class="mb-3">
-                            <label class="form-label">First Name</label>
-                            <InputText class="form-control"
-                                       @bind-Value="editModel.FirstName"
-                                       maxlength="50"
-                                       title="Letters, numbers, spaces only; 2–50 characters"
-                                       pattern="^[A-Za-z0-9 ]{2,50}$" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Last Name</label>
-                            <InputText class="form-control"
-                                       @bind-Value="editModel.LastName"
-                                       maxlength="50"
-                                       title="Letters, numbers, spaces only; 2–50 characters"
-                                       pattern="^[A-Za-z0-9 ]{2,50}$" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Date of Birth</label>
-                            <InputDate @bind-Value="editModel.DateOfBirth" class="form-control" />
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <InputText class="form-control" @bind-Value="editModel.FirstName"
+                                           maxlength="50"
+                                           title="Letters, numbers, spaces only; 2–50 characters"
+                                           pattern="^[A-Za-z0-9 ]{2,50}$" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <InputText class="form-control" @bind-Value="editModel.LastName"
+                                           maxlength="50"
+                                           title="Letters, numbers, spaces only; 2–50 characters"
+                                           pattern="^[A-Za-z0-9 ]{2,50}$" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date of Birth</label>
+                                <InputDate @bind-Value="editModel.DateOfBirth" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Signature</label>
+                                <InputText class="form-control" @bind-Value="editModel.Signature"
+                                           maxlength="5"
+                                           pattern="[A-Za-z0-9]{2,5}"
+                                           title="Alphanumeric; 2–5 characters" />
+                                <small class="text-muted">2–5 characters</small>
+                            </div>
                         </div>
                         @if (!string.IsNullOrWhiteSpace(serverError))
                         {
@@ -285,10 +300,8 @@
     {
         serverError = null;
         modalTitle = "Add Folio Owner";
-        //editModel = new();
         editModel = new EditModel
         {
-            //FirstName = "DK",
             DateOfBirth = DateTime.Today.AddYears(-20) // sensible default
         };
         showModal = true;
@@ -303,7 +316,8 @@
             FolioOwnerId = entity.FolioOwnerId,
             FirstName = entity.FirstName,
             LastName = entity.LastName,
-            DateOfBirth = entity.DateOfBirth
+            DateOfBirth = entity.DateOfBirth,
+            Signature = entity.Signature
         };
         showModal = true;
     }
@@ -320,17 +334,21 @@
 
         // Case-insensitive uniqueness (SQLite NOCASE collation on FirstName)
         var excludeId = editModel.FolioOwnerId == 0 ? (int?)null : editModel.FolioOwnerId;
-        if (await Repo.ExistsByNameAsync(editModel.FirstName, excludeId))
+        // if (await Repo.ExistsByNameAsync(editModel.FirstName, excludeId))
+        // {
+        //     serverError = "A folio owner with the same name already exists.";
+        //     return;
+        // }
+        if (await Repo.ExistsBySignatureAsync(editModel.Signature, excludeId))
         {
-            serverError = "A folio owner with the same name already exists.";
+            serverError = "A folio owner Signature must be unique.";
             return;
         }
-        //if (e.DateOfBirth.Date >= DateTime.UtcNow.Date) throw new ArgumentOutOfRangeException(nameof(e.DateOfBirth), "Date of Birth must be in the past.");
         // Check the DOB is NOT in the future
         if (editModel.DateOfBirth >= DateTime.Now)
         {
             serverError = "Date of Birth must be in the past.";
-            return;   
+            return;
         }
 
         try
@@ -341,8 +359,17 @@
                 {
                     FirstName = editModel.FirstName.Trim(),
                     LastName = editModel.LastName.Trim(),
-                    DateOfBirth = editModel.DateOfBirth
+                    DateOfBirth = editModel.DateOfBirth,
+                    Signature = editModel.Signature.Trim()
                 };
+                //Check uniqueness FirstName + LastName combination (case-insensitive) + DateOfBirth
+                if (await Repo.EnsureUniqueAsync(entity, false))
+                {
+                    serverError = "Folio owner already exists.";
+                    return;
+                }
+                ;
+
                 await Repo.AddAsync(entity);
             }
             else
@@ -352,8 +379,16 @@
                     FolioOwnerId = editModel.FolioOwnerId,
                     FirstName = editModel.FirstName.Trim(),
                     LastName = editModel.LastName.Trim(),
-                    DateOfBirth = editModel.DateOfBirth
+                    DateOfBirth = editModel.DateOfBirth,
+                    Signature = editModel.Signature.Trim()
                 };
+                //Check uniqueness FirstName + LastName combination (case-insensitive) + DateOfBirth
+                if (await Repo.EnsureUniqueAsync(entity, true))
+                {
+                    serverError = "Folio owner already exists.";
+                    return;
+                }
+                ;
                 await Repo.UpdateAsync(entity);
             }
 
@@ -407,5 +442,9 @@
         public string LastName { get; set; } = string.Empty;
 
         public DateTime DateOfBirth { get; set; }
+        [Required]
+        [StringLength(5, MinimumLength = 2, ErrorMessage = "Signature must be 2–5 characters.")]
+        [RegularExpression(@"^[A-Za-z0-9 ]{2,5}$", ErrorMessage = "Only letters, numbers, and spaces are allowed.")]
+        public string Signature { get; set; } = null!;
     }
 }

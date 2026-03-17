@@ -1,474 +1,499 @@
 ﻿@page "/folio-holders"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.EntityFrameworkCore
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
-@using Microsoft.AspNetCore.Components
-@using Microsoft.AspNetCore.Components.Web
-@using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
 
 @inject IFolioHolderRepo Repo
 @inject IJSRuntime JS
 
-<h3>Folio Holders</h3>
+<h4 class="mt-2 mb-3">Folio Holders</h4>
 
-<!-- Actions -->
-<div class="d-flex gap-2 mb-3">
-    <button class="btn btn-sm btn-success" @onclick="OpenAdd">Add Holder</button>
-</div>
+<!-- ============================
+     Top Toolbar: Search & Add
+     ============================ -->
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-md-6 col-lg-7">
+        <label class="form-label small fw-bold">Search</label>
+        <div class="input-group">
+            <input class="form-control"
+                   @bind="search"
+                   @bind:event="oninput"
+                   placeholder="Type name or signature..." />
 
-<!-- Filters (two-row compact layout) -->
-<div class="card mb-3">
-    <div class="card-body">
-        <!-- Row 1 -->
-        <div class="row g-2 mb-2">
-            <div class="col-md-6">
-                <label class="form-label mb-0 small fw-semibold">Name contains</label>
-                <input class="form-control form-control-sm"
-                       @bind="filterName"
-                       maxlength="100"
-                       placeholder="First or Last" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label mb-0 small fw-semibold">Signature contains</label>
-                <input class="form-control form-control-sm"
-                       @bind="filterSignature"
-                       maxlength="5"
-                       pattern="[A-Za-z0-9]{2,5}"
-                       title="Alphanumeric; 2–5 characters"
-                       placeholder="e.g., DS" />
-            </div>
+            <button class="btn btn-outline-primary" @onclick="SearchAsync">Search</button>
+            <button class="btn btn-outline-secondary" @onclick="ClearAsync">Clear</button>
         </div>
+    </div>
 
-        <!-- Row 2 -->
-        <div class="row g-2 align-items-end">
-            <div class="col-md-6"></div>
-            <div class="col-md-6 d-flex justify-content-end gap-2">
-                <button class="btn btn-sm btn-primary" @onclick="ApplyFilters">Search</button>
-                <button class="btn btn-sm btn-secondary" @onclick="ClearFilters">Clear</button>
-            </div>
-        </div>
-
-        @if (!string.IsNullOrEmpty(filterMessage))
-        {
-            <div class="alert alert-warning mt-2 py-1">@filterMessage</div>
-        }
+    <div class="col text-end">
+        <label class="form-label small fw-bold d-block">&nbsp;</label>
+        <button class="btn btn-primary" @onclick="OpenAdd">Add Folio Holder</button>
     </div>
 </div>
 
-<!-- Table -->
-<table class="table table-sm table-striped align-middle">
-    <thead class="table-head-sm-bold">
-        <tr>
-            <th aria-sort="@AriaSort("Holder")">
-                <div class="th-sort d-flex align-items-center"
-                     role="button"
-                     title="Sort by Holder"
-                     @onclick='() => Sort("Holder")'>
-                    <span class="th-title">Holder</span>
-                    <span class="th-caret">@((MarkupString)SortGlyph("Holder").Value)</span>
-                </div>
-            </th>
-            <th aria-sort="@AriaSort("DateOfBirth")" style="width:160px;">
-                <div class="th-sort d-flex align-items-center"
-                     role="button"
-                     title="Sort by Date of Birth"
-                     @onclick='() => Sort("DateOfBirth")'>
-                    <span class="th-title">DOB</span>
-                    <span class="th-caret">@((MarkupString)SortGlyph("DateOfBirth").Value)</span>
-                </div>
-            </th>
-            <th aria-sort="@AriaSort("Signature")" style="width:140px;">
-                <div class="th-sort d-flex align-items-center"
-                     role="button"
-                     title="Sort by Signature"
-                     @onclick='() => Sort("Signature")'>
-                    <span class="th-title">Signature</span>
-                    <span class="th-caret">@((MarkupString)SortGlyph("Signature").Value)</span>
-                </div>
-            </th>
-            <th style="width:120px;">Folios</th>
-            <th style="width:180px;"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (_items is null)
-        {
-            <tr><td colspan="5">Loading...</td></tr>
-        }
-        else if (_items.Count == 0)
-        {
-            <tr><td colspan="5">No data</td></tr>
-        }
-        else
-        {
-            @foreach (var x in _items)
-            {
-                var count = _folioCounts.TryGetValue(x.FolioHolderId, out var c) ? c : 0;
-                <tr>
-                    <td>@x.FirstName @x.LastName</td>
-                    <td>@x.DateOfBirth.ToString("dd-MMM-yyyy")</td>
-                    <td>@x.Signature</td>
-                    <td>@count</td>
-                    <td class="text-end">
-                        <button class="btn btn-outline-secondary btn-sm me-1" @onclick="() => OpenEdit(x)">Edit</button>
+<!-- ============================
+     Table
+     ============================ -->
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                @* <th style="width:60px;"><strong class="small">#</strong></th> *@
 
-                        @if (count > 0)
-                        {
-                            <button class="btn btn-outline-danger btn-sm" disabled title="Cannot delete: folios are linked">Delete</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-outline-danger btn-sm"
-                                    @onclick='() => ConfirmDelete(x.FolioHolderId, $"{x.FirstName} {x.LastName}")'>
-                                Delete
-                            </button>
-                        }
-                    </td>
+                <th role="button" title="Number of folios held">
+                    <strong class="small">Folios</strong>
+                </th>
+
+                <th role="button" @onclick="() => SortBy(nameof(FolioHolder.FirstName))">
+                    <strong class="small">First Name</strong>
+                    @if (sortBy == nameof(FolioHolder.FirstName))
+                    {
+                        <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
+                    }
+                </th>
+
+                <th role="button" @onclick="() => SortBy(nameof(FolioHolder.LastName))">
+                    <strong class="small">Last Name</strong>
+                    @if (sortBy == nameof(FolioHolder.LastName))
+                    {
+                        <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
+                    }
+                </th>
+
+                <th role="button" @onclick="() => SortBy(nameof(FolioHolder.DateOfBirth))">
+                    <strong class="small">Date Of Birth</strong>
+                    @if (sortBy == nameof(FolioHolder.DateOfBirth))
+                    {
+                        <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
+                    }
+                </th>
+
+                <th role="button" @onclick="() => SortBy(nameof(FolioHolder.Signature))">
+                    <strong class="small">Signature</strong>
+                    @if (sortBy == nameof(FolioHolder.Signature))
+                    {
+                        <span class="ms-1">@((sortDesc ? "▼" : "▲"))</span>
+                    }
+                </th>
+
+                <th style="width:160px;"></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (items is null || items.Count == 0)
+            {
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No records found.</td>
                 </tr>
             }
-        }
-    </tbody>
-</table>
+            else
+            {
+                var startIndex = (pageNumber - 1) * pageSize;
 
-<!-- Pagination -->
-<div class="d-flex align-items-center justify-content-between">
-    <div>Showing @FromRow–@ToRow of @totalCount</div>
-    <div class="d-flex align-items-center gap-2">
-        <div class="input-group input-group-sm" style="width:auto;">
-            <span class="input-group-text">Page size</span>
-            <select class="form-select form-select-sm" style="width:auto" @bind="PageSize">
-                <option value="10">10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
+                @foreach (var x in items.Select((it, idx) => new { it, idx }))
+                {
+                    <tr>
+                        @* <td>@(startIndex + x.idx + 1)</td> *@
+                        <td>@x.it.Folios.Count</td>
+                        <td>@x.it.FirstName</td>
+                        <td>@x.it.LastName</td>
+                        <td>@x.it.DateOfBirth.ToString("dd-MMM-yyyy")</td>
+                        <td>@x.it.Signature</td>
+
+                        <td class="text-end">
+                            <button class="btn btn-outline-secondary btn-sm me-2"
+                                    @onclick="() => OpenEdit(x.it)">
+                                Edit
+                            </button>
+
+  @*                           <button class="btn btn-outline-danger btn-sm"
+                                    @onclick="() => ConfirmDelete(x.it.FolioHolderId, x.it.FirstName)">
+                                Delete
+                            </button> *@
+                            <button class="btn btn-outline-danger btn-sm"
+                                    disabled="@(x.it.Folios.Count > 0)"
+                                    title="@(x.it.Folios.Count > 0 ? "Cannot delete holder with existing folios" : null)"
+                                    @onclick="() => ConfirmDelete(x.it.FolioHolderId, x.it.FirstName)">
+                                Delete
+                            </button>
+
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- ============================
+     Footer: Total + Paging
+     ============================ -->
+<div class="d-flex align-items-center gap-2">
+    <span class="text-muted small">Total: @totalCount</span>
+
+    <div class="ms-auto d-flex align-items-center gap-2">
+        <div class="btn-group">
+            <button class="btn btn-sm btn-outline-primary" @onclick="FirstPage" disabled="@(pageNumber == 1)">« First</button>
+            <button class="btn btn-sm btn-outline-primary" @onclick="PrevPage" disabled="@(pageNumber == 1)">‹ Prev</button>
+
+            <span class="btn btn-sm btn-outline-secondary disabled">Page @pageNumber</span>
+
+            <button class="btn btn-sm btn-outline-primary"
+                    @onclick="NextPage"
+                    disabled="@((pageNumber * pageSize) >= totalCount)">
+                Next ›
+            </button>
         </div>
 
-        <nav>
-            <ul class="pagination pagination-sm mb-0">
-                <li class="page-item @(pageNumber == 1 ? "disabled" : null)">
-                    <button class="page-link" @onclick="FirstPage">«</button>
-                </li>
-                <li class="page-item @(pageNumber == 1 ? "disabled" : null)">
-                    <button class="page-link" @onclick="PrevPage">‹</button>
-                </li>
-                <li class="page-item disabled">
-                    <span class="page-link">Page @pageNumber of @totalPages</span>
-                </li>
-                <li class="page-item @(pageNumber >= totalPages ? "disabled" : null)">
-                    <button class="page-link" @onclick="NextPage">›</button>
-                </li>
-                <li class="page-item @(pageNumber >= totalPages ? "disabled" : null)">
-                    <button class="page-link" @onclick="LastPage">»</button>
-                </li>
-            </ul>
-        </nav>
+        <div>
+            <label class="form-label small fw-bold mb-0 me-1">Page Size</label>
+            <select class="form-select form-select-sm d-inline-block" style="width: 90px;" @bind="pageSize">
+                <option>5</option>
+                <option>10</option>
+                <option>20</option>
+                <option>50</option>
+            </select>
+        </div>
     </div>
 </div>
 
-@* ---------------- Modal (JS-free; Add & Edit) — EditForm + ValidationSummary (Option B) ---------------- *@
+<!-- ============================
+     Add/Edit Modal (JS-free)
+     ============================ -->
 @if (showModal)
 {
-    <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content" tabindex="0" @onkeydown="HandleKeyDown">
-                <div class="modal-header">
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,.2);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header py-2" style="background: rgba(200,100,200,.2)">
                     <h5 class="modal-title">@modalTitle</h5>
-                    <button class="btn-close" @onclick="CloseModal" disabled="@saving"></button>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
 
-                <EditForm Model="editModel" OnValidSubmit="Save" OnInvalidSubmit="OnInvalidSubmit">
-                    @*                     <DataAnnotationsValidator /> *@
-                    <ValidationSummary />
-
-                    <div class="modal-body">
-                        @* Only repo/DB errors here *@
-                        @if (!string.IsNullOrEmpty(validationMessage))
-                        {
-                            <div class="alert alert-danger py-1">@validationMessage</div>
-                        }
+                <div class="modal-body">
+                    <EditForm Model="@editModel" OnValidSubmit="@SaveAsync">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
 
                         <div class="row g-3">
+
                             <div class="col-md-6">
                                 <label class="form-label">First Name</label>
                                 <InputText class="form-control"
                                            @bind-Value="editModel.FirstName"
-                                           maxlength="100"
-                                           pattern="[A-Za-z0-9 ]{1,100}"
-                                           title="Letters, numbers, spaces; 1–100 characters" />
+                                           maxlength="50"
+                                           pattern="^[A-Za-z0-9 ]{3,50}$"
+                                           title="Letters, numbers, spaces; 3–50 characters" />
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label">Last Name</label>
                                 <InputText class="form-control"
                                            @bind-Value="editModel.LastName"
-                                           maxlength="100"
-                                           pattern="[A-Za-z0-9 ]{4,100}"
-                                           title="Letters, numbers, spaces; 4–100 characters" />
+                                           maxlength="50"
+                                           pattern="^[A-Za-z0-9 ]{3,50}$"
+                                           title="Letters, numbers, spaces; 3–50 characters" />
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label">Date of Birth</label>
-                                <InputDate @bind-Value="editModel.DateOfBirth" class="form-control" />
+                                <InputDate class="form-control"
+                                           @bind-Value="editModel.DateOfBirth" />
                             </div>
-                            <div class="col-md-4">
+
+                            <div class="col-md-6">
                                 <label class="form-label">Signature</label>
                                 <InputText class="form-control"
                                            @bind-Value="editModel.Signature"
                                            maxlength="5"
-                                           pattern="[A-Za-z0-9]{2,5}"
+                                           pattern="^[A-Za-z0-9]{2,5}$"
                                            title="Alphanumeric; 2–5 characters" />
-                                <small class="text-muted">2–5 characters</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Notes</label>
-                                <input class="form-control" value="—" disabled />
                             </div>
                         </div>
-                    </div>
 
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal" disabled="@saving">Cancel</button>
-                        <button type="submit" class="btn btn-success" disabled="@saving">
-                            @(saving ? "Saving..." : "Save")
-                        </button>
-                    </div>
-                </EditForm>
+                        @if (!string.IsNullOrWhiteSpace(serverError))
+                        {
+                            <div class="alert alert-danger py-2 mt-3">
+                                @serverError
+                            </div>
+                        }
+
+                        <div class="text-end mt-3">
+                            <button class="btn btn-outline-secondary me-2" type="button" @onclick="CloseModal">Cancel</button>
+                            <button class="btn btn-primary" type="submit">Save</button>
+                        </div>
+                    </EditForm>
+                </div>
+
             </div>
         </div>
     </div>
-
-    <div class="modal-backdrop fade show"></div>
 }
 
-<style>
-    /* small & bold headers + tidy caret, consistent with other pages */
-    .table-head-sm-bold th {
-        font-weight: 600;
-        font-size: .85rem;
-        white-space: nowrap;
-        vertical-align: middle;
-    }
-
-    th .th-sort {
-        user-select: none;
-        cursor: pointer;
-        gap: .35rem;
-        padding-right: .25rem;
-        color: inherit;
-    }
-
-        th .th-sort:hover .th-title {
-            color: #0d6efd;
-            text-decoration: none;
-        }
-
-    th .th-caret {
-        display: inline-flex;
-        width: .9rem;
-        justify-content: center;
-        align-items: center;
-        color: #6c757d;
-    }
-</style>
-
 @code {
-    private List<FolioHolder>? _items;
-    private Dictionary<int, int> _folioCounts = new();
 
-    // Filters
-    private string? filterName;
-    private string? filterSignature;
-    private string? filterMessage;
+    private List<FolioHolder> items = new();
+    private int totalCount = 0;
 
-    // Sorting
-    private string sortBy = "Holder";   // Holder | DateOfBirth | Signature
+    private string? search;
+    private string sortBy = nameof(FolioHolder.FirstName);
     private bool sortDesc = false;
 
-    // Paging
     private int pageNumber = 1;
+
     private int _pageSize = 10;
-    private int PageSize
+    private int pageSize
     {
         get => _pageSize;
-        set { if (_pageSize == value) return; _pageSize = value; pageNumber = 1; _ = Reload(); }
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                pageNumber = 1;
+                _ = Reload();
+            }
+        }
     }
-    private int totalCount;
-    private int totalPages => Math.Max(1, (int)Math.Ceiling((double)totalCount / _pageSize));
-    private int FromRow => totalCount == 0 ? 0 : ((pageNumber - 1) * _pageSize) + 1;
-    private int ToRow => Math.Min(pageNumber * _pageSize, totalCount);
 
-    // Modal
+    // Modal state
     private bool showModal = false;
-    private bool isEdit = false;
-    private bool saving = false;
-    private string modalTitle = "Add Holder";
-    private string? validationMessage;
-    private FolioHolder editModel = new();
+    private string modalTitle = "Add Folio Holder";
+    private EditModel editModel = new();
+    private string? serverError;
 
-    protected override async Task OnInitializedAsync() => await Reload();
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+    }
 
+    // Reload data
     private async Task Reload()
     {
-        var skip = (pageNumber - 1) * _pageSize;
-
-        var (items, total) = await Repo.GetAsync(
-            nameContains: filterName,
-            signatureContains: filterSignature,
-            skip: skip,
-            take: _pageSize,
-            sortBy: sortBy switch
-            {
-                "Holder" => "LastName",   // repo sorts by Last/First internally
-                "Signature" => "Signature",
-                "DateOfBirth" => "DateOfBirth",
-                _ => "LastName"
-            },
-            desc: sortDesc);
-
-        _items = items.ToList();
-        totalCount = total;
-
-        // ✅ Load folio counts from repo
-        _folioCounts = await Repo.GetFolioCountsAsync();
-
-        if (pageNumber > totalPages && totalPages > 0)
-        {
-            pageNumber = totalPages;
-            await Reload();
-            return;
-        }
+        var result = await Repo.GetAsync(search, sortBy, sortDesc, pageNumber, pageSize);
+        items = result.Items.ToList();
+        totalCount = result.TotalCount;
         StateHasChanged();
     }
 
-    private async Task ApplyFilters()
+    // Search / Clear
+    private async Task SearchAsync()
     {
-        filterMessage = null;
         pageNumber = 1;
         await Reload();
     }
 
-    private async Task ClearFilters()
+    private async Task ClearAsync()
     {
-        filterName = filterSignature = null;
-        filterMessage = null;
-        pageNumber = 1;
-        await Reload();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = string.Empty;
+            pageNumber = 1;
+            await Reload();
+        }
     }
 
-    private async Task Sort(string column)
+    // Sorting
+    private void SortBy(string field)
     {
-        if (sortBy == column) sortDesc = !sortDesc;
-        else { sortBy = column; sortDesc = false; }
-        pageNumber = 1;
-        await Reload();
+        if (sortBy == field)
+            sortDesc = !sortDesc;
+        else
+        {
+            sortBy = field;
+            sortDesc = false;
+        }
+        _ = Reload();
     }
-
-    private MarkupString SortGlyph(string column)
-    {
-        if (sortBy != column) return new MarkupString(string.Empty);
-        var glyph = sortDesc ? "▾" : "▴";
-        return new MarkupString($"<span class=\"ms-1\">{glyph}</span>");
-    }
-
-    private string AriaSort(string column) => sortBy != column ? "none" : (sortDesc ? "descending" : "ascending");
 
     // Paging
-    private async Task FirstPage() { if (pageNumber != 1) { pageNumber = 1; await Reload(); } }
-    private async Task PrevPage() { if (pageNumber > 1) { pageNumber--; await Reload(); } }
-    private async Task NextPage() { if (pageNumber < totalPages) { pageNumber++; await Reload(); } }
-    private async Task LastPage() { if (pageNumber < totalPages) { pageNumber = totalPages; await Reload(); } }
+    private async Task FirstPage()
+    {
+        if (pageNumber != 1)
+        {
+            pageNumber = 1;
+            await Reload();
+        }
+    }
 
-    // Modal open/close
+    private async Task PrevPage()
+    {
+        if (pageNumber > 1)
+        {
+            pageNumber--;
+            await Reload();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if ((pageNumber * pageSize) < totalCount)
+        {
+            pageNumber++;
+            await Reload();
+        }
+    }
+
+    // Modal: Add
     private void OpenAdd()
     {
-        isEdit = false;
-        modalTitle = "Add Holder";
-        validationMessage = null;
+        serverError = null;
+        modalTitle = "Add Folio Holder";
 
-        editModel = new FolioHolder
+        editModel = new EditModel
         {
-            DateOfBirth = DateTime.Today.AddYears(-20) // sensible default
+            DateOfBirth = DateTime.Today.AddYears(-20)
         };
 
         showModal = true;
     }
 
-    private void OpenEdit(FolioHolder src)
+    // Modal: Edit
+    private void OpenEdit(FolioHolder x)
     {
-        isEdit = true;
-        modalTitle = "Edit Holder";
-        validationMessage = null;
+        serverError = null;
+        modalTitle = "Edit Folio Holder";
 
-        editModel = new FolioHolder
+        editModel = new EditModel
         {
-            FolioHolderId = src.FolioHolderId,
-            FirstName = src.FirstName,
-            LastName = src.LastName,
-            DateOfBirth = src.DateOfBirth,
-            Signature = src.Signature,
-            InDate = src.InDate,
-            UpdateDate = src.UpdateDate
+            FolioHolderId = x.FolioHolderId,
+            FirstName = x.FirstName,
+            LastName = x.LastName,
+            DateOfBirth = x.DateOfBirth,
+            Signature = x.Signature
         };
 
         showModal = true;
     }
 
-    private void CloseModal() => showModal = false;
-
-    private void HandleKeyDown(KeyboardEventArgs e)
+    private void CloseModal()
     {
-        if (e.Key is "Escape" or "Esc") showModal = false;
+        serverError = null;
+        showModal = false;
     }
 
-    private void OnInvalidSubmit()
+    // Save (Add or Update)
+    private async Task SaveAsync()
     {
-        // Form failed DataAnnotations validation; hide any stale repo/DB banner
-        validationMessage = null;
-    }
+        serverError = null;
 
-    // Save (DataAnnotations validated by EditForm)
-    private async Task Save()
-    {
-        validationMessage = null;
+        var excludeId = editModel.FolioHolderId == 0 ? null : (int?)editModel.FolioHolderId;
+
+        // Signature check
+        if (await Repo.ExistsBySignatureAsync(editModel.Signature, excludeId))
+        {
+            serverError = "Signature must be unique.";
+            return;
+        }
+
+        // DOB validation
+        if (editModel.DateOfBirth >= DateTime.Now)
+        {
+            serverError = "Date of Birth must be in the past.";
+            return;
+        }
 
         try
         {
-            saving = true;
+            if (editModel.FolioHolderId == 0)
+            {
+                var e = new FolioHolder
+                {
+                    FirstName = editModel.FirstName.Trim(),
+                    LastName = editModel.LastName.Trim(),
+                    DateOfBirth = editModel.DateOfBirth,
+                    Signature = editModel.Signature.Trim()
+                };
 
-            if (isEdit) await Repo.UpdateAsync(editModel);
-            else await Repo.AddAsync(editModel);
+                if (await Repo.EnsureUniqueAsync(e, false))
+                {
+                    serverError = "Folio holder already exists (Name + DOB).";
+                    return;
+                }
+
+                await Repo.AddAsync(e);
+            }
+            else
+            {
+                var e = new FolioHolder
+                {
+                    FolioHolderId = editModel.FolioHolderId,
+                    FirstName = editModel.FirstName.Trim(),
+                    LastName = editModel.LastName.Trim(),
+                    DateOfBirth = editModel.DateOfBirth,
+                    Signature = editModel.Signature.Trim()
+                };
+
+                if (await Repo.EnsureUniqueAsync(e, true))
+                {
+                    serverError = "Folio holder already exists (Name + DOB).";
+                    return;
+                }
+
+                await Repo.UpdateAsync(e);
+            }
 
             showModal = false;
             await Reload();
         }
-        catch (InvalidOperationException ex)
+        catch (DbUpdateException ex)
         {
-            validationMessage = ex.Message; // duplicate signature or same person (FN+LN+DOB)
+            serverError = $"Database error: {ex.GetBaseException().Message}";
         }
-        catch (DbUpdateException)
+        catch (Exception ex)
         {
-            validationMessage = "Save failed due to a unique constraint or database error. Please review your input.";
-        }
-        finally
-        {
-            saving = false;
+            serverError = ex.Message;
         }
     }
 
-    private async Task ConfirmDelete(int id, string display)
+    // Delete
+    private async Task ConfirmDelete(int id, string name)
     {
-        if (!await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete “{display}”?"))
-            return;
+        if (await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{name}'?"))
+        {
+            try
+            {
+                await Repo.DeleteAsync(id);
+                await Reload();
+            }
+            catch (DbUpdateException ex)
+            {
+                await JS.InvokeVoidAsync("alert", $"Delete failed: {ex.GetBaseException().Message}");
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("alert", ex.Message);
+            }
+        }
+    }
 
-        try
-        {
-            await Repo.DeleteAsync(id);
-            if (_items?.Count == 1 && pageNumber > 1) pageNumber--;
-            await Reload();
-        }
-        catch (InvalidOperationException ex)
-        {
-            filterMessage = ex.Message; // e.g., "folios are linked"
-            StateHasChanged();
-        }
+    // UI EditModel
+    public sealed class EditModel
+    {
+        public int FolioHolderId { get; set; }
+
+        [Required]
+        [StringLength(50, MinimumLength = 3)]
+        [RegularExpression(@"^[A-Za-z0-9 ]{3,50}$")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50, MinimumLength = 3)]
+        [RegularExpression(@"^[A-Za-z0-9 ]{3,50}$")]
+        public string LastName { get; set; } = string.Empty;
+
+        public DateTime DateOfBirth { get; set; }
+
+        [Required]
+        [StringLength(5, MinimumLength = 2)]
+        [RegularExpression(@"^[A-Za-z0-9]{2,5}$")]
+        public string Signature { get; set; } = string.Empty;
     }
 }

@@ -11,8 +11,8 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    [Migration("20260312130302_redesignDB")]
-    partial class redesignDB
+    [Migration("20260317103039_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -157,7 +157,7 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasMaxLength(100)
+                        .HasMaxLength(50)
                         .HasColumnType("TEXT")
                         .UseCollation("NOCASE");
 
@@ -168,7 +168,7 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasMaxLength(100)
+                        .HasMaxLength(50)
                         .HasColumnType("TEXT")
                         .UseCollation("NOCASE");
 
@@ -191,20 +191,13 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     b.HasIndex("FirstName", "LastName", "DateOfBirth")
                         .IsUnique();
 
-                    b.ToTable("TFolioHolder", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 1 AND 100");
-
-                            t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 1 AND 100");
-
-                            t.HasCheckConstraint("CK_FH_Signature_Len", "length(Signature) BETWEEN 2 AND 5");
-                        });
+                    b.ToTable("TFolioHolder", (string)null);
 
                     b.HasData(
                         new
                         {
                             FolioHolderId = 1,
-                            DateOfBirth = new DateTime(2002, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DateOfBirth = new DateTime(2012, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Rupam",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastName = "Shaw",
@@ -220,6 +213,62 @@ namespace OM.MFPTrackerV1.Data.Migrations
                             LastName = "Shaw",
                             Signature = "DK",
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        });
+                });
+
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.FolioOwner", b =>
+                {
+                    b.Property<int>("FolioOwnerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DateOfBirth")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("Signature")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("FolioOwnerId");
+
+                    b.HasIndex("Signature")
+                        .IsUnique();
+
+                    b.HasIndex("FirstName", "LastName", "DateOfBirth")
+                        .IsUnique();
+
+                    b.ToTable("TFolioOwner", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            FolioOwnerId = 1,
+                            DateOfBirth = new DateTime(2002, 5, 15, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Rupam",
+                            LastName = "Sachin",
+                            Signature = "DK"
+                        },
+                        new
+                        {
+                            FolioOwnerId = 2,
+                            DateOfBirth = new DateTime(2010, 12, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Deepak",
+                            LastName = "Ganguly",
+                            Signature = "RS"
                         });
                 });
 

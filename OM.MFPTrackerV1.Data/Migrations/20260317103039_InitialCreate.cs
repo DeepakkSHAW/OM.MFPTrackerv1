@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class redesignDB : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -33,8 +33,8 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 {
                     FolioHolderId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    FirstName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false, collation: "NOCASE"),
-                    LastName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false, collation: "NOCASE"),
+                    FirstName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false, collation: "NOCASE"),
+                    LastName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false, collation: "NOCASE"),
                     DateOfBirth = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Signature = table.Column<string>(type: "TEXT", maxLength: 5, nullable: false, collation: "NOCASE"),
                     InDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
@@ -43,9 +43,22 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TFolioHolder", x => x.FolioHolderId);
-                    table.CheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 1 AND 100");
-                    table.CheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 1 AND 100");
-                    table.CheckConstraint("CK_FH_Signature_Len", "length(Signature) BETWEEN 2 AND 5");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TFolioOwner",
+                columns: table => new
+                {
+                    FolioOwnerId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    FirstName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false, collation: "NOCASE"),
+                    LastName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false, collation: "NOCASE"),
+                    DateOfBirth = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Signature = table.Column<string>(type: "TEXT", maxLength: 5, nullable: false, collation: "NOCASE")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TFolioOwner", x => x.FolioOwnerId);
                 });
 
             migrationBuilder.CreateTable(
@@ -187,8 +200,17 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 columns: new[] { "FolioHolderId", "DateOfBirth", "FirstName", "LastName", "Signature" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2002, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Rupam", "Shaw", "RS" },
+                    { 1, new DateTime(2012, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Rupam", "Shaw", "RS" },
                     { 2, new DateTime(1981, 12, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), "Deepak", "Shaw", "DK" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "TFolioOwner",
+                columns: new[] { "FolioOwnerId", "DateOfBirth", "FirstName", "LastName", "Signature" },
+                values: new object[,]
+                {
+                    { 1, new DateTime(2002, 5, 15, 0, 0, 0, 0, DateTimeKind.Unspecified), "Rupam", "Sachin", "DK" },
+                    { 2, new DateTime(2010, 12, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Deepak", "Ganguly", "RS" }
                 });
 
             migrationBuilder.InsertData(
@@ -260,6 +282,18 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_TFolioOwner_FirstName_LastName_DateOfBirth",
+                table: "TFolioOwner",
+                columns: new[] { "FirstName", "LastName", "DateOfBirth" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TFolioOwner_Signature",
+                table: "TFolioOwner",
+                column: "Signature",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TFund_AMCId",
                 table: "TFund",
                 column: "AMCId");
@@ -312,6 +346,9 @@ namespace OM.MFPTrackerV1.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "TFolioOwner");
+
             migrationBuilder.DropTable(
                 name: "TMFTransaction");
 
