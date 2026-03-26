@@ -80,3 +80,12 @@ NAV price history table
 Performance charts
 
 Asset allocation view
+End-to-end refactoring (AMC → Folio → Fund → Transactions)
+UI consistency pass for all pages
+Dashboard summary widgets (Total AMCs, Total Folios, Total Transactions...)
+Export to Excel / CSV
+Server-side filtering improvements
+
+Errors:
+Q1. One or more errors occurred. Failed to launch debug adapter.
+A1. Tools → Options → Debugging → General Then uncheck: "Enable JavaScript debugging for ASP.NET (Chrome, Edge)”

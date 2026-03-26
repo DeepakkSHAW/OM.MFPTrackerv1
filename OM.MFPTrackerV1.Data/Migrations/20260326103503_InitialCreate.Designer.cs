@@ -11,7 +11,7 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    [Migration("20260317103039_InitialCreate")]
+    [Migration("20260326103503_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -281,12 +281,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     b.Property<int>("AMCId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("AMCName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT")
-                        .UseCollation("NOCASE");
-
                     b.Property<string>("FundName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -332,21 +326,18 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.HasIndex("AMCId");
 
-                    b.HasIndex("FundName")
-                        .IsUnique();
+                    b.HasIndex("FundName");
 
                     b.HasIndex("ISIN")
                         .IsUnique();
 
                     b.HasIndex("MFCatId");
 
-                    b.HasIndex("SchemeCode")
+                    b.HasIndex("AMCId", "SchemeCode")
                         .IsUnique();
 
                     b.ToTable("TFund", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Fund_AMCName_Len", "length(AMCName) BETWEEN 1 AND 100");
-
                             t.HasCheckConstraint("CK_Fund_FundName_Len", "length(FundName) BETWEEN 5 AND 100");
 
                             t.HasCheckConstraint("CK_Fund_ISIN_Len", "length(ISIN) BETWEEN 1 AND 20");
@@ -359,7 +350,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         {
                             FundId = 1,
                             AMCId = 1,
-                            AMCName = "Axis MF",
                             FundName = "Axis Small Cap Fund - Direct Plan - Growth",
                             ISIN = "INF846K01K35",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
@@ -373,7 +363,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         {
                             FundId = 2,
                             AMCId = 2,
-                            AMCName = "Bandhan MF",
                             FundName = "Bandhan Small Cap Fund - Regular Plan - Growth",
                             ISIN = "INF194KB1AJ8",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),

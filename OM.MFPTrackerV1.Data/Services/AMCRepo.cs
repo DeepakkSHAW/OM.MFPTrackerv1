@@ -13,7 +13,7 @@ namespace OM.MFPTrackerV1.Data.Services
 			string sortBy = "AMCName",
 			bool desc = false,
 			CancellationToken ct = default);
-
+		Task<IReadOnlyList<AMC>> GetAllAsync();
 		Task<AMC?> GetByIdAsync(int id, CancellationToken ct = default);
 		Task<int> AddAsync(AMC entity, CancellationToken ct = default);
 		Task UpdateAsync(AMC entity, CancellationToken ct = default);
@@ -52,6 +52,14 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			var items = await q.Skip(Math.Max(0, skip)).Take(Math.Max(1, take)).ToListAsync(ct);
 			return (items, total);
+		}
+
+		public async Task<IReadOnlyList<AMC>> GetAllAsync()
+		{
+			return await _db.Set<AMC>()
+				.AsNoTracking()
+				.OrderBy(x => x.AMCName)
+				.ToListAsync();
 		}
 
 		public Task<AMC?> GetByIdAsync(int id, CancellationToken ct = default) =>

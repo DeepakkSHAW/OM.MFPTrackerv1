@@ -1,1 +1,480 @@
-﻿
+﻿@page "/mf-funds"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.EntityFrameworkCore
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@using Microsoft.JSInterop
+
+@inject IMFFundRepo Repo
+@inject IAMCRepo AMCRepo
+@inject IMFCategoryRepo CategoryRepo
+@inject IJSRuntime JS
+
+<h4 class="mt-2 mb-3">Funds</h4>
+
+<!-- ===========================
+     Top Toolbar
+     =========================== -->
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-md-6 col-lg-7">
+        <label class="form-label small fw-bold">Search</label>
+        <div class="input-group">
+            <input class="form-control"
+                   @bind="search"
+                   @bind:event="oninput"
+                   placeholder="Fund / ISIN / Scheme / AMC" />
+
+            <button class="btn btn-outline-primary" @onclick="SearchAsync">Search</button>
+            <button class="btn btn-outline-secondary" @onclick="ClearAsync">Clear</button>
+        </div>
+    </div>
+
+    <div class="col text-end">
+        <label class="form-label small fw-bold d-block">&nbsp;</label>
+        <button class="btn btn-primary" @onclick="OpenAdd">Add Fund</button>
+    </div>
+</div>
+
+<!-- ===========================
+     Table
+     =========================== -->
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width:60px;"><strong class="small">#</strong></th>
+
+                <th role="button" @onclick="() => SortBy(nameof(Fund.FundName))">
+                    <strong class="small">Fund</strong>
+                    @SortIcon(nameof(Fund.FundName))
+                </th>
+
+                <th role="button" @onclick="() => SortBy(nameof(Fund.SchemeCode))">
+                    <strong class="small">Scheme</strong>
+                    @SortIcon(nameof(Fund.SchemeCode))
+                </th>
+
+                <th role="button" @onclick="() => SortBy(nameof(Fund.ISIN))">
+                    <strong class="small">ISIN</strong>
+                    @SortIcon(nameof(Fund.ISIN))
+                </th>
+
+
+<th role="button" @onclick="@(() => SortBy("AMC"))">
+    <strong class="small">AMC</strong>
+    @SortIcon("AMC")
+</th>
+
+<th role="button" @onclick="@(() => SortBy("Category"))">
+    <strong class="small">Category</strong>
+    @SortIcon("Category")
+</th>
+
+                
+
+                <th class="text-center">
+                    <strong class="small">Txn</strong>
+                </th>
+
+                <th class="text-center">
+                    <strong class="small">NAV</strong>
+                </th>
+
+                <th style="width:160px;"></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (items.Count == 0)
+            {
+                <tr>
+                    <td colspan="9" class="text-center text-muted">No records found.</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var x in items.Select((it, idx) => new { it, idx }))
+                {
+                    <tr>
+                        <td>@(x.idx + 1)</td>
+                        <td>@x.it.FundName</td>
+                        <td>@x.it.SchemeCode</td>
+                        <td>@x.it.ISIN</td>
+                        <td>@x.it.AMC?.AMCName</td>
+                        <td>@x.it.Category?.CategoryName</td>
+
+                        <td class="text-center">
+                            @if (x.it.IsTransactionAllowed)
+                            {
+                                <span class="badge bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">No</span>
+                            }
+                        </td>
+
+                        <td class="text-center">
+                            @if (x.it.IsNavAllowed)
+                            {
+                                <span class="badge bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">No</span>
+                            }
+                        </td>
+
+                        <td class="text-end">
+                            <button class="btn btn-outline-secondary btn-sm me-2"
+                                    @onclick="() => OpenEdit(x.it)">
+                                Edit
+                            </button>
+
+                            <button class="btn btn-outline-danger btn-sm"
+                                    @onclick="() => ConfirmDelete(x.it.FundId, x.it.FundName)">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- ===========================
+     Footer
+     =========================== -->
+<div class="d-flex align-items-center gap-2">
+    <span class="text-muted small">Total: @totalCount</span>
+
+    <div class="ms-auto d-flex align-items-center gap-2">
+        <div class="btn-group">
+            <button class="btn btn-sm btn-outline-primary" @onclick="FirstPage" disabled="@(pageNumber == 1)">« First</button>
+            <button class="btn btn-sm btn-outline-primary" @onclick="PrevPage" disabled="@(pageNumber == 1)">‹ Prev</button>
+            <span class="btn btn-sm btn-outline-secondary disabled">Page @pageNumber</span>
+            <button class="btn btn-sm btn-outline-primary" @onclick="NextPage"
+                    disabled="@((pageNumber * pageSize) >= totalCount)">
+                Next ›
+            </button>
+        </div>
+
+        <select class="form-select form-select-sm" style="width:90px;" @bind="pageSize">
+            <option>5</option>
+            <option>10</option>
+            <option>20</option>
+            <option>50</option>
+        </select>
+    </div>
+</div>
+
+<!-- ===========================
+     Modal: Add / Edit
+     =========================== -->
+@if (showModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,.2);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header py-2">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button class="btn-close" @onclick="CloseModal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <EditForm Model="@editModel" OnValidSubmit="SaveAsync">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="row g-3">
+
+                            <div class="col-md-12">
+                                <label class="form-label">Fund Name</label>
+                                <InputText class="form-control" @bind-Value="editModel.FundName" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Scheme Code</label>
+                                <InputText class="form-control" @bind-Value="editModel.SchemeCode" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">ISIN</label>
+                                <InputText class="form-control" @bind-Value="editModel.ISIN" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Category</label>
+                                <InputSelect class="form-select" @bind-Value="editModel.MFCatId">
+                                    <option value="">-- Select --</option>
+                                    @foreach (var c in categories)
+                                    {
+                                        <option value="@c.MFCatId">@c.CategoryName</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">AMC</label>
+                                <InputSelect class="form-select" @bind-Value="editModel.AMCId">
+                                    <option value="">-- Select --</option>
+                                    @foreach (var a in amcs)
+                                    {
+                                        <option value="@a.AMCId">@a.AMCName</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-3 d-flex align-items-center mt-4">
+                                <InputCheckbox @bind-Value="editModel.IsTransactionAllowed" />
+                                <label class="ms-2">Txn Allowed</label>
+                            </div>
+
+                            <div class="col-md-3 d-flex align-items-center mt-4">
+                                <InputCheckbox @bind-Value="editModel.IsNavAllowed" />
+                                <label class="ms-2">NAV Allowed</label>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(serverError))
+                        {
+                            <div class="alert alert-danger mt-3">@serverError</div>
+                        }
+
+                        <div class="text-end mt-3">
+                            <button class="btn btn-outline-secondary me-2" type="button" @onclick="CloseModal">Cancel</button>
+                            <button class="btn btn-primary" type="submit">Save</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    private List<Fund> items = new();
+    private List<AMC> amcs = new();
+    private List<MFCategory> categories = new();
+
+    private int totalCount;
+    private string? search;
+    private string sortBy = nameof(Fund.FundName);
+    private bool sortDesc;
+    private int pageNumber = 1;
+
+    private int _pageSize = 10;
+    private int pageSize
+    {
+        get => _pageSize;
+        set { _pageSize = value; pageNumber = 1; _ = Reload(); }
+    }
+
+    private bool showModal;
+    private string modalTitle = "";
+    private string? serverError;
+    private EditModel editModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        amcs = (await AMCRepo.GetAllAsync()).ToList();
+        categories = (await CategoryRepo.GetAllAsync()).ToList();
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        var result = await Repo.GetAsync(search, sortBy, sortDesc, pageNumber, pageSize);
+        items = result.Items.ToList();
+        totalCount = result.TotalCount;
+        StateHasChanged();
+    }
+
+    private void SortBy(string field)
+    {
+        if (sortBy == field)
+        {
+            sortDesc = !sortDesc;
+        }
+        else
+        {
+            sortBy = field;
+            sortDesc = false;
+        }
+
+        _ = Reload();
+    }
+    private RenderFragment SortIcon(string field) => builder =>
+    {
+        if (sortBy == field)
+        {
+            builder.AddContent(0, sortDesc ? " ▼" : " ▲");
+        }
+    };
+
+    private async Task SearchAsync() { pageNumber = 1; await Reload(); }
+    private async Task ClearAsync() { search = ""; pageNumber = 1; await Reload(); }
+
+    private async Task FirstPage() { if (pageNumber != 1) { pageNumber = 1; await Reload(); } }
+    private async Task PrevPage() { if (pageNumber > 1) { pageNumber--; await Reload(); } }
+    private async Task NextPage() { if (pageNumber * pageSize < totalCount) { pageNumber++; await Reload(); } }
+
+    private void OpenAdd()
+    {
+        editModel = new();
+        modalTitle = "Add Fund";
+        showModal = true;
+        serverError = null;
+    }
+
+    private void OpenEdit(Fund f)
+    {
+        editModel = new EditModel
+        {
+            FundId = f.FundId,
+            FundName = f.FundName,
+            SchemeCode = f.SchemeCode,
+            ISIN = f.ISIN,
+            AMCId = f.AMCId,
+            MFCatId = f.MFCatId,
+            IsTransactionAllowed = f.IsTransactionAllowed,
+            IsNavAllowed = f.IsNavAllowed
+        };
+        modalTitle = "Edit Fund";
+        showModal = true;
+        serverError = null;
+    }
+
+    private void CloseModal() => showModal = false;
+
+    // private async Task SaveAsync()
+    // {
+    //     try
+    //     {
+    //         if (editModel.FundId == 0)
+    //             await Repo.AddAsync(editModel.ToEntity());
+    //         else
+    //             await Repo.UpdateAsync(editModel.ToEntity());
+
+    //         showModal = false;
+    //         await Reload();
+    //     }
+    //     catch (DbUpdateException ex)
+    //     {
+    //         serverError = ex.GetBaseException().Message;
+    //     }
+    // }
+    private async Task SaveAsync()
+    {
+        serverError = null;
+
+        var excludeId = editModel.FundId == 0
+            ? (int?)null
+            : editModel.FundId;
+
+        // 1️⃣ ISIN must be globally unique
+        if (await Repo.ExistsByISINAsync(editModel.ISIN, excludeId))
+        {
+            serverError = "ISIN must be unique.";
+            return;
+        }
+
+        // 2️⃣ SchemeCode must be unique per AMC
+        if (await Repo.ExistsBySchemeCodeAsync(
+                editModel.SchemeCode,
+                editModel.AMCId,
+                excludeId))
+        {
+            serverError = "Scheme Code already exists for the selected AMC.";
+            return;
+        }
+
+        try
+        {
+            if (editModel.FundId == 0)
+            {
+                var entity = editModel.ToEntity();
+
+                // Extra safety (matches DB index exactly)
+                if (await Repo.EnsureUniqueAsync(entity, false))
+                {
+                    serverError = "Fund already exists for this AMC and Scheme Code.";
+                    return;
+                }
+
+                await Repo.AddAsync(entity);
+            }
+            else
+            {
+                var entity = editModel.ToEntity();
+
+                if (await Repo.EnsureUniqueAsync(entity, true))
+                {
+                    serverError = "Fund already exists for this AMC and Scheme Code.";
+                    return;
+                }
+
+                await Repo.UpdateAsync(entity);
+            }
+
+            showModal = false;
+            await Reload();
+        }
+        catch (DbUpdateException ex)
+        {
+            serverError = ex.GetBaseException().Message;
+        }
+        catch (Exception ex)
+        {
+            serverError = ex.Message;
+        }
+    }
+    private async Task ConfirmDelete(int id, string name)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", $"Delete fund '{name}'?"))
+        {
+            await Repo.DeleteAsync(id);
+            await Reload();
+        }
+    }
+
+    public sealed class EditModel
+    {
+        public int FundId { get; set; }
+
+        [Required, StringLength(100, MinimumLength = 5)]
+        public string FundName { get; set; } = "";
+
+        [Required, MaxLength(20)]
+        public string SchemeCode { get; set; } = "";
+
+        [Required, MaxLength(20)]
+        public string ISIN { get; set; } = "";
+
+        [Required]
+        public int AMCId { get; set; }
+
+        [Required]
+        public int MFCatId { get; set; }
+
+        public bool IsTransactionAllowed { get; set; } = true;
+        public bool IsNavAllowed { get; set; } = true;
+
+        public Fund ToEntity() => new()
+        {
+            FundId = FundId,
+            FundName = FundName.Trim(),
+            SchemeCode = SchemeCode.Trim(),
+            ISIN = ISIN.Trim(),
+            AMCId = AMCId,
+            MFCatId = MFCatId,
+            IsTransactionAllowed = IsTransactionAllowed,
+            IsNavAllowed = IsNavAllowed
+        };
+    }
+}

@@ -184,13 +184,12 @@ namespace OM.MFPTrackerV1.Data
 			// -------------------- Fund --------------------
 			modelBuilder.Entity<Fund>(e =>
 			{
-				//e.ToTable("TFund");
+				e.ToTable("TFund");
 				e.HasKey(p => p.FundId);
 
 				e.Property(p => p.FundName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
 				e.Property(p => p.SchemeCode).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
 				e.Property(p => p.ISIN).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
-				e.Property(p => p.AMCName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
 
 				e.Property(p => p.IsTransactionAllowed).HasDefaultValue(true);
 				e.Property(p => p.IsNavAllowed).HasDefaultValue(true);
@@ -198,20 +197,19 @@ namespace OM.MFPTrackerV1.Data
 				e.Property(p => p.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
 				e.Property(p => p.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
 
-				e.HasIndex(c => c.FundName).IsUnique();
-				e.HasIndex(c => c.SchemeCode).IsUnique();
+
+				// ---- Indexes ----
+				e.HasIndex(c => c.FundName); // NOT unique
+				e.HasIndex(c => new { c.AMCId, c.SchemeCode }).IsUnique();
 				e.HasIndex(c => c.ISIN).IsUnique();
 
 				e.HasIndex(c => c.AMCId);
 				e.HasIndex(c => c.MFCatId);
 
-				e.ToTable("TFund", t =>
-				{
-					t.HasCheckConstraint("CK_Fund_FundName_Len", "length(FundName) BETWEEN 5 AND 100");
-					t.HasCheckConstraint("CK_Fund_SchemeCode_Len", "length(SchemeCode) BETWEEN 1 AND 20");
-					t.HasCheckConstraint("CK_Fund_ISIN_Len", "length(ISIN) BETWEEN 1 AND 20");
-					t.HasCheckConstraint("CK_Fund_AMCName_Len", "length(AMCName) BETWEEN 1 AND 100");
-				});
+				// ---- Constraints ----
+				e.HasCheckConstraint("CK_Fund_FundName_Len", "length(FundName) BETWEEN 5 AND 100");
+				e.HasCheckConstraint("CK_Fund_SchemeCode_Len", "length(SchemeCode) BETWEEN 1 AND 20");
+				e.HasCheckConstraint("CK_Fund_ISIN_Len", "length(ISIN) BETWEEN 1 AND 20");
 
 				e.HasData(
 					new Fund
@@ -220,7 +218,6 @@ namespace OM.MFPTrackerV1.Data
 						FundName = "Axis Small Cap Fund - Direct Plan - Growth",
 						SchemeCode = "125354",
 						ISIN = "INF846K01K35",
-						AMCName = "Axis MF",
 						AMCId = 1,
 						MFCatId = 1,
 						IsTransactionAllowed = true,
@@ -232,7 +229,6 @@ namespace OM.MFPTrackerV1.Data
 						FundName = "Bandhan Small Cap Fund - Regular Plan - Growth",
 						SchemeCode = "147944",
 						ISIN = "INF194KB1AJ8",
-						AMCName = "Bandhan MF",
 						AMCId = 2,
 						MFCatId = 1,
 						IsTransactionAllowed = true,

@@ -119,7 +119,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     FundName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false, collation: "NOCASE"),
                     SchemeCode = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, collation: "NOCASE"),
                     ISIN = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, collation: "NOCASE"),
-                    AMCName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false, collation: "NOCASE"),
                     IsTransactionAllowed = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
                     IsNavAllowed = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
                     AMCId = table.Column<int>(type: "INTEGER", nullable: false),
@@ -130,7 +129,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TFund", x => x.FundId);
-                    table.CheckConstraint("CK_Fund_AMCName_Len", "length(AMCName) BETWEEN 1 AND 100");
                     table.CheckConstraint("CK_Fund_FundName_Len", "length(FundName) BETWEEN 5 AND 100");
                     table.CheckConstraint("CK_Fund_ISIN_Len", "length(ISIN) BETWEEN 1 AND 20");
                     table.CheckConstraint("CK_Fund_SchemeCode_Len", "length(SchemeCode) BETWEEN 1 AND 20");
@@ -235,11 +233,11 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
             migrationBuilder.InsertData(
                 table: "TFund",
-                columns: new[] { "FundId", "AMCId", "AMCName", "FundName", "ISIN", "IsNavAllowed", "IsTransactionAllowed", "MFCatId", "SchemeCode" },
+                columns: new[] { "FundId", "AMCId", "FundName", "ISIN", "IsNavAllowed", "IsTransactionAllowed", "MFCatId", "SchemeCode" },
                 values: new object[,]
                 {
-                    { 1, 1, "Axis MF", "Axis Small Cap Fund - Direct Plan - Growth", "INF846K01K35", true, true, 1, "125354" },
-                    { 2, 2, "Bandhan MF", "Bandhan Small Cap Fund - Regular Plan - Growth", "INF194KB1AJ8", true, true, 1, "147944" }
+                    { 1, 1, "Axis Small Cap Fund - Direct Plan - Growth", "INF846K01K35", true, true, 1, "125354" },
+                    { 2, 2, "Bandhan Small Cap Fund - Regular Plan - Growth", "INF194KB1AJ8", true, true, 1, "147944" }
                 });
 
             migrationBuilder.InsertData(
@@ -299,10 +297,15 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 column: "AMCId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TFund_AMCId_SchemeCode",
+                table: "TFund",
+                columns: new[] { "AMCId", "SchemeCode" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TFund_FundName",
                 table: "TFund",
-                column: "FundName",
-                unique: true);
+                column: "FundName");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TFund_ISIN",
@@ -314,12 +317,6 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 name: "IX_TFund_MFCatId",
                 table: "TFund",
                 column: "MFCatId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TFund_SchemeCode",
-                table: "TFund",
-                column: "SchemeCode",
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_TMFCategory_CategoryName",

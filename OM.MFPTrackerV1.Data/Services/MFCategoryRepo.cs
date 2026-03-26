@@ -149,7 +149,7 @@ namespace OM.MFPTrackerV1.Data.Services
 			string sortBy = "CategoryName",
 			bool desc = false,
 			CancellationToken ct = default);
-
+		Task<IReadOnlyList<MFCategory>> GetAllAsync();
 		Task<MFCategory?> GetByIdAsync(int id, CancellationToken ct = default);
 		Task<int> AddAsync(MFCategory entity, CancellationToken ct = default);
 		Task UpdateAsync(MFCategory entity, CancellationToken ct = default);
@@ -192,6 +192,14 @@ namespace OM.MFPTrackerV1.Data.Services
 
 		public Task<MFCategory?> GetByIdAsync(int id, CancellationToken ct = default) =>
 			_db.Set<MFCategory>().AsNoTracking().FirstOrDefaultAsync(x => x.MFCatId == id, ct);
+
+		public async Task<IReadOnlyList<MFCategory>> GetAllAsync()
+		{
+			return await _db.Set<MFCategory>()
+				.AsNoTracking()
+				.OrderBy(x => x.CategoryName)
+				.ToListAsync();
+		}
 
 		public async Task<int> AddAsync(MFCategory entity, CancellationToken ct = default)
 		{
