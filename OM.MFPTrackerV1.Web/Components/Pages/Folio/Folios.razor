@@ -10,7 +10,7 @@
 @inject IAMCRepo AMCRepo
 @inject IFolioHolderRepo HolderRepo
 @inject IJSRuntime JS
-
+@inject NavigationManager Nav
 
 <h4 class="mt-2 mb-3">Folios</h4>
 
@@ -85,7 +85,23 @@
                         <td class="text-center">
                             @(x.it.IsActive ? "Yes" : "No")
                         </td>
+@*                         <td class="text-end">
+                            <button class="btn btn-outline-secondary btn-sm me-2"
+                                    @onclick="@(() => OpenEdit(x.it))">
+                                Edit
+                            </button>
+
+                            <button class="btn btn-outline-danger btn-sm"
+                                    @onclick="@(() => ConfirmDelete(x.it.FolioId, x.it.FolioNumber))">
+                                Delete
+                            </button>
+                        </td> *@
                         <td class="text-end">
+                            <button class="btn btn-outline-primary btn-sm me-2"
+                                    @onclick="@(() => ViewTransactions(x.it.FolioId))">
+                                Transactions
+                            </button>
+
                             <button class="btn btn-outline-secondary btn-sm me-2"
                                     @onclick="@(() => OpenEdit(x.it))">
                                 Edit
@@ -360,5 +376,9 @@
             AttachedBank = AttachedBank,
             IsActive = IsActive
         };
+    }
+    private void ViewTransactions(int folioId)
+    {
+        Nav.NavigateTo($"/folio-transactions/{folioId}");
     }
 }

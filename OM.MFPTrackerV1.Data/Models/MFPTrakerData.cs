@@ -119,7 +119,8 @@ namespace OM.MFPTrackerV1.Data.Models
 		SIP = 3,
 		SWITCH_IN = 4,
 		SWITCH_OUT = 5,
-		DIVIDEND_REINVEST = 6
+		DIV_REINVEST = 6,
+		DIV_PAYOUT = 7
 	}
 	public class AMC
 	{
@@ -274,19 +275,20 @@ namespace OM.MFPTrackerV1.Data.Models
 
 	public class MutualFundTransaction
 	{
-		[Key] public int Id { get; set; }
+		[Key]
+		public int TransactionId { get; set; }
 
-		[Required] public DateTime Date { get; set; }
+		[Required]
+		public DateTime TransactionDate { get; set; }
 
-		[Required] public int FolioId { get; set; }
+		[Required]
+		public int FolioId { get; set; }
 		public Folio Folio { get; set; } = null!;
 
-		[Required] public int FundId { get; set; }
+		[Required]
+		public int FundId { get; set; }
 		public Fund Fund { get; set; } = null!;
 
-		// Domain: Buy/Sell/DividendReinvest etc.
-		//[Required, MaxLength(20)]
-		//public string TxnType { get; set; } = "BUY";
 		public TransactionType TxnType { get; set; } = TransactionType.BUY;
 
 		[Range(0.000001, double.MaxValue)]
@@ -295,11 +297,15 @@ namespace OM.MFPTrackerV1.Data.Models
 		[Range(0.000001, double.MaxValue)]
 		public decimal NAV { get; set; }
 
-		public decimal AmountPaid { get; set; }     // computed Units * NAV (rounded bank-style)
-		[MaxLength(50)] public string? Source { get; set; }
-		[MaxLength(100)] public string? Note { get; set; }
+		// Computed: Units * NAV (rounded)
+		public decimal AmountPaid { get; set; }
 
-		// Audit
+		//Reference / meta fields
+		[MaxLength(50)]		public string? ReferenceNo { get; set; }
+		[MaxLength(50)]		public string? Source { get; set; }
+		[MaxLength(100)]		public string? Note { get; set; }
+
+		// Audit fields
 		public DateTime InDate { get; set; }
 		public DateTime UpdateDate { get; set; }
 	}

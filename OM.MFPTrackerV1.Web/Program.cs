@@ -36,7 +36,7 @@ namespace OM.MFPTrackerV1.Web
 			builder.Services.AddScoped<IMFFundRepo, MFFundRepo>();
 			builder.Services.AddScoped<IFolioHolderRepo, FolioHolderRepo>();
 			builder.Services.AddScoped<IFolioRepo, FolioRepo>();
-			builder.Services.AddScoped<IMFTransactionRepo, MFTransactionRepo>();
+			builder.Services.AddScoped<IMutualFundTransactionRepo, MutualFundTransactionRepo>();
 
 			builder.Services.AddScoped<IFolioOwnerRepository, FolioOwnerRepository>();
 			/////////////END DK Added /////////////

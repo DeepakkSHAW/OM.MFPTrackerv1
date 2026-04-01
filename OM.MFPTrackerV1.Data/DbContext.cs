@@ -250,7 +250,7 @@ namespace OM.MFPTrackerV1.Data
 				e.HasIndex(x => x.Signature).IsUnique();
 				e.HasIndex(x => new { x.FirstName, x.LastName, x.DateOfBirth }).IsUnique();
 
-				e.HasData( 
+				e.HasData(
 					new FolioOwner { FolioOwnerId = 1, FirstName = "Rupam", LastName = "Sachin", DateOfBirth = new DateTime(2002, 5, 15), Signature = "DK" },
 					new FolioOwner { FolioOwnerId = 2, FirstName = "Deepak", LastName = "Ganguly", DateOfBirth = new DateTime(2010, 12, 1), Signature = "RS" }
 				);
@@ -361,43 +361,123 @@ namespace OM.MFPTrackerV1.Data
 			// -------------------- MutualFundTransaction --------------------
 			modelBuilder.Entity<MutualFundTransaction>(e =>
 			{
-				//e.ToTable("TMFTransaction");
-				e.HasKey(x => x.Id);
+				e.ToTable("TMutualFundTransaction");
+				e.HasKey(x => x.TransactionId); // Key
 
-				//e.Property(x => x.TxnType).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
-				e.Property(x => x.TxnType).HasConversion<int>().IsRequired();
-				e.Property(x => x.Source).UseCollation("NOCASE").HasMaxLength(50);
-				e.Property(x => x.Note).UseCollation("NOCASE").HasMaxLength(100);
 
+				// Core Properties
+				e.Property(x => x.TransactionDate).IsRequired();
+
+				e.Property(x => x.TxnType).IsRequired().HasConversion<int>();
+				// Stored as INT (enum) for performance & safety
+
+				// --------------------
+				// Financial Precision (VERY IMPORTANT)
+				// --------------------
+				e.Property(x => x.Units)
+					.IsRequired()
+					.HasPrecision(18, 6);   // MF units need high precision
+
+				e.Property(x => x.NAV)
+					.IsRequired()
+					.HasPrecision(18, 4);   // NAV accuracy (₹ paise + decimals)
+
+				e.Property(x => x.AmountPaid)
+					.IsRequired()
+					.HasPrecision(18, 2);   // Money = 2 decimal places
+
+				// Optional Metadata
+				e.Property(x => x.ReferenceNo).HasMaxLength(50);
+				e.Property(x => x.Source).HasMaxLength(50);
+				e.Property(x => x.Note).HasMaxLength(100);
+
+				// --------------------
+				// Audit Fields
+				// --------------------
 				e.Property(x => x.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
 				e.Property(x => x.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
 
-				// Helpful indexes
-				e.HasIndex(x => x.Date);
-				e.HasIndex(x => x.FolioId);
+				// --------------------
+				// Relationships
+				// --------------------
+				e.HasOne(x => x.Folio)
+					.WithMany()    // Later you may expose ICollection<MutualFundTransaction>
+					.HasForeignKey(x => x.FolioId)
+					.OnDelete(DeleteBehavior.Restrict);
+
+				e.HasOne(x => x.Fund)
+					.WithMany()    // Same here; keeps entity clean
+					.HasForeignKey(x => x.FundId)
+					.OnDelete(DeleteBehavior.Restrict);
+
+				// --------------------
+				// Indexes
+				// --------------------
+				e.HasIndex(x => new { x.FolioId, x.TransactionDate });
 				e.HasIndex(x => x.FundId);
+				e.HasIndex(x => x.TxnType);
 
-				e.ToTable("TMFTransaction", t =>
-				{
-					// Source/Note are optional; enforce reasonable caps
-					t.HasCheckConstraint("CK_Txn_Source_Len", "Source IS NULL OR length(Source) <= 50");
-					t.HasCheckConstraint("CK_Txn_Note_Len", "Note IS NULL OR length(Note) <= 100");
-					// Units/NAV > 0 checks are better enforced in repo/business logic,
-					// but you could also add: t.HasCheckConstraint("CK_Txn_Positive", "Units > 0 AND NAV > 0");
-				});
+				// --------------------
+				// Safety Check Constraints (SQLite)
+				// --------------------
+				e.HasCheckConstraint("CK_MFTransaction_Units_Positive", "Units >= 0.0");
+				e.HasCheckConstraint("CK_MFTransaction_NAV_Positive", "NAV >= 0.0");
+				e.HasCheckConstraint("CK_MFTransaction_AmountPaid_Positive", "AmountPaid >= 0.0");
 
+				// -------------------- Seed Data --------------------
 				e.HasData(
+					// BUY transaction
 					new MutualFundTransaction
 					{
-						Id = 1,
-						Date = new DateTime(2024, 10, 1),
+						TransactionId = 1,
+						TransactionDate = new DateTime(2023, 01, 10),
 						FolioId = 1,
 						FundId = 1,
 						TxnType = TransactionType.BUY,
-						Units = 40,
-						NAV = 12,
-						AmountPaid = 480,
-						Source = "Kotak Bank NRO"
+						Units = 100.500000m,
+						NAV = 42.3500m,
+						AmountPaid = 4256.18m, // 100.5 * 42.35 = 4256.175 → rounded
+						ReferenceNo = "TXN1001",
+						Source = "Initial Purchase",
+						Note = "Lumpsum investment",
+						InDate = new DateTime(2023, 01, 10),
+						UpdateDate = new DateTime(2023, 01, 10)
+					},
+
+					// SIP / BUY transaction (same folio, same fund)
+					new MutualFundTransaction
+					{
+						TransactionId = 2,
+						TransactionDate = new DateTime(2023, 02, 10),
+						FolioId = 1,
+						FundId = 1,
+						TxnType = TransactionType.BUY,
+						Units = 50.000000m,
+						NAV = 44.2000m,
+						AmountPaid = 2210.00m,
+						ReferenceNo = "TXN1002",
+						Source = "SIP",
+						Note = "Monthly SIP",
+						InDate = new DateTime(2023, 02, 10),
+						UpdateDate = new DateTime(2023, 02, 10)
+					},
+
+					// BUY into another fund under same folio (important test case)
+					new MutualFundTransaction
+					{
+						TransactionId = 3,
+						TransactionDate = new DateTime(2023, 03, 05),
+						FolioId = 1,
+						FundId = 2,
+						TxnType = TransactionType.BUY,
+						Units = 75.250000m,
+						NAV = 65.1000m,
+						AmountPaid = 4899.78m,
+						ReferenceNo = "TXN1003",
+						Source = "Lumpsum",
+						Note = "Diversification",
+						InDate = new DateTime(2023, 03, 05),
+						UpdateDate = new DateTime(2023, 03, 05)
 					}
 				);
 			});
