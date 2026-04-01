@@ -253,7 +253,7 @@ namespace OM.MFPTrackerV1.Data.Models
 		[Key] public int FolioId { get; set; }
 		[Required]
 		[StringLength(50, MinimumLength = 5, ErrorMessage = "Folio Number should be between 5 and 50 characters.")]
-		[RegularExpression(@"^[A-Za-z0-9 ]{5,50}$", ErrorMessage = "Folio Number Name must be alphanumeric (letters, numbers, spaces only) and 5–50 characters.")]
+		//[RegularExpression(@"^[A-Za-z0-9 ]{5,50}$", ErrorMessage = "Folio Number Name must be alphanumeric (letters, numbers, spaces only) and 5–50 characters.")]
 		public string FolioNumber { get; set; } = null!;
 
 		[MaxLength(100)] public string? FolioPurpose { get; set; }
