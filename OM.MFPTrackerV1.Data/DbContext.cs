@@ -15,127 +15,6 @@ namespace OM.MFPTrackerV1.Data
 		public DbSet<FolioOwner> folioOwners => Set<FolioOwner>();
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
-			//modelBuilder.Entity<FolioHolder>(entity =>
-			//{
-			//	entity.ToTable("TFolioHolder");
-			//	entity.HasKey(p => p.FolioHolderId);                 // Set key for entity
-
-			//	entity.Property(p => p.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
-			//	entity.Property(p => p.LastName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
-			//	entity.Property(p => p.Signature).IsRequired().UseCollation("NOCASE").HasMaxLength(5);
-			//	entity.Property(p => p.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
-			//	entity.Property(p => p.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAddOrUpdate();
-			//	// Recommended indexes & Unique constraints
-			//	entity.HasIndex(e => e.FolioHolderId);
-			//	entity.HasIndex(e => e.FirstName).IsUnique();
-			//	entity.HasIndex(x => x.Signature).IsUnique();
-			//	entity.HasIndex(x => new { x.FirstName, x.LastName, x.DateOfBirth }).IsUnique(); // Same person unique: First+Last+DOB (names case-insensitive via column collation)
-
-			//	// Relationship with AMC
-			//	//entity.HasOne(m => m.Amc).WithMany(a => a.MutualFunds).HasForeignKey(m => m.AmcId).OnDelete(DeleteBehavior.Restrict);
-			//	// 1 Holder -> many Folios (Restrict delete to protect Folios)
-			//	entity.HasMany(h => h.Folios).WithOne(x => x.Holder).HasForeignKey(x => x.FolioHolderId).OnDelete(DeleteBehavior.Restrict);
-			//	// Data seeding
-			//	entity.HasData(
-			//	new FolioHolder() { FolioHolderId = 1, FirstName = "Rupam", LastName = "Shaw", DateOfBirth = DateTime.Parse("1/1/2002"), Signature = "RS" },
-			//	new FolioHolder() { FolioHolderId = 2, FirstName = "Deepak", LastName = "Shaw", DateOfBirth = DateTime.Parse("10/12/1981"), Signature = "DK" },
-			//	new FolioHolder() { FolioHolderId = 3, FirstName = "Jagruti", LastName = "Shaw", DateOfBirth = DateTime.Parse("21/04/1974"), Signature = "JS" },
-			//	new FolioHolder() { FolioHolderId = 4, FirstName = "Divyam", LastName = "Shaw", DateOfBirth = DateTime.Parse("11/11/2001"), Signature = "DS" },
-			//	new FolioHolder() { FolioHolderId = 5, FirstName = "Durga Prasad", LastName = "Shaw", Signature = "DP" },
-			//	new FolioHolder() { FolioHolderId = 6, FirstName = "Radha", LastName = "Shaw", Signature = "RD" }
-			//	);
-			//});
-			//modelBuilder.Entity<MFCategory>(entity =>
-			//{
-			//	entity.ToTable("TMFCategory");
-			//	entity.HasKey(p => p.MFCatId);                 // Set key for entity
-			//	entity.Property(p => p.CategoryName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
-			//	// Recommended indexes & Unique constraints
-			//	entity.HasIndex(c => c.CategoryName).IsUnique();
-			//	// 1 Category -> many Funds (Restrict delete to protect Funds)
-			//	entity.HasMany(c => c.Funds).WithOne(f => f.Category).HasForeignKey(f => f.MFCatId).OnDelete(DeleteBehavior.Restrict);
-			//	entity.HasData(
-			//	   new MFCategory() { MFCatId = 1, CategoryName = "Equity-Multi Cap " },
-			//	   new MFCategory() { MFCatId = 2, CategoryName = "Equity-Flexi Cap" },
-			//	   new MFCategory() { MFCatId = 3, CategoryName = "Equity-Large & MidCap" },
-			//	   new MFCategory() { MFCatId = 4, CategoryName = "Equity-Large Cap" },
-			//	   new MFCategory() { MFCatId = 5, CategoryName = "Equity-Mid Cap" },
-			//	   new MFCategory() { MFCatId = 6, CategoryName = "Equity-Small Cap" },
-			//	   new MFCategory() { MFCatId = 7, CategoryName = "Equity-ELSS" },
-			//	   new MFCategory() { MFCatId = 8, CategoryName = "Equity-Dividend Yield" },
-			//	   new MFCategory() { MFCatId = 9, CategoryName = "Equity-Contra" },
-			//	   new MFCategory() { MFCatId = 10, CategoryName = "Equity-Sectoral" },
-			//	   new MFCategory() { MFCatId = 11, CategoryName = "Equity-Value Oriented" },
-			//	   new MFCategory() { MFCatId = 12, CategoryName = "Debt-Liquid Fund" },
-			//	   new MFCategory() { MFCatId = 13, CategoryName = "Debt-Overnight Funds" },
-			//	   new MFCategory() { MFCatId = 14, CategoryName = "Debt-Money Market Funds" },
-			//	   new MFCategory() { MFCatId = 15, CategoryName = "Debt-Corporate Bond Funds" },
-			//	   new MFCategory() { MFCatId = 16, CategoryName = "Debt-Gilt Funds" },
-			//	   new MFCategory() { MFCatId = 17, CategoryName = "Hybrid Fund" }
-			//		);
-			//});
-			//modelBuilder.Entity<Fund>(entity =>
-			//{
-			//	entity.ToTable("TFund");
-			//	entity.HasKey(p => p.FundId);                   // Set key for entity
-
-			//	entity.Property(p => p.FundName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
-			//	entity.Property(p => p.SchemeCode).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
-			//	entity.Property(p => p.ISIN).IsRequired().UseCollation("NOCASE").HasMaxLength(20);
-			//	entity.Property(p => p.AMCName).IsRequired().UseCollation("NOCASE").HasMaxLength(100);
-			//	entity.Property(p => p.IsTransactionAllowed).IsRequired().HasDefaultValue(true);
-			//	entity.Property(p => p.IsNavAllowed).IsRequired().HasDefaultValue(true);
-			//	entity.Property(p => p.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
-			//	entity.Property(p => p.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAddOrUpdate();
-			//	// Recommended indexes & Unique constraints
-			//	entity.HasIndex(c => c.FundName).IsUnique();
-			//	entity.HasIndex(c => c.SchemeCode).IsUnique();
-			//	entity.HasIndex(c => c.ISIN).IsUnique();
-
-			//	// Helpful indexes optional
-			//	entity.HasIndex(c => c.AMCName);
-			//	entity.HasIndex(c => c.MFCatId);
-
-			//	// Relationship with Mutual Fund Category 
-			//	entity.HasOne(f => f.Category).WithMany().HasForeignKey(f => f.MFCatId).OnDelete(DeleteBehavior.Restrict);
-
-			//	// 1 Fund → many Folios (Restrict deletion)
-			//	entity.HasMany(f => f.Folios).WithOne(x => x.Fund).HasForeignKey(x => x.FundId).OnDelete(DeleteBehavior.Restrict);
-
-			//	//Data Seeding
-			//	entity.HasData(
-			//		new Fund { FundId = 1, ISIN = "INF846K01K35", SchemeCode = "125354", AMCName = "AXIS MF", FundName = "AXIS SMALL CAP Fund - DIRECT PLAN - GROWTH", IsTransactionAllowed = true, IsNavAllowed = true, MFCatId = 1 },
-			//		new Fund { FundId = 2, ISIN = "INF194KB1AJ8", SchemeCode = "147944", AMCName = "BANDHAN MF", FundName = "BANDHAN SMALL CAP FUND - REGULAR PLAN GROWTH", IsTransactionAllowed = true, IsNavAllowed = true, MFCatId = 1 }
-			//		);
-			//});
-			//modelBuilder.Entity<Folio>(entity =>
-			//{
-			//	entity.ToTable("TFolio");
-			//	entity.HasKey(x => x.FolioId);
-
-			//	entity.Property(x => x.FolioNumber).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
-			//	entity.Property(x => x.FolioPurpose).UseCollation("NOCASE").HasMaxLength(100);
-			//	entity.Property(x => x.AttachedBank).UseCollation("NOCASE").HasMaxLength(50);
-			//	entity.Property(p => p.IsActive).HasDefaultValue(true);
-			//	// Audit
-			//	entity.Property(x => x.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
-			//	entity.Property(x => x.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();               // SQLite won’t auto-update on UPDATE without trigger—set in repo
-
-			//	// Relationships (Restrict delete)
-			//	// or .WithMany(h => h.Folios) if you add nav on FolioHolder
-			//	entity.HasOne(f => f.Holder).WithMany().HasForeignKey(f => f.FolioHolderId).OnDelete(DeleteBehavior.Restrict);
-			//	// or .WithMany(f => f.Folios) if you add nav on Fund
-			//	entity.HasOne(f => f.Fund).WithMany().HasForeignKey(f => f.FundId).OnDelete(DeleteBehavior.Restrict);
-
-			//	// Case-insensitive unique composite (prevents duplicates)
-			//	entity.HasIndex(x => new { x.FolioHolderId, x.FundId, x.FolioNumber }).IsUnique();
-			//	//Data Seeding
-			//	entity.HasData(
-			//		new Folio { FolioId = 1, FolioHolderId = 1, FundId = 1, FolioNumber = "FOLIO123", FolioPurpose = "Investment in Axis Small Cap Fund" },
-			//		new Folio { FolioId = 2, FolioHolderId = 2, FundId = 1, FolioNumber = "FOLIO456", FolioPurpose = "Investment in Axis Small Cap Fund" },
-			//		new Folio { FolioId = 3, FolioHolderId = 3, FundId = 2, FolioNumber = "FOLIO789", FolioPurpose = "Investment in Bandhan Small Cap Fund" }
-			//		);
-			//});
 
 			// -------------------- AMC --------------------
 			modelBuilder.Entity<AMC>(e =>
@@ -155,7 +34,18 @@ namespace OM.MFPTrackerV1.Data
 				e.HasData(
 					new AMC { AMCId = 1, AMCName = "Axis Mutual Fund" },
 					new AMC { AMCId = 2, AMCName = "Bandhan Mutual Fund" },
-					new AMC { AMCId = 3, AMCName = "HDFC Mutual Fund" }
+					new AMC { AMCId = 3, AMCName = "Canara Robeco Mutual Fund" },
+					new AMC { AMCId = 4, AMCName = "Kotak Mutual Fund" },
+					new AMC { AMCId = 5, AMCName = "Mirae Asset Mutual Fund" },
+					new AMC { AMCId = 6, AMCName = "Nippon India Mutual Fund" },
+					new AMC { AMCId = 7, AMCName = "Parag Parikh Mutual Fund" },
+					new AMC { AMCId = 8, AMCName = "SBI Mutual Fund" },
+					new AMC { AMCId = 9, AMCName = "HDFC Mutual Fund" },
+					new AMC { AMCId = 10, AMCName = "TATA Mutual Fund" },
+					new AMC { AMCId = 11, AMCName = "ICICI Mutual Fund" },
+					new AMC { AMCId = 12, AMCName = "UTI Mutual Fund" },
+					new AMC { AMCId = 13, AMCName = "Aditya Birla Sun Life Mutual Fund" },
+					new AMC { AMCId = 14, AMCName = "Jio BlackRock Mutual Fund" }
 						);
 			});
 
@@ -174,10 +64,26 @@ namespace OM.MFPTrackerV1.Data
 				});
 
 				e.HasData(
-					new MFCategory { MFCatId = 1, CategoryName = "Equity - Small Cap" },
-					new MFCategory { MFCatId = 2, CategoryName = "Equity - Multi Cap" },
-					new MFCategory { MFCatId = 3, CategoryName = "Debt - Liquid" },
-					new MFCategory { MFCatId = 4, CategoryName = "Hybrid - Aggressive" }
+					new MFCategory { MFCatId = 1, CategoryName = "Equity - Multi Cap" },
+					new MFCategory { MFCatId = 2, CategoryName = "Equity - Flexi Cap" },
+					new MFCategory { MFCatId = 3, CategoryName = "Equity - Large Mid Cap" },
+					new MFCategory { MFCatId = 4, CategoryName = "Equity - Large Cap" },
+					new MFCategory { MFCatId = 5, CategoryName = "Equity - Mid Cap" },
+					new MFCategory { MFCatId = 6, CategoryName = "Equity - Small Cap" },
+					new MFCategory { MFCatId = 7, CategoryName = "Equity - ELSS Cap" },
+					new MFCategory { MFCatId = 8, CategoryName = "Equity - Dividend Yield MF" },
+					new MFCategory { MFCatId = 9, CategoryName = "Equity - Value Oriented MF" },
+					new MFCategory { MFCatId = 10, CategoryName = "Equity - Sectoral MF" },
+					new MFCategory { MFCatId = 11, CategoryName = "Debt - Liquid" },
+					new MFCategory { MFCatId = 12, CategoryName = "Debt - Corporate Bonds MF" },
+					new MFCategory { MFCatId = 13, CategoryName = "Debt - Dynamic Bond Debt MF" },
+					new MFCategory { MFCatId = 14, CategoryName = "Debt - Ultra Short Term MF" },
+					new MFCategory { MFCatId = 15, CategoryName = "Hybrid - Aggressive" },
+					new MFCategory { MFCatId = 16, CategoryName = "Hybrid - Balanced" },
+					new MFCategory { MFCatId = 17, CategoryName = "Hybrid - Equity Savings" },
+					new MFCategory { MFCatId = 18, CategoryName = "Hybrid - Dynamic Asset allocation" },
+					new MFCategory { MFCatId = 19, CategoryName = "Commodities - Gold MF (ETF)" },
+					new MFCategory { MFCatId = 20, CategoryName = "Commodities - Silver MF (ETF)" }
 						);
 			});
 
@@ -215,28 +121,192 @@ namespace OM.MFPTrackerV1.Data
 					new Fund
 					{
 						FundId = 1,
-						FundName = "Axis Small Cap Fund - Direct Plan - Growth",
-						SchemeCode = "125354",
-						ISIN = "INF846K01K35",
-						AMCId = 1,
-						MFCatId = 1,
+						FundName = "Parag Parikh Flexi Cap Fund - Direct Plan - Growth",
+						SchemeCode = "122639",
+						ISIN = "INF879O01027",
+						AMCId = 7,
+						MFCatId = 2,
 						IsTransactionAllowed = true,
 						IsNavAllowed = true
 					},
 					new Fund
 					{
 						FundId = 2,
-						FundName = "Bandhan Small Cap Fund - Regular Plan - Growth",
+						FundName = "Parag Parikh Dynamic Asset Allocation Fund - Direct Plan Growth",
+						SchemeCode = "152468",
+						ISIN = "INF879O01266",
+						AMCId = 7,
+						MFCatId = 1,//18
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 3,
+						FundName = "Axis Small Cap Fund - Direct Plan - Growth",
+						SchemeCode = "125354",
+						ISIN = "INF846K01K35",
+						AMCId = 1,
+						MFCatId = 6,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 4,
+						FundName = "Canara Robeco SMALL CAP Fund - Direct Plan - Growth",
+						SchemeCode = "146130",
+						ISIN = "INF760K01JC6",
+						AMCId = 3,
+						MFCatId = 17,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 5,
+						FundName = "Canara Robeco LARGE AND MID CAP Fund - Direct Plan - Growth",
+						SchemeCode = "118278",
+						ISIN = "INF760K01EI4",
+						AMCId = 3,
+						MFCatId = 3,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 6,
+						FundName = "Canara Robeco Value Fund - Direct Plan - Growth",
+						SchemeCode = "149085",
+						ISIN = "INF760K01JW4",
+						AMCId = 3,
+						MFCatId = 9,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 7,
+						FundName = "Kotak Large & Midcap Fund - Direct- Growth",
+						SchemeCode = "120158",
+						ISIN = "INF174K01LF9",
+						AMCId = 4,
+						MFCatId = 3,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 8,
+						FundName = "Mirae Asset Large & Midcap Fund - Direct Plan - Growth",
+						SchemeCode = "118834",
+						ISIN = "INF769K01BI1",
+						AMCId = 5,
+						MFCatId = 3,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 9,
+						FundName = "Mirae Asset ELSS Tax Saver Fund - Direct Plan - Growth",
+						SchemeCode = "135781",
+						ISIN = "INF769K01DM9",
+						AMCId = 5,
+						MFCatId = 7,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 10,
+						FundName = "Nippon India Small Cap Fund - Direct Plan - Growth",
+						SchemeCode = "118778",
+						ISIN = "INF204K01K15",
+						AMCId = 6,
+						MFCatId = 6,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 11,
+						FundName = "SBI Large Cap Fund - Direct Plan - Growth",
+						SchemeCode = "119598",
+						ISIN = "INF200K01QX4",
+						AMCId = 8,
+						MFCatId = 4,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 12,
+						FundName = "SBI Small Cap Fund - Direct Plan - Growth",
+						SchemeCode = "125497",
+						ISIN = "INF200K01T51",
+						AMCId = 8,
+						MFCatId = 6,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 13,
+						FundName = "Tata Retirement Savings Fund- Progressive Plan - Direct Plan - Growth",
+						SchemeCode = "119251",
+						ISIN = "INF277K01QO1",
+						AMCId = 10,
+						MFCatId = 2,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 14,
+						FundName = "Tata S&P BSE Sensex Index Fund - Direct Plan",
+						SchemeCode = "119287",
+						ISIN = "INF277K01PK1",
+						AMCId = 10,
+						MFCatId = 4,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 15,
+						FundName = "BANDHAN Small Cap Fund - Regular Plan - Growth",
 						SchemeCode = "147944",
 						ISIN = "INF194KB1AJ8",
 						AMCId = 2,
-						MFCatId = 1,
+						MFCatId = 6,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 16,
+						FundName = "HDFC Small Cap Fund - Growth Option - Direct Plan",
+						SchemeCode = "130503",
+						ISIN = "INF179KA1RW5",
+						AMCId = 9,
+						MFCatId = 6,
+						IsTransactionAllowed = true,
+						IsNavAllowed = true
+					},
+					new Fund
+					{
+						FundId = 17,
+						FundName = "HDFC Gold ETF Fund of Fund - Direct Plan",
+						SchemeCode = "119132",
+						ISIN = "INF179K01VX0",
+						AMCId = 9,
+						MFCatId = 19,
 						IsTransactionAllowed = true,
 						IsNavAllowed = true
 					}
 				);
 			});
-
 			// -------------------- FolioOwner Only for Bug fixing --------------------
 			modelBuilder.Entity<FolioOwner>(e =>
 			{
@@ -251,41 +321,12 @@ namespace OM.MFPTrackerV1.Data
 				e.HasIndex(x => new { x.FirstName, x.LastName, x.DateOfBirth }).IsUnique();
 
 				e.HasData(
-					new FolioOwner { FolioOwnerId = 1, FirstName = "Rupam", LastName = "Sachin", DateOfBirth = new DateTime(2002, 5, 15), Signature = "DK" },
-					new FolioOwner { FolioOwnerId = 2, FirstName = "Deepak", LastName = "Ganguly", DateOfBirth = new DateTime(2010, 12, 1), Signature = "RS" }
+					new FolioOwner { FolioOwnerId = 1, FirstName = "AAA", LastName = "Delete me", DateOfBirth = new DateTime(2002, 5, 15), Signature = "DK" },
+					new FolioOwner { FolioOwnerId = 2, FirstName = "BBB", LastName = "Delete me", DateOfBirth = new DateTime(2010, 12, 1), Signature = "RS" }
 				);
 			});
+
 			// -------------------- FolioHolder --------------------
-			//	modelBuilder.Entity<FolioHolder>(e =>
-			//{
-			//	//e.ToTable("TFolioHolder");
-			//	e.HasKey(x => x.FolioHolderId);
-
-			//	e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
-			//	e.Property(x => x.LastName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
-			//	e.Property(x => x.Signature).IsRequired().UseCollation("NOCASE").HasMaxLength(5);
-
-			//	e.Property(x => x.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
-			//	e.Property(x => x.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
-
-			//	// Uniqueness: per your rule (names NOCASE via column collation)
-			//	e.HasIndex(x => x.Signature).IsUnique();
-			//	e.HasIndex(x => new { x.FirstName, x.LastName, x.DateOfBirth }).IsUnique();
-
-			//	e.HasMany(h => h.Folios).WithOne(f => f.Holder).HasForeignKey(f => f.FolioHolderId).OnDelete(DeleteBehavior.Restrict);
-
-			//	e.ToTable("TFolioHolder", t =>
-			//	{
-			//		t.HasCheckConstraint("CK_FH_FirstName_Len", "length(FirstName) BETWEEN 3 AND 50");
-			//		t.HasCheckConstraint("CK_FH_LastName_Len", "length(LastName) BETWEEN 3 AND 50");
-			//		t.HasCheckConstraint("CK_FH_Signature_Len", "length(Signature) BETWEEN 2 AND 5");
-			//	});
-
-			//	e.HasData(
-			//		new FolioHolder { FolioHolderId = 1, FirstName = "Rupam", LastName = "Shaw", DateOfBirth = new DateTime(2002, 1, 1), Signature = "RS" },
-			//		new FolioHolder { FolioHolderId = 2, FirstName = "Deepak", LastName = "Shaw", DateOfBirth = new DateTime(1981, 12, 10), Signature = "DK" }
-			//	);
-			//});
 			modelBuilder.Entity<FolioHolder>(e =>
 			{
 				e.ToTable("TFolioHolder");
@@ -305,9 +346,13 @@ namespace OM.MFPTrackerV1.Data
 				e.HasMany(h => h.Folios).WithOne(f => f.Holder).HasForeignKey(f => f.FolioHolderId).OnDelete(DeleteBehavior.Restrict);
 
 				e.HasData(
-					new FolioHolder { FolioHolderId = 1, FirstName = "Rupam", LastName = "Shaw", DateOfBirth = new DateTime(2012, 1, 1), Signature = "RS" },
-					new FolioHolder { FolioHolderId = 2, FirstName = "Deepak", LastName = "Shaw", DateOfBirth = new DateTime(1981, 12, 10), Signature = "DK" }
-				);
+					new FolioHolder { FolioHolderId = 1, FirstName = "Rupam", LastName = "Shaw", DateOfBirth = new DateTime(1977, 1, 1), Signature = "RS" },
+					new FolioHolder { FolioHolderId = 2, FirstName = "Deepak", LastName = "Shaw", DateOfBirth = new DateTime(1973, 12, 31), Signature = "DK" },
+					new FolioHolder { FolioHolderId = 3, FirstName = "Jagruti", LastName = "Shaw", DateOfBirth = new DateTime(2002, 1, 1), Signature = "JS" },
+					new FolioHolder { FolioHolderId = 4, FirstName = "Divyam", LastName = "Shaw", DateOfBirth = new DateTime(2010, 1, 10), Signature = "DIVS" },
+					new FolioHolder { FolioHolderId = 5, FirstName = "DP", LastName = "Shaw", DateOfBirth = new DateTime(1951, 1, 1), Signature = "PAA" },
+					new FolioHolder { FolioHolderId = 6, FirstName = "Radha", LastName = "Devi", DateOfBirth = new DateTime(1961, 12, 31), Signature = "MAA" }
+					);
 			});
 
 			// -------------------- Folio --------------------
@@ -342,18 +387,20 @@ namespace OM.MFPTrackerV1.Data
 					new Folio
 					{
 						FolioId = 1,
-						FolioNumber = "1234567",
-						AMCId = 1,
-						FolioHolderId = 2,
-						FolioPurpose = "Investment Portfolio"
+						FolioNumber = "37959966", // JAG HDFC Small cap and Gold ETF
+						AMCId = 9,
+						FolioHolderId = 3,
+						FolioPurpose = "Long term Portfolio",
+						AttachedBank = "JAG IDFC NRO",
 					},
 					new Folio
 					{
 						FolioId = 2,
-						FolioNumber = "2233445",
-						AMCId = 2,
-						FolioHolderId = 1,
-						FolioPurpose = "Family Holdings"
+						FolioNumber = "499183354147", // Nippon India Small Cap Fund - Direct Plan - Growth (DK)
+						AMCId = 6,
+						FolioHolderId = 2,
+						FolioPurpose = "Small can investment - experiment",
+						AttachedBank = "DK HDFC NRO",
 					}
 				);
 			});

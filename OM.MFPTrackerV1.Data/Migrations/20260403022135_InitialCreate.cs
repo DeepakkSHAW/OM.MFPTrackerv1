@@ -147,40 +147,42 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TMFTransaction",
+                name: "TMutualFundTransaction",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    TransactionId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Date = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    TransactionDate = table.Column<DateTime>(type: "TEXT", nullable: false),
                     FolioId = table.Column<int>(type: "INTEGER", nullable: false),
                     FundId = table.Column<int>(type: "INTEGER", nullable: false),
                     TxnType = table.Column<int>(type: "INTEGER", nullable: false),
-                    Units = table.Column<decimal>(type: "TEXT", nullable: false),
-                    NAV = table.Column<decimal>(type: "TEXT", nullable: false),
-                    AmountPaid = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Source = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true, collation: "NOCASE"),
-                    Note = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true, collation: "NOCASE"),
+                    Units = table.Column<decimal>(type: "TEXT", precision: 18, scale: 6, nullable: false),
+                    NAV = table.Column<decimal>(type: "TEXT", precision: 18, scale: 4, nullable: false),
+                    AmountPaid = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: false),
+                    ReferenceNo = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Source = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Note = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     InDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     UpdateDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TMFTransaction", x => x.Id);
-                    table.CheckConstraint("CK_Txn_Note_Len", "Note IS NULL OR length(Note) <= 100");
-                    table.CheckConstraint("CK_Txn_Source_Len", "Source IS NULL OR length(Source) <= 50");
+                    table.PrimaryKey("PK_TMutualFundTransaction", x => x.TransactionId);
+                    table.CheckConstraint("CK_MFTransaction_AmountPaid_Positive", "AmountPaid >= 0.0");
+                    table.CheckConstraint("CK_MFTransaction_NAV_Positive", "NAV >= 0.0");
+                    table.CheckConstraint("CK_MFTransaction_Units_Positive", "Units >= 0.0");
                     table.ForeignKey(
-                        name: "FK_TMFTransaction_TFolio_FolioId",
+                        name: "FK_TMutualFundTransaction_TFolio_FolioId",
                         column: x => x.FolioId,
                         principalTable: "TFolio",
                         principalColumn: "FolioId",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_TMFTransaction_TFund_FundId",
+                        name: "FK_TMutualFundTransaction_TFund_FundId",
                         column: x => x.FundId,
                         principalTable: "TFund",
                         principalColumn: "FundId",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.InsertData(
@@ -190,7 +192,18 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 {
                     { 1, "Axis Mutual Fund" },
                     { 2, "Bandhan Mutual Fund" },
-                    { 3, "HDFC Mutual Fund" }
+                    { 3, "Canara Robeco Mutual Fund" },
+                    { 4, "Kotak Mutual Fund" },
+                    { 5, "Mirae Asset Mutual Fund" },
+                    { 6, "Nippon India Mutual Fund" },
+                    { 7, "Parag Parikh Mutual Fund" },
+                    { 8, "SBI Mutual Fund" },
+                    { 9, "HDFC Mutual Fund" },
+                    { 10, "TATA Mutual Fund" },
+                    { 11, "ICICI Mutual Fund" },
+                    { 12, "UTI Mutual Fund" },
+                    { 13, "Aditya Birla Sun Life Mutual Fund" },
+                    { 14, "Jio BlackRock Mutual Fund" }
                 });
 
             migrationBuilder.InsertData(
@@ -198,8 +211,12 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 columns: new[] { "FolioHolderId", "DateOfBirth", "FirstName", "LastName", "Signature" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2012, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Rupam", "Shaw", "RS" },
-                    { 2, new DateTime(1981, 12, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), "Deepak", "Shaw", "DK" }
+                    { 1, new DateTime(1977, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Rupam", "Shaw", "RS" },
+                    { 2, new DateTime(1973, 12, 31, 0, 0, 0, 0, DateTimeKind.Unspecified), "Deepak", "Shaw", "DK" },
+                    { 3, new DateTime(2002, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Jagruti", "Shaw", "JS" },
+                    { 4, new DateTime(2010, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), "Divyam", "Shaw", "DIVS" },
+                    { 5, new DateTime(1951, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "DP", "Shaw", "PAA" },
+                    { 6, new DateTime(1961, 12, 31, 0, 0, 0, 0, DateTimeKind.Unspecified), "Radha", "Devi", "MAA" }
                 });
 
             migrationBuilder.InsertData(
@@ -207,8 +224,8 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 columns: new[] { "FolioOwnerId", "DateOfBirth", "FirstName", "LastName", "Signature" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2002, 5, 15, 0, 0, 0, 0, DateTimeKind.Unspecified), "Rupam", "Sachin", "DK" },
-                    { 2, new DateTime(2010, 12, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Deepak", "Ganguly", "RS" }
+                    { 1, new DateTime(2002, 5, 15, 0, 0, 0, 0, DateTimeKind.Unspecified), "AAA", "Delete me", "DK" },
+                    { 2, new DateTime(2010, 12, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "BBB", "Delete me", "RS" }
                 });
 
             migrationBuilder.InsertData(
@@ -216,10 +233,26 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 columns: new[] { "MFCatId", "CategoryName" },
                 values: new object[,]
                 {
-                    { 1, "Equity - Small Cap" },
-                    { 2, "Equity - Multi Cap" },
-                    { 3, "Debt - Liquid" },
-                    { 4, "Hybrid - Aggressive" }
+                    { 1, "Equity - Multi Cap" },
+                    { 2, "Equity - Flexi Cap" },
+                    { 3, "Equity - Large Mid Cap" },
+                    { 4, "Equity - Large Cap" },
+                    { 5, "Equity - Mid Cap" },
+                    { 6, "Equity - Small Cap" },
+                    { 7, "Equity - ELSS Cap" },
+                    { 8, "Equity - Dividend Yield MF" },
+                    { 9, "Equity - Value Oriented MF" },
+                    { 10, "Equity - Sectoral MF" },
+                    { 11, "Debt - Liquid" },
+                    { 12, "Debt - Corporate Bonds MF" },
+                    { 13, "Debt - Dynamic Bond Debt MF" },
+                    { 14, "Debt - Ultra Short Term MF" },
+                    { 15, "Hybrid - Aggressive" },
+                    { 16, "Hybrid - Balanced" },
+                    { 17, "Hybrid - Equity Savings" },
+                    { 18, "Hybrid - Dynamic Asset allocation" },
+                    { 19, "Commodities - Gold MF (ETF)" },
+                    { 20, "Commodities - Silver MF (ETF)" }
                 });
 
             migrationBuilder.InsertData(
@@ -236,14 +269,23 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 columns: new[] { "FundId", "AMCId", "FundName", "ISIN", "IsNavAllowed", "IsTransactionAllowed", "MFCatId", "SchemeCode" },
                 values: new object[,]
                 {
-                    { 1, 1, "Axis Small Cap Fund - Direct Plan - Growth", "INF846K01K35", true, true, 1, "125354" },
-                    { 2, 2, "Bandhan Small Cap Fund - Regular Plan - Growth", "INF194KB1AJ8", true, true, 1, "147944" }
+                    { 1, 7, "Parag Parikh Flexi Cap Fund - Direct Plan - Growth", "INF879O01027", true, true, 2, "122639" },
+                    { 2, 7, "Parag Parikh Dynamic Asset Allocation Fund - Direct Plan Growth", "INF879O01266", true, true, 1, "152468" },
+                    { 3, 1, "Axis Small Cap Fund - Direct Plan - Growth", "INF846K01K35", true, true, 6, "125354" },
+                    { 4, 3, "Canara Robeco SMALL CAP Fund - Direct Plan - Growth", "INF760K01JC6", true, true, 17, "146130" },
+                    { 5, 3, "Canara Robeco LARGE AND MID CAP Fund - Direct Plan - Growth", "INF760K01EI4", true, true, 3, "118278" },
+                    { 6, 3, "Canara Robeco Value Fund - Direct Plan - Growth", "INF760K01JW4", true, true, 9, "149085" }
                 });
 
             migrationBuilder.InsertData(
-                table: "TMFTransaction",
-                columns: new[] { "Id", "AmountPaid", "Date", "FolioId", "FundId", "NAV", "Note", "Source", "TxnType", "Units" },
-                values: new object[] { 1, 480m, new DateTime(2024, 10, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, 1, 12m, null, "Kotak Bank NRO", 1, 40m });
+                table: "TMutualFundTransaction",
+                columns: new[] { "TransactionId", "AmountPaid", "FolioId", "FundId", "InDate", "NAV", "Note", "ReferenceNo", "Source", "TransactionDate", "TxnType", "Units", "UpdateDate" },
+                values: new object[,]
+                {
+                    { 1, 4256.18m, 1, 1, new DateTime(2023, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), 42.3500m, "Lumpsum investment", "TXN1001", "Initial Purchase", new DateTime(2023, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, 100.500000m, new DateTime(2023, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { 2, 2210.00m, 1, 1, new DateTime(2023, 2, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), 44.2000m, "Monthly SIP", "TXN1002", "SIP", new DateTime(2023, 2, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, 50.000000m, new DateTime(2023, 2, 10, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { 3, 4899.78m, 1, 2, new DateTime(2023, 3, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), 65.1000m, "Diversification", "TXN1003", "Lumpsum", new DateTime(2023, 3, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, 75.250000m, new DateTime(2023, 3, 5, 0, 0, 0, 0, DateTimeKind.Unspecified) }
+                });
 
             migrationBuilder.CreateIndex(
                 name: "IX_TAMC_AMCName",
@@ -325,19 +367,19 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_TMFTransaction_Date",
-                table: "TMFTransaction",
-                column: "Date");
+                name: "IX_TMutualFundTransaction_FolioId_TransactionDate",
+                table: "TMutualFundTransaction",
+                columns: new[] { "FolioId", "TransactionDate" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_TMFTransaction_FolioId",
-                table: "TMFTransaction",
-                column: "FolioId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TMFTransaction_FundId",
-                table: "TMFTransaction",
+                name: "IX_TMutualFundTransaction_FundId",
+                table: "TMutualFundTransaction",
                 column: "FundId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TMutualFundTransaction_TxnType",
+                table: "TMutualFundTransaction",
+                column: "TxnType");
         }
 
         /// <inheritdoc />
@@ -347,7 +389,7 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 name: "TFolioOwner");
 
             migrationBuilder.DropTable(
-                name: "TMFTransaction");
+                name: "TMutualFundTransaction");
 
             migrationBuilder.DropTable(
                 name: "TFolio");

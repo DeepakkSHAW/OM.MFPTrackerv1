@@ -11,8 +11,8 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    [Migration("20260401101139_addedMFTransecations")]
-    partial class addedMFTransecations
+    [Migration("20260403034835_InitialCreate1")]
+    partial class InitialCreate1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -56,7 +56,62 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             AMCId = 3,
+                            AMCName = "Canara Robeco Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 4,
+                            AMCName = "Kotak Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 5,
+                            AMCName = "Mirae Asset Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 6,
+                            AMCName = "Nippon India Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 7,
+                            AMCName = "Parag Parikh Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 8,
+                            AMCName = "SBI Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 9,
                             AMCName = "HDFC Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 10,
+                            AMCName = "TATA Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 11,
+                            AMCName = "ICICI Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 12,
+                            AMCName = "UTI Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 13,
+                            AMCName = "Aditya Birla Sun Life Mutual Fund"
+                        },
+                        new
+                        {
+                            AMCId = 14,
+                            AMCName = "Jio BlackRock Mutual Fund"
                         });
                 });
 
@@ -125,10 +180,11 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             FolioId = 1,
-                            AMCId = 1,
-                            FolioHolderId = 2,
-                            FolioNumber = "1234567",
-                            FolioPurpose = "Investment Portfolio",
+                            AMCId = 9,
+                            AttachedBank = "JAG IDFC NRO",
+                            FolioHolderId = 3,
+                            FolioNumber = "37959966",
+                            FolioPurpose = "Long term Portfolio",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
@@ -136,10 +192,11 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             FolioId = 2,
-                            AMCId = 2,
-                            FolioHolderId = 1,
-                            FolioNumber = "2233445",
-                            FolioPurpose = "Family Holdings",
+                            AMCId = 6,
+                            AttachedBank = "DK HDFC NRO",
+                            FolioHolderId = 2,
+                            FolioNumber = "499183354147",
+                            FolioPurpose = "Small can investment - experiment",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
@@ -197,7 +254,7 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             FolioHolderId = 1,
-                            DateOfBirth = new DateTime(2012, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DateOfBirth = new DateTime(1977, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Rupam",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastName = "Shaw",
@@ -207,11 +264,51 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             FolioHolderId = 2,
-                            DateOfBirth = new DateTime(1981, 12, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DateOfBirth = new DateTime(1973, 12, 31, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FirstName = "Deepak",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LastName = "Shaw",
                             Signature = "DK",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioHolderId = 3,
+                            DateOfBirth = new DateTime(2002, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Jagruti",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            LastName = "Shaw",
+                            Signature = "JS",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioHolderId = 4,
+                            DateOfBirth = new DateTime(2010, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Divyam",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            LastName = "Shaw",
+                            Signature = "DIVS",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioHolderId = 5,
+                            DateOfBirth = new DateTime(1951, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "DP",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            LastName = "Shaw",
+                            Signature = "PAA",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioHolderId = 6,
+                            DateOfBirth = new DateTime(1961, 12, 31, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Radha",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            LastName = "Devi",
+                            Signature = "MAA",
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
@@ -258,16 +355,16 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         {
                             FolioOwnerId = 1,
                             DateOfBirth = new DateTime(2002, 5, 15, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            FirstName = "Rupam",
-                            LastName = "Sachin",
+                            FirstName = "AAA",
+                            LastName = "Delete me",
                             Signature = "DK"
                         },
                         new
                         {
                             FolioOwnerId = 2,
                             DateOfBirth = new DateTime(2010, 12, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            FirstName = "Deepak",
-                            LastName = "Ganguly",
+                            FirstName = "BBB",
+                            LastName = "Delete me",
                             Signature = "RS"
                         });
                 });
@@ -349,27 +446,222 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             FundId = 1,
+                            AMCId = 7,
+                            FundName = "Parag Parikh Flexi Cap Fund - Direct Plan - Growth",
+                            ISIN = "INF879O01027",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 2,
+                            SchemeCode = "122639",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 2,
+                            AMCId = 7,
+                            FundName = "Parag Parikh Dynamic Asset Allocation Fund - Direct Plan Growth",
+                            ISIN = "INF879O01266",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 1,
+                            SchemeCode = "152468",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 3,
                             AMCId = 1,
                             FundName = "Axis Small Cap Fund - Direct Plan - Growth",
                             ISIN = "INF846K01K35",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsNavAllowed = true,
                             IsTransactionAllowed = true,
-                            MFCatId = 1,
+                            MFCatId = 6,
                             SchemeCode = "125354",
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
-                            FundId = 2,
+                            FundId = 4,
+                            AMCId = 3,
+                            FundName = "Canara Robeco SMALL CAP Fund - Direct Plan - Growth",
+                            ISIN = "INF760K01JC6",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 17,
+                            SchemeCode = "146130",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 5,
+                            AMCId = 3,
+                            FundName = "Canara Robeco LARGE AND MID CAP Fund - Direct Plan - Growth",
+                            ISIN = "INF760K01EI4",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 3,
+                            SchemeCode = "118278",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 6,
+                            AMCId = 3,
+                            FundName = "Canara Robeco Value Fund - Direct Plan - Growth",
+                            ISIN = "INF760K01JW4",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 9,
+                            SchemeCode = "149085",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 7,
+                            AMCId = 4,
+                            FundName = "Kotak Large & Midcap Fund - Direct- Growth",
+                            ISIN = "INF174K01LF9",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 3,
+                            SchemeCode = "120158",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 8,
+                            AMCId = 5,
+                            FundName = "Mirae Asset Large & Midcap Fund - Direct Plan - Growth",
+                            ISIN = "INF769K01BI1",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 3,
+                            SchemeCode = "118834",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 9,
+                            AMCId = 5,
+                            FundName = "Mirae Asset ELSS Tax Saver Fund - Direct Plan - Growth",
+                            ISIN = "INF769K01DM9",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 7,
+                            SchemeCode = "135781",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 10,
+                            AMCId = 6,
+                            FundName = "Nippon India Small Cap Fund - Direct Plan - Growth",
+                            ISIN = "INF204K01K15",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 6,
+                            SchemeCode = "118778",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 11,
+                            AMCId = 8,
+                            FundName = "SBI Large Cap Fund - Direct Plan - Growth",
+                            ISIN = "INF200K01QX4",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 4,
+                            SchemeCode = "119598",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 12,
+                            AMCId = 8,
+                            FundName = "SBI Small Cap Fund - Direct Plan - Growth",
+                            ISIN = "INF200K01T51",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 6,
+                            SchemeCode = "125497",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 13,
+                            AMCId = 10,
+                            FundName = "Tata Retirement Savings Fund- Progressive Plan - Direct Plan - Growth",
+                            ISIN = "INF277K01QO1",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 2,
+                            SchemeCode = "119251",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 14,
+                            AMCId = 10,
+                            FundName = "Tata S&P BSE Sensex Index Fund - Direct Plan",
+                            ISIN = "INF277K01PK1",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 4,
+                            SchemeCode = "119287",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 15,
                             AMCId = 2,
-                            FundName = "Bandhan Small Cap Fund - Regular Plan - Growth",
+                            FundName = "BANDHAN Small Cap Fund - Regular Plan - Growth",
                             ISIN = "INF194KB1AJ8",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsNavAllowed = true,
                             IsTransactionAllowed = true,
-                            MFCatId = 1,
+                            MFCatId = 6,
                             SchemeCode = "147944",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 16,
+                            AMCId = 9,
+                            FundName = "HDFC Small Cap Fund - Growth Option - Direct Plan",
+                            ISIN = "INF179KA1RW5",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 6,
+                            SchemeCode = "130503",
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FundId = 17,
+                            AMCId = 9,
+                            FundName = "HDFC Gold ETF Fund of Fund - Direct Plan",
+                            ISIN = "INF179K01VX0",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsNavAllowed = true,
+                            IsTransactionAllowed = true,
+                            MFCatId = 19,
+                            SchemeCode = "119132",
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
@@ -400,22 +692,102 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         new
                         {
                             MFCatId = 1,
-                            CategoryName = "Equity - Small Cap"
-                        },
-                        new
-                        {
-                            MFCatId = 2,
                             CategoryName = "Equity - Multi Cap"
                         },
                         new
                         {
+                            MFCatId = 2,
+                            CategoryName = "Equity - Flexi Cap"
+                        },
+                        new
+                        {
                             MFCatId = 3,
-                            CategoryName = "Debt - Liquid"
+                            CategoryName = "Equity - Large Mid Cap"
                         },
                         new
                         {
                             MFCatId = 4,
+                            CategoryName = "Equity - Large Cap"
+                        },
+                        new
+                        {
+                            MFCatId = 5,
+                            CategoryName = "Equity - Mid Cap"
+                        },
+                        new
+                        {
+                            MFCatId = 6,
+                            CategoryName = "Equity - Small Cap"
+                        },
+                        new
+                        {
+                            MFCatId = 7,
+                            CategoryName = "Equity - ELSS Cap"
+                        },
+                        new
+                        {
+                            MFCatId = 8,
+                            CategoryName = "Equity - Dividend Yield MF"
+                        },
+                        new
+                        {
+                            MFCatId = 9,
+                            CategoryName = "Equity - Value Oriented MF"
+                        },
+                        new
+                        {
+                            MFCatId = 10,
+                            CategoryName = "Equity - Sectoral MF"
+                        },
+                        new
+                        {
+                            MFCatId = 11,
+                            CategoryName = "Debt - Liquid"
+                        },
+                        new
+                        {
+                            MFCatId = 12,
+                            CategoryName = "Debt - Corporate Bonds MF"
+                        },
+                        new
+                        {
+                            MFCatId = 13,
+                            CategoryName = "Debt - Dynamic Bond Debt MF"
+                        },
+                        new
+                        {
+                            MFCatId = 14,
+                            CategoryName = "Debt - Ultra Short Term MF"
+                        },
+                        new
+                        {
+                            MFCatId = 15,
                             CategoryName = "Hybrid - Aggressive"
+                        },
+                        new
+                        {
+                            MFCatId = 16,
+                            CategoryName = "Hybrid - Balanced"
+                        },
+                        new
+                        {
+                            MFCatId = 17,
+                            CategoryName = "Hybrid - Equity Savings"
+                        },
+                        new
+                        {
+                            MFCatId = 18,
+                            CategoryName = "Hybrid - Dynamic Asset allocation"
+                        },
+                        new
+                        {
+                            MFCatId = 19,
+                            CategoryName = "Commodities - Gold MF (ETF)"
+                        },
+                        new
+                        {
+                            MFCatId = 20,
+                            CategoryName = "Commodities - Silver MF (ETF)"
                         });
                 });
 

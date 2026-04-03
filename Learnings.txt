@@ -25,6 +25,7 @@ Open Package Manager Console (Tools → NuGet Package Manager → Package Manage
 select Data project (the project has dbcontext)
 setp1: Add-Migration InitialCreate
 step2: Update-Database
+step3: Drop-Database
 
 useful tsqls
 =============
@@ -89,3 +90,5 @@ Server-side filtering improvements
 Errors:
 Q1. One or more errors occurred. Failed to launch debug adapter.
 A1. Tools → Options → Debugging → General Then uncheck: "Enable JavaScript debugging for ASP.NET (Chrome, Edge)”
+
+Reference: https://groww.in/mutual-funds/category
