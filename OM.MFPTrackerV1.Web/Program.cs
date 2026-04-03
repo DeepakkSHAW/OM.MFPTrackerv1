@@ -15,6 +15,7 @@ namespace OM.MFPTrackerV1.Web
             ////////////DK Added /////////////
 			var dbFolder = builder.Configuration["Database:Folder"] ?? "data";
 			var dbFile = builder.Configuration["Database:FileName"] ?? "portfolio.db";
+			var urlAmf = builder.Configuration["Amfi:NavUrl"] ?? "https://portal.amfiindia.com/spages/NAVOpen.txt";
 
 			var dbPath = Path.Combine(builder.Environment.ContentRootPath, dbFolder, dbFile);
 			Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
@@ -24,21 +25,39 @@ namespace OM.MFPTrackerV1.Web
 			.EnableDetailedErrors()             //For DEV ONLY
 			.EnableSensitiveDataLogging()       //For DEV ONLY
 			);
+			//Register HTTP factory
+			//builder.Services.AddHttpClient("AmfiNavClient", client =>
+			//{
+			//	client.BaseAddress = new Uri(urlAmf);
+			//	client.Timeout = TimeSpan.FromSeconds(30);
+
+			//	client.DefaultRequestHeaders.Add("User-Agent", "MFPTracker/1.0");
+			//	client.DefaultRequestHeaders.Add("Accept", "text/plain");
+			//});
+
+			builder.Services.AddHttpClient("AmfiNavClient", (sp, client) =>
+			{
+				var config = sp.GetRequiredService<IConfiguration>();
+				var url = config["Amfi:NavUrl"];
+
+				if (string.IsNullOrWhiteSpace(url))
+					throw new InvalidOperationException("Amfi:NavUrl not configured.");
+
+				client.BaseAddress = new Uri(url);
+				client.Timeout = TimeSpan.FromSeconds(120);
+				client.DefaultRequestHeaders.Add("User-Agent", "MFPTracker/1.0");
+			});
 
 			// Register repository
-			//builder.Services.AddScoped<IFolioHolderRepo, FolioHolderRepo>();
-			//builder.Services.AddScoped<IMFCategoryRepo, MFCategoryRepo>();
-			//builder.Services.AddScoped<IFundRepo, FundRepo>();
-			//builder.Services.AddScoped<IFolioRepo, FolioRepo>();
-
 			builder.Services.AddScoped<IAMCRepo, AMCRepo>();
 			builder.Services.AddScoped<IMFCategoryRepo, MFCategoryRepo>();
 			builder.Services.AddScoped<IMFFundRepo, MFFundRepo>();
 			builder.Services.AddScoped<IFolioHolderRepo, FolioHolderRepo>();
 			builder.Services.AddScoped<IFolioRepo, FolioRepo>();
 			builder.Services.AddScoped<IMutualFundTransactionRepo, MutualFundTransactionRepo>();
+			builder.Services.AddScoped<IAmfiNavService, AmfiNavService>();
 
-			builder.Services.AddScoped<IFolioOwnerRepository, FolioOwnerRepository>();
+			builder.Services.AddScoped<IFolioOwnerRepository, FolioOwnerRepository>(); // delete after FolioOwner is removed
 			/////////////END DK Added /////////////
 
 			// Add services to the container.

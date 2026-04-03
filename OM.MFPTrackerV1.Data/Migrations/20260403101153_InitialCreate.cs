@@ -260,8 +260,12 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 columns: new[] { "FolioId", "AMCId", "AttachedBank", "FolioHolderId", "FolioNumber", "FolioPurpose", "IsActive" },
                 values: new object[,]
                 {
-                    { 1, 1, null, 2, "1234567", "Investment Portfolio", true },
-                    { 2, 2, null, 1, "2233445", "Family Holdings", true }
+                    { 1, 9, "JAG IDFC NRO", 3, "37959966", "Long term Portfolio", true },
+                    { 2, 6, "DK HDFC NRO", 2, "499183354147", "Small can investment - experiment", true },
+                    { 3, 7, "DK HDFC NRO", 2, "10121489", "Long term Investment", true },
+                    { 4, 7, "DK KOTAK NRE", 2, "10510544", "Long term Repatriate Inv", true },
+                    { 5, 7, "DK IDFC NRO", 2, "17412588", "Long term Repatriate Inv", true },
+                    { 6, 7, "DK IDFC NRO", 3, "17713086", "Long term Repatriate Inv", true }
                 });
 
             migrationBuilder.InsertData(
@@ -274,7 +278,18 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     { 3, 1, "Axis Small Cap Fund - Direct Plan - Growth", "INF846K01K35", true, true, 6, "125354" },
                     { 4, 3, "Canara Robeco SMALL CAP Fund - Direct Plan - Growth", "INF760K01JC6", true, true, 17, "146130" },
                     { 5, 3, "Canara Robeco LARGE AND MID CAP Fund - Direct Plan - Growth", "INF760K01EI4", true, true, 3, "118278" },
-                    { 6, 3, "Canara Robeco Value Fund - Direct Plan - Growth", "INF760K01JW4", true, true, 9, "149085" }
+                    { 6, 3, "Canara Robeco Value Fund - Direct Plan - Growth", "INF760K01JW4", true, true, 9, "149085" },
+                    { 7, 4, "Kotak Large & Midcap Fund - Direct- Growth", "INF174K01LF9", true, true, 3, "120158" },
+                    { 8, 5, "Mirae Asset Large & Midcap Fund - Direct Plan - Growth", "INF769K01BI1", true, true, 3, "118834" },
+                    { 9, 5, "Mirae Asset ELSS Tax Saver Fund - Direct Plan - Growth", "INF769K01DM9", true, true, 7, "135781" },
+                    { 10, 6, "Nippon India Small Cap Fund - Direct Plan - Growth", "INF204K01K15", true, true, 6, "118778" },
+                    { 11, 8, "SBI Large Cap Fund - Direct Plan - Growth", "INF200K01QX4", true, true, 4, "119598" },
+                    { 12, 8, "SBI Small Cap Fund - Direct Plan - Growth", "INF200K01T51", true, true, 6, "125497" },
+                    { 13, 10, "Tata Retirement Savings Fund- Progressive Plan - Direct Plan - Growth", "INF277K01QO1", true, true, 2, "119251" },
+                    { 14, 10, "Tata S&P BSE Sensex Index Fund - Direct Plan", "INF277K01PK1", true, true, 4, "119287" },
+                    { 15, 2, "BANDHAN Small Cap Fund - Regular Plan - Growth", "INF194KB1AJ8", true, true, 6, "147944" },
+                    { 16, 9, "HDFC Small Cap Fund - Growth Option - Direct Plan", "INF179KA1RW5", true, true, 6, "130503" },
+                    { 17, 9, "HDFC Gold ETF Fund of Fund - Direct Plan", "INF179K01VX0", true, true, 19, "119132" }
                 });
 
             migrationBuilder.InsertData(
@@ -299,15 +314,15 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 column: "AMCId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TFolio_AMCId_FolioNumber",
-                table: "TFolio",
-                columns: new[] { "AMCId", "FolioNumber" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_TFolio_FolioHolderId",
                 table: "TFolio",
                 column: "FolioHolderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TFolio_FolioNumber",
+                table: "TFolio",
+                column: "FolioNumber",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_TFolioHolder_FirstName_LastName_DateOfBirth",

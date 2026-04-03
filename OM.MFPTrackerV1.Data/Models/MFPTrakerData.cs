@@ -309,4 +309,31 @@ namespace OM.MFPTrackerV1.Data.Models
 		public DateTime InDate { get; set; }
 		public DateTime UpdateDate { get; set; }
 	}
+
+	public class FundNav
+	{
+		[Key]
+		public int FundNavId { get; set; }
+
+		// -------- Identity --------
+		[Required]
+		public int FundId { get; set; }
+		public Fund Fund { get; set; } = null!;
+
+		// -------- NAV Data --------
+		[Required]
+		public DateTime NavDate { get; set; }   // NAV as on this date
+
+		[Required]
+		public decimal NavValue { get; set; }   // NAV value
+
+		// -------- Metadata --------
+		[Required, MaxLength(20)]
+		public string Source { get; set; } = "AMFI";
+
+		public DateTime FetchedAt { get; set; }
+
+		// -------- Audit --------
+		public DateTime InDate { get; set; }
+	}
 }

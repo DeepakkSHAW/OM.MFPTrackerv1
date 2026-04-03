@@ -1,0 +1,70 @@
+﻿@page "/admin/nav-sync"
+@using OM.MFPTrackerV1.Data.Services
+@inject IAmfiNavService AmfiNavService
+
+<h4 class="mt-2 mb-3">AMFI NAV Synchronization</h4>
+
+<div class="card">
+    <div class="card-body">
+
+        <p class="text-muted">
+            This action downloads NAV data from AMFI and stores NAV history
+            for funds available in the system.
+        </p>
+
+        <button class="btn btn-primary"
+                disabled="@isRunning"
+                @onclick="RunSyncAsync">
+            @(isRunning ? "Syncing..." : "Fetch Latest NAV")
+        </button>
+
+        @if (result != null)
+        {
+            <div class="alert alert-info mt-3">
+                <strong>NAV Sync Summary</strong><br />
+                ✅ Inserted: @result.Inserted<br />
+                ↺ Skipped (duplicate): @result.SkippedAsDuplicate<br />
+                ⚠ Fund not found: @result.FundNotFound<br />
+                ❌ Invalid rows: @result.InvalidRows
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div class="alert alert-danger mt-3">
+                <strong>Error</strong><br />
+                @error
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool isRunning;
+    private NavSyncSummary? result;
+    private string? error;
+
+    private async Task RunSyncAsync()
+    {
+        if (isRunning)
+            return;
+
+        try
+        {
+            isRunning = true;
+            error = null;
+            result = null;
+
+            result = await AmfiNavService.FetchAndStoreLatestNavWithSummaryAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isRunning = false;
+        }
+    }
+}
+``

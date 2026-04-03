@@ -161,7 +161,7 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.HasIndex("FolioHolderId");
 
-                    b.HasIndex("AMCId", "FolioNumber")
+                    b.HasIndex("FolioNumber")
                         .IsUnique();
 
                     b.ToTable("TFolio", null, t =>
@@ -194,6 +194,54 @@ namespace OM.MFPTrackerV1.Data.Migrations
                             FolioHolderId = 2,
                             FolioNumber = "499183354147",
                             FolioPurpose = "Small can investment - experiment",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioId = 3,
+                            AMCId = 7,
+                            AttachedBank = "DK HDFC NRO",
+                            FolioHolderId = 2,
+                            FolioNumber = "10121489",
+                            FolioPurpose = "Long term Investment",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioId = 4,
+                            AMCId = 7,
+                            AttachedBank = "DK KOTAK NRE",
+                            FolioHolderId = 2,
+                            FolioNumber = "10510544",
+                            FolioPurpose = "Long term Repatriate Inv",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioId = 5,
+                            AMCId = 7,
+                            AttachedBank = "DK IDFC NRO",
+                            FolioHolderId = 2,
+                            FolioNumber = "17412588",
+                            FolioPurpose = "Long term Repatriate Inv",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioId = 6,
+                            AMCId = 7,
+                            AttachedBank = "DK IDFC NRO",
+                            FolioHolderId = 3,
+                            FolioNumber = "17713086",
+                            FolioPurpose = "Long term Repatriate Inv",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
@@ -663,6 +711,47 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.FundNav", b =>
+                {
+                    b.Property<int>("FundNavId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("FetchedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FundId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("InDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("NavDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("NavValue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("FundNavId");
+
+                    b.HasIndex("FundId", "NavDate")
+                        .IsUnique();
+
+                    b.ToTable("TFundNav", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FundNav_NavValue_Positive", "NavValue > 0.0");
+                        });
+                });
+
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.MFCategory", b =>
                 {
                     b.Property<int>("MFCatId")
@@ -944,6 +1033,17 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     b.Navigation("AMC");
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.FundNav", b =>
+                {
+                    b.HasOne("OM.MFPTrackerV1.Data.Models.Fund", "Fund")
+                        .WithMany()
+                        .HasForeignKey("FundId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Fund");
                 });
 
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.MutualFundTransaction", b =>

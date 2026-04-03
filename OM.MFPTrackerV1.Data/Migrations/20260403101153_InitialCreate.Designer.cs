@@ -11,8 +11,8 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    [Migration("20260403034835_InitialCreate1")]
-    partial class InitialCreate1
+    [Migration("20260403101153_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -164,7 +164,7 @@ namespace OM.MFPTrackerV1.Data.Migrations
 
                     b.HasIndex("FolioHolderId");
 
-                    b.HasIndex("AMCId", "FolioNumber")
+                    b.HasIndex("FolioNumber")
                         .IsUnique();
 
                     b.ToTable("TFolio", null, t =>
@@ -197,6 +197,54 @@ namespace OM.MFPTrackerV1.Data.Migrations
                             FolioHolderId = 2,
                             FolioNumber = "499183354147",
                             FolioPurpose = "Small can investment - experiment",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioId = 3,
+                            AMCId = 7,
+                            AttachedBank = "DK HDFC NRO",
+                            FolioHolderId = 2,
+                            FolioNumber = "10121489",
+                            FolioPurpose = "Long term Investment",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioId = 4,
+                            AMCId = 7,
+                            AttachedBank = "DK KOTAK NRE",
+                            FolioHolderId = 2,
+                            FolioNumber = "10510544",
+                            FolioPurpose = "Long term Repatriate Inv",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioId = 5,
+                            AMCId = 7,
+                            AttachedBank = "DK IDFC NRO",
+                            FolioHolderId = 2,
+                            FolioNumber = "17412588",
+                            FolioPurpose = "Long term Repatriate Inv",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        },
+                        new
+                        {
+                            FolioId = 6,
+                            AMCId = 7,
+                            AttachedBank = "DK IDFC NRO",
+                            FolioHolderId = 3,
+                            FolioNumber = "17713086",
+                            FolioPurpose = "Long term Repatriate Inv",
                             InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             IsActive = true,
                             UpdateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)

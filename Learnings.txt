@@ -55,7 +55,12 @@ Finally adjust Transactions page to use the AMC‑safe selectors.
 
 Tell me where you want to begin (e.g., Folio + Fluent + Repo + Page), and I’ll generate the drop‑in code.
 
+If you want next, I can help you with:
 
+✅ Historical NAV backfill (NAVAll.txt)
+✅ BackgroundService for daily sync
+✅ NAV chart + valuation
+✅ Return calculations
 
 
 Trnsecation

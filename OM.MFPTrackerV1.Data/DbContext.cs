@@ -5,6 +5,7 @@ namespace OM.MFPTrackerV1.Data
 {
 	public class MFPTrackerDbContext : DbContext
 	{
+		public DbSet<FolioOwner> folioOwners => Set<FolioOwner>(); // delete this
 		public MFPTrackerDbContext(DbContextOptions<MFPTrackerDbContext> options) : base(options) { }
 		public DbSet<AMC> AMCs => Set<AMC>();
 		public DbSet<MFCategory> MFCategories => Set<MFCategory>();
@@ -12,7 +13,8 @@ namespace OM.MFPTrackerV1.Data
 		public DbSet<FolioHolder> FolioHolders => Set<FolioHolder>();
 		public DbSet<Folio> Folios => Set<Folio>();
 		public DbSet<MutualFundTransaction> MutualFundTransactions => Set<MutualFundTransaction>();
-		public DbSet<FolioOwner> folioOwners => Set<FolioOwner>();
+		public DbSet<FundNav> FundNavs => Set<FundNav>();
+
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 
@@ -370,8 +372,8 @@ namespace OM.MFPTrackerV1.Data
 				e.Property(x => x.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
 
 				// A folio is unique per AMC + number (investors can have same folio number across AMCs)
-				e.HasIndex(x => new { x.AMCId, x.FolioNumber }).IsUnique();
-
+				//e.HasIndex(x => new { x.AMCId, x.FolioNumber }).IsUnique();// this is wrong, a invester can have as many folio they wish  
+				e.HasIndex(x => new { x.FolioNumber }).IsUnique();
 				e.HasIndex(x => x.FolioHolderId);
 				e.HasIndex(x => x.AMCId);
 
@@ -401,6 +403,42 @@ namespace OM.MFPTrackerV1.Data
 						FolioHolderId = 2,
 						FolioPurpose = "Small can investment - experiment",
 						AttachedBank = "DK HDFC NRO",
+					},
+					new Folio
+					{
+						FolioId = 3,
+						FolioNumber = "10121489", // PP Flex cap 
+						AMCId = 7,
+						FolioHolderId = 2,
+						FolioPurpose = "Long term Investment",
+						AttachedBank = "DK HDFC NRO",
+					},
+					new Folio
+					{
+						FolioId = 4,
+						FolioNumber = "10510544", // Linked with KOTAK NRE
+						AMCId = 7,
+						FolioHolderId = 2,
+						FolioPurpose = "Long term Repatriate Inv",
+						AttachedBank = "DK KOTAK NRE",
+					},
+					new Folio
+					{
+						FolioId = 5,
+						FolioNumber = "17412588", // Linked with IDFC NRO
+						AMCId = 7,
+						FolioHolderId = 2,
+						FolioPurpose = "Long term Repatriate Inv",
+						AttachedBank = "DK IDFC NRO",
+					},
+					new Folio
+					{
+						FolioId = 6,
+						FolioNumber = "17713086", // Linked with IDFC NRO
+						AMCId = 7,
+						FolioHolderId = 3,
+						FolioPurpose = "Long term Repatriate Inv",
+						AttachedBank = "DK IDFC NRO",
 					}
 				);
 			});
@@ -527,6 +565,47 @@ namespace OM.MFPTrackerV1.Data
 						UpdateDate = new DateTime(2023, 03, 05)
 					}
 				);
+			});
+
+			// -------------------- Fund NAV History --------------------
+			modelBuilder.Entity<FundNav>(e =>
+			{
+				e.ToTable("TFundNav");
+
+				// -------- Key --------
+				e.HasKey(x => x.FundNavId);
+
+				// -------- Properties --------
+				e.Property(x => x.NavDate)
+					.IsRequired();
+
+				e.Property(x => x.NavValue).IsRequired().HasPrecision(18, 4);   // AMFI NAV precision
+				e.Property(x => x.Source).IsRequired().HasMaxLength(20).UseCollation("NOCASE");
+				e.Property(x => x.FetchedAt).IsRequired();
+
+				e.Property(x => x.InDate)
+					.HasDefaultValueSql("CURRENT_TIMESTAMP")
+					.ValueGeneratedOnAdd();
+
+				// -------- Relationships --------
+				e.HasOne(x => x.Fund)
+					.WithMany()   // No navigation needed now
+					.HasForeignKey(x => x.FundId)
+					.OnDelete(DeleteBehavior.Restrict);
+
+				// -------- Indexes --------
+
+				// Prevent duplicate NAVs for same fund & date
+				e.HasIndex(x => new { x.FundId, x.NavDate })
+					.IsUnique();
+
+				// Fast latest‑NAV lookup
+				e.HasIndex(x => new { x.FundId, x.NavDate });
+
+				// -------- Safety Constraints (SQLite) --------
+				e.ToTable(t =>				{ 
+					t.HasCheckConstraint("CK_FundNav_NavValue_Positive", "NavValue > 0.0");
+				});
 			});
 		}
 	}
