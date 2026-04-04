@@ -14,7 +14,7 @@ namespace OM.MFPTrackerV1.Data
 		public DbSet<Folio> Folios => Set<Folio>();
 		public DbSet<MutualFundTransaction> MutualFundTransactions => Set<MutualFundTransaction>();
 		public DbSet<FundNav> FundNavs => Set<FundNav>();
-
+		public DbSet<SpecialEvent> SpecialEvents => Set<SpecialEvent>();
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 
@@ -603,9 +603,108 @@ namespace OM.MFPTrackerV1.Data
 				e.HasIndex(x => new { x.FundId, x.NavDate });
 
 				// -------- Safety Constraints (SQLite) --------
-				e.ToTable(t =>				{ 
+				e.ToTable(t =>
+				{
 					t.HasCheckConstraint("CK_FundNav_NavValue_Positive", "NavValue > 0.0");
 				});
+			});
+
+			// -------------------- SpecialEvent --------------------
+			modelBuilder.Entity<SpecialEvent>(e =>
+			{
+				e.ToTable("TSpecialEvent");
+
+				// Primary Key
+				e.HasKey(x => x.SpecialEventId);
+
+				// Properties
+				e.Property(x => x.Title).IsRequired().HasMaxLength(100).UseCollation("NOCASE");
+
+				e.Property(x => x.Description).HasMaxLength(500).UseCollation("NOCASE");
+
+				e.Property(x => x.EventType).IsRequired().HasMaxLength(30).UseCollation("NOCASE");
+
+				e.Property(x => x.Severity).HasMaxLength(20).HasDefaultValue("Info").UseCollation("NOCASE");
+
+				e.Property(x => x.EventDate).IsRequired();
+
+				e.Property(x => x.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
+
+				// Relationships
+				e.HasOne(x => x.Fund).WithMany().HasForeignKey(x => x.FundId).OnDelete(DeleteBehavior.Restrict);
+
+				// Indexes
+				e.HasIndex(x => x.EventDate);
+				e.HasIndex(x => x.EventType);
+				e.HasIndex(x => x.FundId);
+
+				// ---------- Seed Data ----------
+				e.HasData(
+					// Market-wide: COVID crash
+					new SpecialEvent
+					{
+						SpecialEventId = 1,
+						Title = "COVID-19 Market Crash",
+						Description = "Global equity markets corrected sharply due to COVID-19 pandemic fears.",
+						EventDate = new DateTime(2020, 3, 23),
+						FundId = null,
+						EventType = "Market",
+						Severity = "Critical",
+						InDate = new DateTime(2020, 3, 23)
+					},
+
+					// Regulatory: LTCG tax reintroduction
+					new SpecialEvent
+					{
+						SpecialEventId = 2,
+						Title = "Reintroduction of LTCG Tax on Equity",
+						Description = "Government reintroduced 10% LTCG tax on equity gains exceeding ₹1L.",
+						EventDate = new DateTime(2018, 2, 1),
+						FundId = null,
+						EventType = "Regulatory",
+						Severity = "Warning",
+						InDate = new DateTime(2018, 2, 1)
+					},
+
+					// Macro: RBI rate hike cycle
+					new SpecialEvent
+					{
+						SpecialEventId = 3,
+						Title = "RBI Begins Rate Hike Cycle",
+						Description = "RBI increased repo rate to curb inflation, impacting debt fund NAVs.",
+						EventDate = new DateTime(2022, 5, 4),
+						FundId = null,
+						EventType = "Macro",
+						Severity = "Info",
+						InDate = new DateTime(2022, 5, 4)
+					},
+
+					// Market-wide: Union Budget
+					new SpecialEvent
+					{
+						SpecialEventId = 4,
+						Title = "Union Budget Announcement",
+						Description = "Annual Union Budget presented with implications for equity and debt markets.",
+						EventDate = new DateTime(2023, 2, 1),
+						FundId = null,
+						EventType = "Market",
+						Severity = "Info",
+						InDate = new DateTime(2023, 2, 1)
+					},
+
+					// Fund-specific example (adjust FundId to an existing Fund)
+					new SpecialEvent
+					{
+						SpecialEventId = 5,
+						Title = "Expense Ratio Revision",
+						Description = "Expense ratio revised by fund house.",
+						EventDate = new DateTime(2024, 1, 15),
+						FundId = 1, // ⚠️ Must match an existing FundId
+						EventType = "Fund",
+						Severity = "Info",
+						InDate = new DateTime(2024, 1, 15)
+					}
+);
 			});
 		}
 	}

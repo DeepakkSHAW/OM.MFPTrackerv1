@@ -336,4 +336,37 @@ namespace OM.MFPTrackerV1.Data.Models
 		// -------- Audit --------
 		public DateTime InDate { get; set; }
 	}
+
+	public class SpecialEvent
+	{
+		[Key]
+		public int SpecialEventId { get; set; }
+
+		// -------- Event Core --------
+		[Required, MaxLength(100)]
+		public string Title { get; set; } = null!;
+
+		[MaxLength(500)]
+		public string? Description { get; set; }
+
+		[Required]
+		public DateTime EventDate { get; set; }
+
+		// -------- Scope --------
+		// NULL = Market-wide event
+		public int? FundId { get; set; }
+		public Fund? Fund { get; set; }
+
+		// -------- Classification --------
+		[Required, MaxLength(30)]
+		public string EventType { get; set; } = null!;
+		// Examples: Market, Regulatory, Fund, Corporate
+
+		[MaxLength(20)]
+		public string Severity { get; set; } = "Info";
+		// Examples: Info, Warning, Critical
+
+		// -------- Audit --------
+		public DateTime InDate { get; set; }
+	}
 }

@@ -56,7 +56,8 @@ namespace OM.MFPTrackerV1.Web
 			builder.Services.AddScoped<IFolioRepo, FolioRepo>();
 			builder.Services.AddScoped<IMutualFundTransactionRepo, MutualFundTransactionRepo>();
 			builder.Services.AddScoped<IAmfiNavService, AmfiNavService>();
-
+			builder.Services.AddScoped<ISpecialEventRepo, SpecialEventRepo>();
+			builder.Services.AddScoped<IFundNavRepo, FundNavRepo>();
 			builder.Services.AddScoped<IFolioOwnerRepository, FolioOwnerRepository>(); // delete after FolioOwner is removed
 			/////////////END DK Added /////////////
 
