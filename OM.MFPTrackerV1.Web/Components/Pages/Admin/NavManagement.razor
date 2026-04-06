@@ -191,7 +191,6 @@
         </div>
     </div>
 }
-
 <!-- ===================== IMPORT CSV MODAL ===================== -->
 @if (showImportModal)
 {
@@ -213,7 +212,7 @@
                     {
                         <hr />
 
-                        <table class="table table-sm table-bordered">1
+                        <table class="table table-sm table-bordered">
                             <thead>
                                 <tr>
                                     <th>FundCode</th>
@@ -232,21 +231,35 @@
                                 }
                             </tbody>
                         </table>
+                        <div class="d-flex justify-content-end mt-4 gap-2">
 
-                        <div class="alert alert-info">
-                            @previewSummary
+                            <button class="btn btn-primary"
+                                    @onclick="ConfirmImport">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Confirm Import
+                            </button>
+
+                            <button class="btn btn-outline-secondary"
+                                    @onclick="CloseImport">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Close
+                            </button>
+
                         </div>
-
-                        <button class="btn btn-primary"
-                                @onclick="ConfirmImport">
-                            Confirm Import
-                        </button>
-                        @if (showPreview && previewRows.Count == 0)
-                        {
-                            <div class="alert alert-danger py-2">
-                                Please upload a valid CSV file.
-                            </div>
-                        }
+                        <div class="alert alert-info mt-2">
+                            <strong>Preview Summary</strong>[@previewSummary]<br />
+                            @previewSummary.Inserted valid rows detected
+                            @if (previewSummary.SkippedAsDuplicate > 0)
+                            {
+                                <span>, @previewSummary.SkippedAsDuplicate duplicates within file</span>
+                            }
+                            @if (previewSummary.InvalidRows > 0)
+                            {
+                                <span>, @previewSummary.InvalidRows invalid rows</span>
+                            }
+                            <br />
+                            This summary applies to the preview only. Import will process all rows.
+                        </div>
                     }
 
                 </div>
@@ -492,6 +505,11 @@
     private void CloseImport()
     {
         showImportModal = false;
+        // Optional cleanup
+        //importSummary = null;
+        previewSummary = null;
+        previewRows.Clear();
+
     }
 
     private async Task HandleCsvSelected(InputFileChangeEventArgs e)
@@ -500,6 +518,10 @@
 
         previewRows.Clear();
         showPreview = false;
+
+        int validRows = 0;
+        int duplicateInFile = 0;
+        int invalidRows = 0;
 
         // ✅ Validate extension
         if (!csvFile.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
@@ -524,41 +546,79 @@
         }
 
         // ✅ Safe to read CSV
+
+        // Track duplicates inside the CSV itself
+        var seenKeys = new HashSet<(string FundCode, DateTime NavDate)>();
+
         using var reader = new StreamReader(csvFile.OpenReadStream());
         string? line;
-        bool skipHeader = true;
+        bool header = true;
 
-        while ((line = await reader.ReadLineAsync()) != null &&
-               previewRows.Count < 50)
+        while ((line = await reader.ReadLineAsync()) != null)
         {
-            if (skipHeader)
+            if (string.IsNullOrWhiteSpace(line))
             {
-                skipHeader = false;
+                invalidRows++;
+                continue;
+            }
+
+            if (header)
+            {
+                header = false;
                 continue;
             }
 
             var parts = line.Split(',');
-            if (parts.Length != 3)
-                continue;
 
-            if (!DateTime.TryParse(parts[1], out var date) ||
-                !decimal.TryParse(parts[2], out var nav))
+            // Must be exactly 3 columns
+            if (parts.Length != 3)
+            {
+                invalidRows++;
                 continue;
+            }
+
+            var fundCode = parts[0].Trim();
+
+            if (string.IsNullOrWhiteSpace(fundCode) ||
+                !DateTime.TryParse(parts[1], out var navDate) ||
+                !decimal.TryParse(parts[2], out var navValue) ||
+                navValue <= 0)
+            {
+                invalidRows++;
+                continue;
+            }
+
+            navDate = navDate.Date;
+            var key = (fundCode.ToUpperInvariant(), navDate);
+
+            // Detect duplicate rows inside the SAME file
+            if (seenKeys.Contains(key))
+            {
+                duplicateInFile++;
+                continue;
+            }
+
+            seenKeys.Add(key);
 
             previewRows.Add(new NavCsvPreviewRow
             {
-                FundCode = parts[0].Trim(),
-                NavDate = date,
-                NavValue = nav
+                FundCode = fundCode,
+                NavDate = navDate,
+                NavValue = navValue
             });
+
+            validRows++;
         }
 
         previewSummary = new NavSyncSummary
         {
-            Inserted = previewRows.Count
+            Inserted = validRows,
+            SkippedAsDuplicate = duplicateInFile,
+            InvalidRows = invalidRows
         };
 
-        showPreview = previewRows.Count > 0;
+        showPreview = true;
+
     }
 
     private async Task ConfirmImport()
@@ -569,7 +629,6 @@
         previewSummary = await NavService
             .ImportNavFromCsvAsync(csvFile.OpenReadStream());
 
-        showImportModal = false;
         await Reload();
     }
     //Bulk Import logic
