@@ -7,6 +7,7 @@
 @inject IFundNavRepo Repo
 @inject IMFFundRepo FundRepo
 @inject IAmfiNavService NavService
+@inject IConfiguration Configuration
 @inject IJSRuntime JS
 
 <h4 class="mt-2 mb-3">NAV Management</h4>
@@ -19,7 +20,7 @@
         <select class="form-select"
                 @bind="selectedFundId"
                 @bind:after="OnFundChanged">
-            <option value="">All Funds</option>
+            <option value="">-- Select Fund --</option>
             @foreach (var f in funds)
             {
                 <option value="@f.FundId">@f.FundName</option>
@@ -28,11 +29,24 @@
     </div>
 
     <div class="col text-end">
-        <button class="btn btn-primary me-2" @onclick="OpenAdd">
+        <button class="btn btn-primary me-2"
+                disabled="@(!selectedFundId.HasValue)"
+                @onclick="OpenAdd">
+            <i class="bi bi-plus-circle me-1"></i>
             Add NAV
         </button>
-        <button class="btn btn-outline-primary" @onclick="OpenImport">
+
+        <button class="btn btn-outline-primary me-2"
+                @onclick="OpenImport">
+            <i class="bi bi-upload me-1"></i>
             Import CSV
+        </button>
+
+        <button class="btn btn-outline-secondary"
+                disabled="@(!selectedFundId.HasValue)"
+                @onclick="OpenBulkImport">
+            <i class="bi bi-list-check me-1"></i>
+            Bulk Import NAV
         </button>
     </div>
 
@@ -41,15 +55,12 @@
 <!-- ===================== NAV GRID ===================== -->
 <div class="table-responsive">
     <table class="table table-sm table-hover align-middle">
-
         <thead class="table-light">
             <tr>
                 <th role="button" @onclick="@(() => SortBy(nameof(FundNav.NavDate)))">
                     Date @SortIcon(nameof(FundNav.NavDate))
                 </th>
-                <th role="button" @onclick="@(() => SortBy("Fund"))">
-                    Fund @SortIcon("Fund")
-                </th>
+                <th>Fund</th>
                 <th class="text-end" role="button" @onclick="@(() => SortBy(nameof(FundNav.NavValue)))">
                     NAV @SortIcon(nameof(FundNav.NavValue))
                 </th>
@@ -72,36 +83,32 @@
                 {
                     <tr>
                         <td>@n.NavDate.ToString("dd-MMM-yyyy")</td>
-                        <td title="@n.Fund.FundName">
-                            @Truncate(n.Fund.FundName)
-                        </td>
+                        <td>@n.Fund.FundName</td>
                         <td class="text-end">@n.NavValue</td>
                         <td class="text-end">
                             <button class="btn btn-sm btn-outline-secondary me-2"
+                                    title="Edit"
                                     @onclick="@(() => OpenEdit(n))">
-                                Edit
+                                <i class="bi bi-pencil"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-danger"
+                                    title="Delete"
                                     @onclick="@(() => Delete(n.FundNavId))">
-                                Delete
+                                <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
                 }
             }
         </tbody>
-
     </table>
 </div>
 
 <!-- ===================== PAGINATION ===================== -->
 <div class="d-flex align-items-center mt-2">
-    <span class="text-muted small">
-        Total: @totalCount
-    </span>
+    <span class="text-muted small">Total: @totalCount</span>
 
     <div class="ms-auto d-flex align-items-center gap-2">
-
         <select class="form-select form-select-sm"
                 style="width:90px"
                 @bind="pageSize"
@@ -149,7 +156,8 @@
 
                         <label class="form-label">Fund</label>
                         <InputSelect class="form-select"
-                                     @bind-Value="editModel.FundId">
+                                     @bind-Value="editModel.FundId"
+                                     disabled="true">
                             @foreach (var f in funds)
                             {
                                 <option value="@f.FundId">@f.FundName</option>
@@ -170,8 +178,13 @@
                                 Save
                             </button>
                         </div>
-
                     </EditForm>
+                    @if (!string.IsNullOrWhiteSpace(saveErrorMessage))
+                    {
+                        <div class="alert alert-danger py-2">
+                            @saveErrorMessage
+                        </div>
+                    }
                 </div>
 
             </div>
@@ -179,7 +192,7 @@
     </div>
 }
 
-<!-- ===================== CSV IMPORT MODAL ===================== -->
+<!-- ===================== IMPORT CSV MODAL ===================== -->
 @if (showImportModal)
 {
     <div class="modal-backdrop fade show"></div>
@@ -194,55 +207,46 @@
 
                 <div class="modal-body">
 
-                    <p class="text-muted small">
-                        CSV format:<br />
-                        <code>FundCode,NavDate,NavValue</code>
-                    </p>
-
-                    <InputFile OnChange="HandleCsvSelected" />
+                    <InputFile OnChange="HandleCsvSelected" accept=".csv,text/csv" />
 
                     @if (showPreview)
                     {
                         <hr />
 
-                        <h6>Preview (first @previewRows.Count rows)</h6>
-
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered">
-                                <thead class="table-light">
+                        <table class="table table-sm table-bordered">1
+                            <thead>
+                                <tr>
+                                    <th>FundCode</th>
+                                    <th>Date</th>
+                                    <th>NAV</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in previewRows)
+                                {
                                     <tr>
-                                        <th>FundCode</th>
-                                        <th>Date</th>
-                                        <th>NAV</th>
+                                        <td>@r.FundCode</td>
+                                        <td>@r.NavDate.ToString("dd-MMM-yyyy")</td>
+                                        <td>@r.NavValue</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var r in previewRows)
-                                    {
-                                        <tr>
-                                            <td>@r.FundCode</td>
-                                            <td>@r.NavDate.ToString("dd-MMM-yyyy")</td>
-                                            <td>@r.NavValue</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
+                                }
+                            </tbody>
+                        </table>
+
+                        <div class="alert alert-info">
+                            @previewSummary
                         </div>
 
-                        <div class="alert alert-info mt-3">
-                            @previewSummary.ToString()
-                        </div>
-
-                        <div class="text-end mt-3">
-                            <button class="btn btn-secondary me-2"
-                                    @onclick="CloseImport">
-                                Cancel
-                            </button>
-                            <button class="btn btn-primary"
-                                    @onclick="ConfirmImport">
-                                Confirm Import
-                            </button>
-                        </div>
+                        <button class="btn btn-primary"
+                                @onclick="ConfirmImport">
+                            Confirm Import
+                        </button>
+                        @if (showPreview && previewRows.Count == 0)
+                        {
+                            <div class="alert alert-danger py-2">
+                                Please upload a valid CSV file.
+                            </div>
+                        }
                     }
 
                 </div>
@@ -251,36 +255,112 @@
     </div>
 }
 
+<!-- ===================== BULK IMPORT MODAL ===================== -->
+@if (showBulkImportModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header py-2">
+                    <h5 class="modal-title">Bulk NAV Import</h5>
+                    <button class="btn-close" @onclick="CloseBulkImport"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    @if (!string.IsNullOrEmpty(bulkError))
+                    {
+                        <div class="alert alert-danger">@bulkError</div>
+                    }
+
+                    <textarea class="form-control"
+                              rows="6"
+                              @bind="bulkText"
+                              placeholder="YYYY-MM-DD,NAV"></textarea>
+
+                    <div class="mt-3 text-end">
+                        <button class="btn btn-primary"
+                                @onclick="SubmitBulkImport">
+                            Import
+                        </button>
+                    </div>
+
+                    @if (bulkSummary != null)
+                    {
+                        <div class="alert alert-info mt-3">
+                            @bulkSummary
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
 @code {
 
-    /* ===================== GRID STATE ===================== */
     private List<FundNav> items = new();
     private List<Fund> funds = new();
     private int? selectedFundId;
-
-    private string sortBy = nameof(FundNav.NavDate);
-    private bool sortDesc = true;
+    private string? saveErrorMessage;
 
     private int pageNumber = 1;
     private int pageSize = 10;
     private int totalCount;
 
+    private string sortBy = nameof(FundNav.NavDate);
+    private bool sortDesc = true;
+
+    private bool showEditModal;
+    private bool showImportModal;
+    private bool showBulkImportModal;
+    private NavEditModel editModel = new();
+    private string editModalTitle = "";
+
+    // ---------- CSV Import ----------
+    private IBrowserFile? csvFile;
+    private bool showPreview;
+    private List<NavCsvPreviewRow> previewRows = new();
+    private NavSyncSummary previewSummary = new();
+
+    // ---------- Bulk Import ----------
+    private string bulkText = "";
+    private string? bulkError;
+    private NavSyncSummary? bulkSummary;
     protected override async Task OnInitializedAsync()
     {
-        funds = (await FundRepo.GetAsync(null, null, false, 1, 2000)).Items.ToList();
+        funds = (await FundRepo.GetAsync(null, null, false, 1, 2000))
+            .Items.ToList();
+
+        var code = Configuration["UISetting:DefaultFundSelection"];
+
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            var fund = funds.FirstOrDefault(f =>
+                f.ISIN == code || f.SchemeCode == code);
+
+            if (fund != null)
+                selectedFundId = fund.FundId;
+        }
+
         await Reload();
     }
 
     private async Task Reload()
     {
+        if (!selectedFundId.HasValue)
+        {
+            items.Clear();
+            totalCount = 0;
+            return;
+        }
+
         var r = await Repo.GetAsync(
-            selectedFundId,
-            null,
-            null,
-            sortBy,
-            sortDesc,
-            pageNumber,
-            pageSize);
+            selectedFundId, null, null,
+            sortBy, sortDesc,
+            pageNumber, pageSize);
 
         items = r.Items.ToList();
         totalCount = r.TotalCount;
@@ -292,60 +372,50 @@
         await Reload();
     }
 
-    private void SortBy(string field)
+    private void SortBy(string f)
     {
-        sortDesc = (sortBy == field) ? !sortDesc : false;
-        sortBy = field;
+        sortDesc = sortBy == f ? !sortDesc : false;
+        sortBy = f;
         _ = Reload();
     }
 
-    private RenderFragment SortIcon(string field) => b =>
+    private RenderFragment SortIcon(string f) => b =>
     {
-        if (sortBy == field)
+        if (sortBy == f)
             b.AddContent(0, sortDesc ? " ▼" : " ▲");
     };
 
-    private async Task PrevPage()
-    {
-        if (pageNumber > 1)
-        {
-            pageNumber--;
-            await Reload();
-        }
-    }
+    private Task PrevPage() => pageNumber > 1 ? ReloadWith(--pageNumber) : Task.CompletedTask;
+    private Task NextPage() => ReloadWith(++pageNumber);
+    private Task ReloadWith(int _) => Reload();
 
-    private async Task NextPage()
-    {
-        if (pageNumber * pageSize < totalCount)
-        {
-            pageNumber++;
-            await Reload();
-        }
-    }
-
-    private async Task OnPageSizeChanged()
+    private Task OnPageSizeChanged()
     {
         pageNumber = 1;
-        await Reload();
+        return Reload();
     }
-
-    private static string Truncate(string text, int max = 20)
-        => text.Length <= max ? text : text[..max] + "…";
-
-    /* ===================== ADD / EDIT ===================== */
-    private bool showEditModal;
-    private string editModalTitle = "";
-    private NavEditModel editModel = new();
 
     private void OpenAdd()
     {
-        editModel = new NavEditModel { NavDate = DateTime.Today };
+        if (!selectedFundId.HasValue)
+            return;
+
+        saveErrorMessage = null;
+
+        editModel = new NavEditModel
+        {
+            FundId = selectedFundId.Value,
+            NavDate = DateTime.Today
+        };
+
         editModalTitle = "Add NAV";
         showEditModal = true;
     }
 
     private void OpenEdit(FundNav n)
     {
+        saveErrorMessage = null;
+
         editModel = new NavEditModel
         {
             FundNavId = n.FundNavId,
@@ -353,21 +423,49 @@
             NavDate = n.NavDate,
             NavValue = n.NavValue
         };
+
         editModalTitle = "Edit NAV";
         showEditModal = true;
     }
 
     private void CloseEdit() => showEditModal = false;
-
     private async Task SaveNav()
     {
+        saveErrorMessage = null;
+
+        // 1️⃣ Validate NAV value
+        if (editModel.NavValue <= 0)
+        {
+            saveErrorMessage = "NAV value must be greater than zero.";
+            return;
+        }
+
+        // Normalize date
+        var navDate = editModel.NavDate.Date;
+
+        // 2️⃣ Duplicate check: same Fund + Date
+        bool exists = await Repo.ExistsAsync(
+            editModel.FundId,
+            navDate,
+            editModel.FundNavId == 0 ? null : editModel.FundNavId);
+
+        if (exists)
+        {
+            saveErrorMessage =
+                "A NAV already exists for the selected fund and date.";
+            return;
+        }
+
+        // 3️⃣ Persist
         var entity = editModel.ToEntity();
+        entity.NavDate = navDate;
 
         if (entity.FundNavId == 0)
             await Repo.AddAsync(entity);
         else
             await Repo.UpdateAsync(entity);
 
+        // 4️⃣ Success
         CloseEdit();
         await Reload();
     }
@@ -381,37 +479,7 @@
         }
     }
 
-    private sealed class NavEditModel
-    {
-        public int FundNavId { get; set; }
-        public int FundId { get; set; }
-        [Required] public DateTime NavDate { get; set; }
-        [Required] public decimal NavValue { get; set; }
-
-        public FundNav ToEntity() => new()
-        {
-            FundNavId = FundNavId,
-            FundId = FundId,
-            NavDate = NavDate,
-            NavValue = NavValue
-        };
-    }
-
-    /* ===================== CSV IMPORT ===================== */
-    private bool showImportModal;
-    private bool showPreview;
-    private IBrowserFile? csvFile;
-
-    private List<NavCsvPreviewRow> previewRows = new();
-    private NavSyncSummary previewSummary = new();
-
-    private sealed class NavCsvPreviewRow
-    {
-        public string FundCode { get; set; } = "";
-        public DateTime NavDate { get; set; }
-        public decimal NavValue { get; set; }
-    }
-
+    //CSV handlers (FULL)
     private void OpenImport()
     {
         csvFile = null;
@@ -424,14 +492,38 @@
     private void CloseImport()
     {
         showImportModal = false;
-        showPreview = false;
     }
 
     private async Task HandleCsvSelected(InputFileChangeEventArgs e)
     {
         csvFile = e.File;
-        previewRows.Clear();
 
+        previewRows.Clear();
+        showPreview = false;
+
+        // ✅ Validate extension
+        if (!csvFile.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            previewSummary = new NavSyncSummary
+            {
+                InvalidRows = 1
+            };
+            showPreview = true;
+            return;
+        }
+
+        // ✅ Validate content type (best effort)
+        if (csvFile.ContentType is not "text/csv" and not "application/vnd.ms-excel")
+        {
+            previewSummary = new NavSyncSummary
+            {
+                InvalidRows = 1
+            };
+            showPreview = true;
+            return;
+        }
+
+        // ✅ Safe to read CSV
         using var reader = new StreamReader(csvFile.OpenReadStream());
         string? line;
         bool skipHeader = true;
@@ -474,10 +566,88 @@
         if (csvFile == null)
             return;
 
-        await NavService.ImportNavFromCsvAsync(
-            csvFile.OpenReadStream());
+        previewSummary = await NavService
+            .ImportNavFromCsvAsync(csvFile.OpenReadStream());
 
-        CloseImport();
+        showImportModal = false;
         await Reload();
+    }
+    //Bulk Import logic
+    private void OpenBulkImport()
+    {
+        bulkText = string.Empty;
+        bulkError = null;
+        bulkSummary = null;
+        showBulkImportModal = true;
+    }
+
+    private void CloseBulkImport()
+    {
+        showBulkImportModal = false;
+    }
+
+    private async Task SubmitBulkImport()
+    {
+        bulkError = null;
+        bulkSummary = null;
+
+        if (!selectedFundId.HasValue)
+        {
+            bulkError = "No fund selected.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(bulkText))
+        {
+            bulkError = "Please paste NAV data.";
+            return;
+        }
+
+        var lines = bulkText
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        var navs = new List<(DateTime Date, decimal Nav)>();
+
+        foreach (var line in lines)
+        {
+            var parts = line.Trim().Split(',');
+
+            if (parts.Length != 2 ||
+                !DateTime.TryParse(parts[0], out var d) ||
+                !decimal.TryParse(parts[1], out var v) ||
+                v <= 0)
+            {
+                bulkError = $"Invalid line: {line}";
+                return;
+            }
+
+            navs.Add((d.Date, v));
+        }
+
+        bulkSummary = await NavService
+            .ImportNavForFundAsync(selectedFundId.Value, navs);
+
+        await Reload();
+    }
+    private sealed class NavEditModel
+    {
+        public int FundNavId { get; set; }
+        public int FundId { get; set; }
+        public DateTime NavDate { get; set; }
+        public decimal NavValue { get; set; }
+
+        public FundNav ToEntity() => new()
+        {
+            FundNavId = FundNavId,
+            FundId = FundId,
+            NavDate = NavDate,
+            NavValue = NavValue
+        };
+    }
+    private sealed class NavCsvPreviewRow
+    {
+        public string FundCode { get; set; } = "";
+        public DateTime NavDate { get; set; }
+        public decimal NavValue { get; set; }
     }
 }

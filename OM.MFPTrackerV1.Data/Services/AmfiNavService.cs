@@ -46,7 +46,7 @@ namespace OM.MFPTrackerV1.Data.Services
 		/// </summary>
 		Task<NavSyncSummary> ImportNavFromCsvAsync(Stream csvStream);
 
-
+		Task<NavSyncSummary> ImportNavForFundAsync(int fundId, IEnumerable<(DateTime Date, decimal Nav)> navs);
 	}
 
 
@@ -64,7 +64,6 @@ namespace OM.MFPTrackerV1.Data.Services
 			_db = db;
 			_logger = logger;
 		}
-
 		public async Task<NavSyncSummary> FetchAndStoreLatestNavWithSummaryAsync()
 		{
 			var client = _httpClientFactory.CreateClient("AmfiNavClient");
@@ -276,37 +275,38 @@ namespace OM.MFPTrackerV1.Data.Services
 			int fundNotFound = 0;
 			int invalidRows = 0;
 
-			// Load fund map once (normalize keys)
-			var fundByCode = await _db.Funds
+			// 1️⃣ Resolve fund codes → FundId
+			var fundMap = await _db.Funds
 				.AsNoTracking()
 				.ToDictionaryAsync(
-					f => (f.ISIN ?? f.SchemeCode)!.Trim().ToUpper(),
-					f => f.FundId
-				);
+					f => (f.ISIN ?? f.SchemeCode)!.Trim().ToUpperInvariant(),
+					f => f.FundId);
 
-			// Load existing NAV keys once (IMPORTANT)
-			var existingNavKeys = await _db.FundNavs
-				.Select(n => new { n.FundId, n.NavDate })
-				.ToListAsync();
+			// 2️⃣ Load existing NAV keys ONCE
+			var existingKeys = new HashSet<(int FundId, DateTime NavDate)>(
+				(await _db.FundNavs
+					.AsNoTracking()
+					.Select(n => new
+					{
+						n.FundId,
+						NavDate = n.NavDate
+					})
+					.ToListAsync())
+				.Select(x => (x.FundId, x.NavDate.Date))
+			);
 
-			var existingSet =
-				new HashSet<(int FundId, DateTime NavDate)>(
-					existingNavKeys
-						.Select(x => (x.FundId, x.NavDate.Date))
-				);
-
-			// Track duplicates within the same CSV
-			var batchSet = new HashSet<(int FundId, DateTime NavDate)>();
+			// 3️⃣ Track keys inserted in this batch
+			var batchKeys = new HashSet<(int FundId, DateTime NavDate)>();
 
 			using var reader = new StreamReader(csvStream);
+			bool header = true;
 			string? line;
-			bool skipHeader = true;
 
 			while ((line = await reader.ReadLineAsync()) != null)
 			{
-				if (skipHeader)
+				if (header)
 				{
-					skipHeader = false;
+					header = false;
 					continue;
 				}
 
@@ -320,27 +320,27 @@ namespace OM.MFPTrackerV1.Data.Services
 					continue;
 				}
 
-				var fundCode = parts[0].Trim().ToUpper();
+				var fundCode = parts[0].Trim().ToUpperInvariant();
 
-				if (!fundByCode.TryGetValue(fundCode, out int fundId))
+				if (!fundMap.TryGetValue(fundCode, out var fundId))
 				{
 					fundNotFound++;
 					continue;
 				}
 
 				if (!DateTime.TryParse(parts[1], out var navDate) ||
-					!decimal.TryParse(parts[2], out var navValue))
+					!decimal.TryParse(parts[2], out var navValue) ||
+					navValue <= 0)
 				{
 					invalidRows++;
 					continue;
 				}
 
-				navDate = navDate.Date; // ✅ normalize
-
+				navDate = navDate.Date;
 				var key = (fundId, navDate);
 
-				// ✅ Check DB + batch
-				if (existingSet.Contains(key) || batchSet.Contains(key))
+				// ✅ DB duplicate OR batch duplicate
+				if (existingKeys.Contains(key) || batchKeys.Contains(key))
 				{
 					skippedDuplicate++;
 					continue;
@@ -355,7 +355,7 @@ namespace OM.MFPTrackerV1.Data.Services
 					FetchedAt = DateTime.UtcNow
 				});
 
-				batchSet.Add(key);
+				batchKeys.Add(key);
 				inserted++;
 			}
 
@@ -368,6 +368,59 @@ namespace OM.MFPTrackerV1.Data.Services
 				SkippedAsDuplicate = skippedDuplicate,
 				FundNotFound = fundNotFound,
 				InvalidRows = invalidRows
+			};
+		}
+
+
+		// =====================================================
+		// BULK INGESTION
+		// =====================================================
+		public async Task<NavSyncSummary> ImportNavForFundAsync(int fundId, IEnumerable<(DateTime Date, decimal Nav)> navs)
+		{
+			int inserted = 0;
+			int skippedDuplicate = 0;
+			int invalid = 0;
+
+			foreach (var (date, nav) in navs)
+			{
+				if (nav <= 0)
+				{
+					invalid++;
+					continue;
+				}
+
+				var navDate = date.Date;
+
+				bool exists = await _db.FundNavs.AnyAsync(n =>
+					n.FundId == fundId &&
+					n.NavDate == navDate);
+
+				if (exists)
+				{
+					skippedDuplicate++;
+					continue;
+				}
+
+				_db.FundNavs.Add(new FundNav
+				{
+					FundId = fundId,
+					NavDate = navDate,
+					NavValue = nav,
+					Source = "BULK",
+					FetchedAt = DateTime.UtcNow
+				});
+
+				inserted++;
+			}
+
+			if (inserted > 0)
+				await _db.SaveChangesAsync();
+
+			return new NavSyncSummary
+			{
+				Inserted = inserted,
+				SkippedAsDuplicate = skippedDuplicate,
+				InvalidRows = invalid
 			};
 		}
 

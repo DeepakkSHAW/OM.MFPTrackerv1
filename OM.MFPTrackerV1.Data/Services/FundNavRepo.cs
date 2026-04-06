@@ -18,6 +18,7 @@ namespace OM.MFPTrackerV1.Data.Services
 			int pageSize);
 
 		Task<FundNav?> GetByIdAsync(int id);
+		Task<bool> ExistsAsync(int fundId, DateTime navDate, int? excludeId = null);
 
 		Task AddAsync(FundNav nav);
 		Task UpdateAsync(FundNav nav);
@@ -118,7 +119,17 @@ public sealed class FundNavRepo : IFundNavRepo
 				.Include(n => n.Fund)
 				.FirstOrDefaultAsync(n => n.FundNavId == id);
 		}
+		public async Task<bool> ExistsAsync(int fundId, DateTime navDate, int? excludeId = null)
+		{
+			var q = _db.FundNavs
+				.Where(n => n.FundId == fundId &&
+							n.NavDate == navDate.Date);
 
+			if (excludeId.HasValue)
+				q = q.Where(n => n.FundNavId != excludeId.Value);
+
+			return await q.AnyAsync();
+		}
 		public async Task AddAsync(FundNav nav)
 		{
 			nav.FetchedAt = DateTime.UtcNow;
