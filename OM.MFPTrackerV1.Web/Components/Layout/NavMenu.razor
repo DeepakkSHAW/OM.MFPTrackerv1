@@ -54,6 +54,22 @@
             }
         </div>
 
+        <!-- Import Group -->
+        <div class="nav-item px-3">
+            <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
+                    @onclick="ToggleImports">
+                <span><span class="oi oi-people"></span>Imports</span>
+                <span class="chevron @(isImportOpen ? "rotate" : "")">▾</span>
+            </button>
+            @if (isImportOpen)
+            {
+                <div class="ps-3">
+                    <NavLink class="nav-link" href="#">Import NAV</NavLink>
+                    <NavLink class="nav-link" href="/imports/folio-transactions">Translocations</NavLink>
+                    <NavLink class="nav-link" href="#">Special Events</NavLink>
+                </div>
+            }
+        </div>
         <!-- NAVs Group -->
         <div class="nav-item px-3">
             <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
@@ -78,6 +94,7 @@
     private bool isPeopleOpen;
     private bool isFundsOpen;
     private bool isNavsOpen;
+    private bool isImportOpen;
 
     protected override void OnInitialized()
     {
@@ -86,10 +103,12 @@
         if (uri.StartsWith("people", StringComparison.OrdinalIgnoreCase)) isPeopleOpen = true;
         if (uri.StartsWith("funds") || uri.StartsWith("categories", StringComparison.OrdinalIgnoreCase)) isFundsOpen = true;
         if (uri.StartsWith("navs", StringComparison.OrdinalIgnoreCase)) isNavsOpen = true;
+        if (uri.StartsWith("Imports", StringComparison.OrdinalIgnoreCase)) isNavsOpen = true;
     }
 
     private void TogglePeople() => isPeopleOpen = !isPeopleOpen;
     private void ToggleFunds() => isFundsOpen = !isFundsOpen;
     private void ToggleNavs() => isNavsOpen = !isNavsOpen;
+    private void ToggleImports() => isImportOpen = !isImportOpen;
 }
 

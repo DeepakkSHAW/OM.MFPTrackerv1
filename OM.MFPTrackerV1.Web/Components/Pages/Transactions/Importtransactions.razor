@@ -1,0 +1,355 @@
+﻿@page "/imports/folio-transactions"
+
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@using System.Globalization
+
+@inject IAMCRepo AmcRepo
+@inject IFolioRepo FolioRepo
+@inject IMFFundRepo FundRepo
+@inject IMutualFundTransactionRepo TransactionRepo
+
+<h3 class="mb-3">Import Folio Transactions</h3>
+
+<!-- ================== HEADER SELECTION ================== -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <label class="form-label fw-bold">AMC</label>
+        <select class="form-select"
+                @bind="selectedAmcId"
+                @bind:after="Reset">
+            <option value="">-- Select AMC --</option>
+            @foreach (var a in amcs)
+            {
+                <option value="@a.AMCId">@a.AMCName</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold">Transaction Type</label>
+        <select class="form-select"
+                @bind="selectedTransactionType"
+                @bind:after="Reset">
+            <option value="">-- Select Transaction Type --</option>
+            @foreach (var t in Enum.GetValues<TransactionType>())
+            {
+                <option value="@t">@t</option>
+            }
+        </select>
+    </div>
+</div>
+
+<!-- ================== CSV UPLOAD ================== -->
+<div class="card">
+    <div class="card-body">
+
+        <p class="text-muted small">
+            CSV format:
+            <br />
+            <code>FolioNumber,FundCode,TransactionDate,Units,NAV</code>
+            <br />
+            Single transaction type per file. NAV is mandatory. Amount is derived.
+        </p>
+
+        <InputFile accept=".csv,text/csv"
+                   OnChange="HandleCsvSelected"
+                   disabled="@(!CanUpload)" />
+
+        @if (!string.IsNullOrWhiteSpace(uploadError))
+        {
+            <div class="alert alert-danger mt-3">@uploadError</div>
+        }
+
+        @if (showPreview)
+        {
+            <hr />
+
+            <h6>Preview (first @previewRows.Count rows)</h6>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Folio</th>
+                            <th>Fund</th>
+                            <th>Date</th>
+                            <th class="text-end">Units</th>
+                            <th class="text-end">NAV</th>
+                            <th class="text-end">Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in previewRows)
+                        {
+                            <tr>
+                                <td>@r.FolioNumber</td>
+                                <td>@r.FundCode</td>
+                                <td>@r.TransactionDate.ToString("dd-MMM-yyyy")</td>
+                                <td class="text-end">@r.Units</td>
+                                <td class="text-end">@r.Nav</td>
+                                <td class="text-end">@r.Amount</td>
+                                <td>
+                                    <span class="badge @StatusClass(r.Status)">
+                                        @r.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-info mt-3">
+                <strong>Preview Summary</strong><br />
+                @previewSummary
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-primary"
+                        disabled="@(importCompleted || !CanConfirmImport)"
+                        @onclick="ConfirmImport">
+                    <i class="bi bi-check-circle me-1"></i>
+                    Confirm Import
+                </button>
+
+                <button class="btn btn-outline-secondary"
+                        @onclick="Reset">
+                    <i class="bi bi-x-circle me-1"></i>
+                    Close
+                </button>
+            </div>
+
+            @if (importSummary != null)
+            {
+                <div class="alert alert-success mt-3">
+                    <strong>Import Result</strong><br />
+                    @importSummary
+                </div>
+            }
+        }
+
+    </div>
+</div>
+
+@code {
+
+    /* ===================== STATE ===================== */
+
+    private List<AMC> amcs = new();
+    private int? selectedAmcId;
+    private TransactionType? selectedTransactionType;
+
+    private IBrowserFile? csvFile;
+    private string? uploadError;
+    private bool showPreview;
+
+    // ✅ REQUIRED STATE
+    private List<FolioTransactionPreviewRow> previewRows = new();
+
+    private TransactionImportSummary previewSummary = new();
+    private TransactionImportSummary? importSummary;
+
+    private bool importCompleted;
+
+    /* ===================== INIT ===================== */
+
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     amcs = await AmcRepo.GetAllAsync();
+    // }
+    protected override async Task OnInitializedAsync()
+    {
+        var (items, _) = await AmcRepo.GetAsync(
+            nameContains: null,
+            skip: 0,
+            take: int.MaxValue,
+            sortBy: "AMCName",
+            desc: false);
+
+        amcs = items.ToList();
+    }
+    private bool CanUpload =>
+        selectedAmcId.HasValue && selectedTransactionType.HasValue;
+
+    private bool CanConfirmImport =>
+        previewRows.Any(r => r.Status == PreviewRowStatus.Valid);
+
+    /* ===================== CSV PREVIEW ===================== */
+
+    private async Task HandleCsvSelected(InputFileChangeEventArgs e)
+    {
+        Reset();
+        csvFile = e.File;
+
+        if (!csvFile.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            uploadError = "Please upload a CSV file.";
+            return;
+        }
+
+        // Load reference data ONCE
+        var allFolios = (await FolioRepo.GetAsync(
+            null, null, false, 1, int.MaxValue)).Items
+            .Where(f => f.AMCId == selectedAmcId!.Value)
+            .ToDictionary(f => f.FolioNumber, StringComparer.OrdinalIgnoreCase);
+
+        var allFunds = (await FundRepo.GetAsync(
+            null, null, false, 1, int.MaxValue)).Items
+            .Where(f => f.AMCId == selectedAmcId.Value)
+            .ToDictionary(
+                f => f.ISIN ?? f.SchemeCode!,
+                StringComparer.OrdinalIgnoreCase);
+
+        var seenKeys = new HashSet<(string Folio, int FundId, DateTime Date, decimal Units)>();
+
+        int valid = 0, duplicate = 0, invalid = 0;
+
+        using var reader = new StreamReader(csvFile.OpenReadStream());
+        bool header = true;
+        string? line;
+
+        while ((line = await reader.ReadLineAsync()) != null &&
+               previewRows.Count < 50)
+        {
+            if (header)
+            {
+                header = false;
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                invalid++;
+                continue;
+            }
+
+            var parts = line.Split(',');
+            if (parts.Length != 5)
+            {
+                invalid++;
+                continue;
+            }
+
+            string folioNo = parts[0].Trim();
+            string fundCode = parts[1].Trim();
+
+            bool dateOk = DateTime.TryParse(parts[2], out var dateTmp);
+            bool unitsOk = decimal.TryParse(parts[3], NumberStyles.Any, CultureInfo.InvariantCulture, out var unitsTmp);
+            bool navOk = decimal.TryParse(parts[4], NumberStyles.Any, CultureInfo.InvariantCulture, out var navTmp);
+
+            if (!dateOk || !unitsOk || !navOk || unitsTmp == 0 || navTmp <= 0)
+            {
+                previewRows.Add(NewInvalidRow(folioNo, fundCode, dateOk ? dateTmp : DateTime.MinValue, unitsTmp, navTmp));
+                invalid++;
+                continue;
+            }
+
+            if (!allFolios.TryGetValue(folioNo, out var folio) ||
+                !allFunds.TryGetValue(fundCode, out var fund) ||
+                folio.AMCId != fund.AMCId)
+            {
+                previewRows.Add(NewInvalidRow(folioNo, fundCode, dateTmp, unitsTmp, navTmp));
+                invalid++;
+                continue;
+            }
+
+            var key = (folioNo, fund.FundId, dateTmp.Date, unitsTmp);
+
+            if (seenKeys.Contains(key))
+            {
+                previewRows.Add(NewDuplicateRow(folioNo, fundCode, dateTmp, unitsTmp, navTmp));
+                duplicate++;
+                continue;
+            }
+
+            seenKeys.Add(key);
+
+            previewRows.Add(new FolioTransactionPreviewRow
+            {
+                FolioNumber = folioNo,
+                FundCode = fundCode,
+                TransactionDate = dateTmp.Date,
+                Units = unitsTmp,
+                Nav = navTmp,
+                Amount = Math.Round(unitsTmp * navTmp, 2),
+                Status = PreviewRowStatus.Valid
+            });
+
+            valid++;
+        }
+
+        previewSummary = new TransactionImportSummary
+        {
+            Inserted = valid,
+            SkippedAsDuplicate = duplicate,
+            InvalidRows = invalid
+        };
+
+        showPreview = true;
+    }
+
+    /* ===================== CONFIRM IMPORT ===================== */
+
+    private async Task ConfirmImport()
+    {
+        if (!CanConfirmImport)
+            return;
+
+        importCompleted = false;
+
+        importSummary = await TransactionRepo.ImportFolioTransactionsAsync(
+            selectedAmcId!.Value,
+            selectedTransactionType!.Value,
+            previewRows);
+
+        importCompleted = true;
+    }
+
+    /* ===================== HELPERS ===================== */
+
+    private void Reset()
+    {
+        csvFile = null;
+        previewRows.Clear();
+        previewSummary = new TransactionImportSummary();
+        importSummary = null;
+        uploadError = null;
+        showPreview = false;
+        importCompleted = false;
+    }
+
+    private static string StatusClass(PreviewRowStatus s) => s switch
+    {
+        PreviewRowStatus.Valid => "bg-success",
+        PreviewRowStatus.Duplicate => "bg-warning text-dark",
+        _ => "bg-danger"
+    };
+
+    private static FolioTransactionPreviewRow NewInvalidRow(
+        string folio, string fund, DateTime d, decimal u, decimal n) =>
+        new()
+        {
+            FolioNumber = folio,
+            FundCode = fund,
+            TransactionDate = d,
+            Units = u,
+            Nav = n,
+            Amount = Math.Round(u * n, 2),
+            Status = PreviewRowStatus.Invalid
+        };
+
+    private static FolioTransactionPreviewRow NewDuplicateRow(
+        string folio, string fund, DateTime d, decimal u, decimal n) =>
+        new()
+        {
+            FolioNumber = folio,
+            FundCode = fund,
+            TransactionDate = d,
+            Units = u,
+            Nav = n,
+            Amount = Math.Round(u * n, 2),
+            Status = PreviewRowStatus.Duplicate
+        };
+}

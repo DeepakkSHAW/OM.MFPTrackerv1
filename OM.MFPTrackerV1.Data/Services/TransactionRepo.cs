@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OM.MFPTrackerV1.Data;
 using OM.MFPTrackerV1.Data.Models;
+using System.Linq;
 
 namespace OM.MFPTrackerV1.Data.Services
 {
@@ -23,6 +24,11 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task DeleteAsync(int transactionId);
 
 		Task<int> CountAsync(int? folioId = null);
+		Task<TransactionImportSummary> ImportFolioTransactionsAsync(
+			int amcId,
+			TransactionType transactionType,
+			IEnumerable<FolioTransactionPreviewRow> rows);
+
 	}
 	public sealed class MutualFundTransactionRepo : IMutualFundTransactionRepo
 	{
@@ -251,6 +257,98 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			if (txn.NAV < 0)
 				throw new InvalidOperationException("NAV cannot be negative.");
+		}
+
+		public async Task<TransactionImportSummary> ImportFolioTransactionsAsync(int amcId, TransactionType transactionType, IEnumerable<FolioTransactionPreviewRow> rows)
+		{
+			int inserted = 0;
+			int skippedDuplicate = 0;
+			int invalid = 0;
+
+			// Load DB reference data ONCE
+			var folios = await _db.Folios
+				.Where(f => f.AMCId == amcId)
+				.ToDictionaryAsync(f => f.FolioNumber);
+
+			var funds = await _db.Funds
+				.Where(f => f.AMCId == amcId)
+				.ToDictionaryAsync(f => f.ISIN ?? f.SchemeCode!);
+
+			// Load existing transaction keys for duplicate protection
+			var existingKeys = new HashSet<(string Folio, int FundId, DateTime Date, TransactionType Type, decimal Units)>(
+				await _db.MutualFundTransactions
+					.Where(t => t.Folio.AMCId == amcId)
+					.Select(t => new
+					{
+						t.Folio.FolioNumber,
+						t.FundId,
+						t.TransactionDate,
+						t.TxnType,
+						t.Units
+					})
+					.AsNoTracking()
+					.ToListAsync()
+					.ContinueWith(t => t.Result.Select(x =>
+						(x.FolioNumber, x.FundId, x.TransactionDate, x.TxnType, x.Units)))
+			);
+
+			foreach (var r in rows.Where(r => r.Status == PreviewRowStatus.Valid))
+			{
+				// Defensive lookup
+				if (!folios.TryGetValue(r.FolioNumber, out var folio) ||
+					!funds.TryGetValue(r.FundCode, out var fund))
+				{
+					invalid++;
+					continue;
+				}
+
+				// Final AMC safety check
+				if (folio.AMCId != fund.AMCId)
+				{
+					invalid++;
+					continue;
+				}
+
+				var key = (
+					r.FolioNumber,
+					fund.FundId,
+					r.TransactionDate.Date,
+					transactionType,
+					r.Units
+				);
+
+				if (existingKeys.Contains(key))
+				{
+					skippedDuplicate++;
+					continue;
+				}
+
+				_db.MutualFundTransactions.Add(new MutualFundTransaction
+				{
+					FolioId = folio.FolioId,
+					FundId = fund.FundId,
+					TransactionDate = r.TransactionDate.Date,
+					TxnType = transactionType,
+					Units = r.Units,
+					NAV = r.Nav,
+					AmountPaid = r.Amount,
+					Source = "CSV",
+					InDate = DateTime.UtcNow
+				});
+
+				existingKeys.Add(key);
+				inserted++;
+			}
+
+			if (inserted > 0)
+				await _db.SaveChangesAsync();
+
+			return new TransactionImportSummary
+			{
+				Inserted = inserted,
+				SkippedAsDuplicate = skippedDuplicate,
+				InvalidRows = invalid
+			};
 		}
 	}
 }

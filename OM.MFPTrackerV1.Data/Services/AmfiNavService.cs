@@ -5,25 +5,6 @@ using System.Globalization;
 
 namespace OM.MFPTrackerV1.Data.Services
 {
-	public sealed class NavSyncSummary
-	{
-		public int Inserted { get; init; }
-		public int SkippedAsDuplicate { get; init; }
-		public int FundNotFound { get; init; }
-		public int InvalidRows { get; init; }
-
-		public int TotalProcessed =>
-			Inserted + SkippedAsDuplicate + FundNotFound + InvalidRows;
-
-		public override string ToString()
-		{
-			return $"{Inserted} inserted, " +
-				   $"{SkippedAsDuplicate} skipped (duplicate), " +
-				   $"{FundNotFound} skipped (fund not found), " +
-				   $"{InvalidRows} skipped (invalid rows)";
-		}
-	}
-
 	public interface IAmfiNavService
 	{
 		/// <summary>
@@ -48,9 +29,6 @@ namespace OM.MFPTrackerV1.Data.Services
 
 		Task<NavSyncSummary> ImportNavForFundAsync(int fundId, IEnumerable<(DateTime Date, decimal Nav)> navs);
 	}
-
-
-
 
 	public sealed class AmfiNavService : IAmfiNavService
 	{
