@@ -7,21 +7,35 @@
 @inject IMutualFundTransactionRepo TxnRepo
 @inject IFolioRepo FolioRepo
 @inject IMFFundRepo FundRepo
+@inject IAMCRepo AmcRepo
 @inject NavigationManager Nav
 
 <h4 class="mt-2 mb-3">Folio Transactions</h4>
 
 <!-- ================= Toolbar ================= -->
 <div class="row g-2 align-items-end mb-3">
-
+    <div class="col-md-4">
+        <label class="form-label small fw-bold">AMC</label>
+        <InputSelect TValue="int?"
+                     class="form-select"
+                     @bind-Value="selectedAmcId"
+                     @bind-Value:after="AmcChanged">
+            <option value="">-- Select AMC --</option>
+            @foreach (var a in allAmcs)
+            {
+                <option value="@a.AMCId">@a.AMCName</option>
+            }
+        </InputSelect>
+    </div>
     <div class="col-md-4">
         <label class="form-label small fw-bold">Folio</label>
         <InputSelect TValue="int?"
                      class="form-select"
+                     disabled="@(!selectedAmcId.HasValue)"
                      @bind-Value="selectedFolioId"
                      @bind-Value:after="FolioChanged">
             <option value="">-- Select Folio --</option>
-            @foreach (var f in folios)
+            @foreach (var f in filteredFolios)
             {
                 <option value="@f.FolioId">
                     @f.FolioNumber - @($"{f.Holder.FirstName} {f.Holder.LastName}")
@@ -29,20 +43,19 @@
             }
         </InputSelect>
     </div>
-
     <div class="col-md-4">
         <label class="form-label small fw-bold">Filter Fund</label>
         <select class="form-select"
+                disabled="@(!selectedAmcId.HasValue)"
                 @bind="selectedFundId"
                 @bind:after="Reload">
             <option value="">All Funds</option>
-            @foreach (var f in funds)
+            @foreach (var f in filteredFunds)
             {
                 <option value="@f.FundId">@f.FundName</option>
             }
         </select>
     </div>
-
     <div class="col text-end">
         <label class="form-label small fw-bold d-block">&nbsp;</label>
         <button class="btn btn-primary"
@@ -190,7 +203,7 @@
                                              @bind-Value="editModel.FundId"
                                              @bind-Value:after="UpdateAvailableUnits">
                                     <option value="">-- Select Fund --</option>
-                                    @foreach (var f in funds)
+                                    @foreach (var f in filteredFunds)
                                     {
                                         <option value="@f.FundId">@f.FundName</option>
                                     }
@@ -249,7 +262,8 @@
 
                         @if (!string.IsNullOrWhiteSpace(serverError))
                         {
-                            <div class="alert alert-danger mt-2">
+                            <div class="alert alert-danger mb-3">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
                                 @serverError
                             </div>
                         }
@@ -275,10 +289,18 @@
 
     [Parameter] public int? FolioId { get; set; }
 
-    private List<Folio> folios = new();
-    private List<Fund> funds = new();
-    private List<MutualFundTransaction> items = new();
+    // Master data caches
+    private List<AMC> allAmcs = new();
+    private List<Folio> allFolios = new();
+    private List<Fund> allFunds = new();
 
+    // Filtered dropdown data
+    private List<Folio> filteredFolios = new();
+    private List<Fund> filteredFunds = new();
+    private List<MutualFundTransaction> items = new();
+  
+    // Selected values
+    private int? selectedAmcId;
     private int? selectedFolioId;
     private int? selectedFundId;
 
@@ -303,15 +325,42 @@
 
     protected override async Task OnInitializedAsync()
     {
-        folios = (await FolioRepo.GetAsync(null, null, false, 1, 500)).Items.ToList();
-        funds = (await FundRepo.GetAsync(null, null, false, 1, 500)).Items.ToList();
+        try
+        {
+            // Load all reference data in parallel
+            var amcTask = AmcRepo.GetAsync(null, 0, int.MaxValue);
+            var folioTask = FolioRepo.GetAsync(null, null, false, 1, int.MaxValue);
+            var fundTask = FundRepo.GetAsync(null, null, false, 1, int.MaxValue);
 
-        if (FolioId.HasValue)
-            selectedFolioId = FolioId.Value;
+            await Task.WhenAll(amcTask, folioTask, fundTask);
 
-        await Reload();
+            allAmcs = amcTask.Result.Items.ToList();
+            allFolios = folioTask.Result.Items.ToList();
+            allFunds = fundTask.Result.Items.ToList();
+
+            /*
+               Optional deep-link handling:
+               If you come to this page with a FolioId,
+               infer AMC from it and auto-select.
+            */
+            if (FolioId.HasValue)
+            {
+                var folio = allFolios.FirstOrDefault(f => f.FolioId == FolioId.Value);
+                if (folio != null)
+                {
+                    selectedAmcId = folio.AMCId;
+                    ApplyAmcFilter();
+
+                    selectedFolioId = folio.FolioId;
+                    ApplyFolioFilter();
+                }
+            }
+        }
+        catch
+        {
+            serverError = "Failed to load reference data. Please try again.";
+        }
     }
-
     private async Task Reload()
     {
         if (!selectedFolioId.HasValue)
@@ -332,8 +381,50 @@
         items = r.Items.ToList();
         totalCount = r.TotalCount;
     }
+    private void ApplyAmcFilter()
+    {
+        filteredFolios = allFolios
+            .Where(f => f.AMCId == selectedAmcId)
+            .OrderBy(f => f.FolioNumber)
+            .ToList();
 
+        filteredFunds = allFunds
+            .Where(f => f.AMCId == selectedAmcId)
+            .OrderBy(f => f.FundName)
+            .ToList();
 
+        selectedFolioId = null;
+        selectedFundId = null;
+    }
+    private void AmcChanged()
+    {
+        selectedFolioId = null;
+        selectedFundId = null;
+
+        filteredFolios = allFolios
+            .Where(f => f.AMCId == selectedAmcId)
+            .OrderBy(f => f.FolioNumber)
+            .ToList();
+
+        filteredFunds = allFunds
+            .Where(f => f.AMCId == selectedAmcId)
+            .OrderBy(f => f.FundName)
+            .ToList();
+
+        Reload();
+    }
+    private void ApplyFolioFilter()
+    {
+        // Optional: only narrow funds further if you have transaction history
+        // Otherwise, do nothing and allow all AMC funds
+    }
+    private async Task OnFilterChanged()
+    {
+        if (selectedAmcId.HasValue)
+        {
+            await Reload();
+        }
+    }
     private readonly Dictionary<string, object> DisabledAttr = new() { { "disabled", "disabled" } };
 
     private async Task FolioChanged()
@@ -342,7 +433,7 @@
 
         if (selectedFolioId.HasValue)
         {
-            await Reload();  // ✅ THIS WAS MISSING
+            await Reload();  
             Nav.NavigateTo($"/folio-transactions/{selectedFolioId.Value}", replace: true);
         }
         else
