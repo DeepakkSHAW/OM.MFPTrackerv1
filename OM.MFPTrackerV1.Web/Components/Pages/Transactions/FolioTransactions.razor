@@ -38,7 +38,11 @@
             @foreach (var f in filteredFolios)
             {
                 <option value="@f.FolioId">
-                    @f.FolioNumber - @($"{f.Holder.FirstName} {f.Holder.LastName}")
+                    @f.FolioNumber - @($"{f.Holder.FirstName} {f.Holder.LastName} [{f.AttachedBank}]")
+@*                     <div>
+                        <div>@f.FolioNumber – @($"{f.Holder.FirstName} {f.Holder.LastName}")</div>
+                        <div class="text-muted small">@f.AttachedBank</div>
+                    </div> *@
                 </option>
             }
         </InputSelect>

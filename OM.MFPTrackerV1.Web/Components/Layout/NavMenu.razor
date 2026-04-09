@@ -6,7 +6,7 @@
         <!-- Home -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill"></span> Home
+                <span class="bi bi-house-door-fill"></span>Home
             </NavLink>
         </div>
 
@@ -21,12 +21,10 @@
             {
                 <div class="ps-3">
                     <NavLink class="nav-link" href="/folio-holders">Folio Holders</NavLink>
-                    <NavLink class="nav-link" href="/folio-owners">Folio Owner</NavLink>
+                    <NavLink class="nav-link" href="/folio-owners">Folio Owner (D)</NavLink>
                     <NavLink class="nav-link" href="/mf-categories">Fund Category</NavLink>
                     <NavLink class="nav-link" href="/amcs">AMC</NavLink>
-                    <NavLink class="nav-link" href="/mf-funds">Funds</NavLink>
-                    <NavLink class="nav-link" href="/mf-folios">Folio</NavLink>
-                    <NavLink class="nav-link" href="/folio-transactions">Transactions</NavLink>
+                    <NavLink class="nav-link" href="/admin/special-events">Special Events</NavLink>
                 </div>
             }
         </div>
@@ -41,15 +39,9 @@
             @if (isFundsOpen)
             {
                 <div class="ps-3">
-                    <NavLink class="nav-link" href="operational-status">operational status</NavLink>
-                    <NavLink class="nav-link" href="amclanding">AMC</NavLink>
-                    <NavLink class="nav-link" href="categories">Categories</NavLink>
-                    <NavLink class="nav-link" href="funds">Funds</NavLink>
-                    <NavLink class="nav-link" href="folios">Folios</NavLink>
-                    <NavLink class="nav-link" href="/buy-list/2">Buy</NavLink>
-                    <NavLink class="nav-link" href="mf-transactions">Buy MF</NavLink>
-                    <NavLink class="nav-link" href="/transactions">Transactions</NavLink>
-
+                    <NavLink class="nav-link" href="/mf-funds">Funds</NavLink>
+                    <NavLink class="nav-link" href="/mf-folios">Folio</NavLink>
+                    <NavLink class="nav-link" href="/folio-transactions">Transactions</NavLink>
                 </div>
             }
         </div>
@@ -58,15 +50,15 @@
         <div class="nav-item px-3">
             <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
                     @onclick="ToggleImports">
-                <span><span class="oi oi-people"></span>Imports</span>
+                <span><span class="oi oi-people"></span>Imports & Export</span>
                 <span class="chevron @(isImportOpen ? "rotate" : "")">▾</span>
             </button>
             @if (isImportOpen)
             {
                 <div class="ps-3">
-                    <NavLink class="nav-link" href="#">Import NAV</NavLink>
+                    <NavLink class="nav-link" href="/admin/nav-sync">Nav Import</NavLink>
                     <NavLink class="nav-link" href="/imports/folio-transactions">Translocations</NavLink>
-                    <NavLink class="nav-link" href="#">Special Events</NavLink>
+
                 </div>
             }
         </div>
@@ -81,8 +73,7 @@
             {
                 <div class="ps-3">
                     <NavLink class="nav-link" href="/admin/nav">NAV Mgmt</NavLink>
-                    <NavLink class="nav-link" href="/admin/nav-sync">Nav Import</NavLink>
-                    <NavLink class="nav-link" href="/admin/special-events">Special Events</NavLink>
+                    <NavLink class="nav-link" href="#">DK</NavLink>
                 </div>
             }
         </div>

@@ -42,65 +42,82 @@
     </div>
 </div>
 
-<!-- Table -->
-<table class="table table-sm table-striped align-middle">
-    <thead class="table-head-sm-bold">
-        <tr>
-            <th aria-sort="@AriaSort("CategoryName")">
-                <div class="th-sort d-flex align-items-center"
-                     role="button"
-                     title="Sort by Category"
-                     @onclick='() => Sort("CategoryName")'>
-                    <span class="th-title">Category</span>
-                    <span class="th-caret">@((MarkupString)SortGlyph("CategoryName").Value)</span>
-                </div>
-            </th>
-            <th style="width:120px;">Funds</th>
-            <th style="width:160px;"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (_items is null)
-        {
-            <tr><td colspan="3">Loading...</td></tr>
-        }
-        else if (_items.Count == 0)
-        {
-            <tr><td colspan="3">No data</td></tr>
-        }
-        else
-        {
-            @foreach (var x in _items)
+<!-- ===================== Table ===================== -->
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th role="button"
+                    aria-sort="@AriaSort("CategoryName")"
+                    title="Sort by Category"
+                    @onclick='() => Sort("CategoryName")'>
+                    Category @((MarkupString)SortGlyph("CategoryName").Value)
+                </th>
+
+                <th style="width:120px;">
+                    Funds
+                </th>
+
+                <th style="width:160px;"></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (_items is null)
             {
-                var count = _fundCounts.TryGetValue(x.MFCatId, out var c) ? c : 0;
-
                 <tr>
-                    <td>@x.CategoryName</td>
-                    <td>@count</td>
-                    <td class="text-end">
-                        <button class="btn btn-outline-secondary btn-sm me-1" @onclick="() => OpenEdit(x)">Edit</button>
-
-                        @* Optional: disable Delete when funds exist *@
-                        @if (count > 0)
-                        {
-                            <button class="btn btn-outline-danger btn-sm" disabled title="Cannot delete: category has linked funds">
-                                Delete
-                            </button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-outline-danger btn-sm"
-                                    @onclick='() => ConfirmDelete(x.MFCatId, x.CategoryName)'>
-                                Delete
-                            </button>
-                        }
+                    <td colspan="3" class="text-center text-muted">
+                        Loading...
                     </td>
                 </tr>
             }
-        }
-    </tbody>
-</table>
+            else if (_items.Count == 0)
+            {
+                <tr>
+                    <td colspan="3" class="text-center text-muted">
+                        No records found.
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var x in _items)
+                {
+                    var count = _fundCounts.TryGetValue(x.MFCatId, out var c) ? c : 0;
 
+                    <tr>
+                        <td>@x.CategoryName</td>
+
+                        <td>@count</td>
+
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary me-2"
+                                    @onclick="() => OpenEdit(x)">
+                                Edit
+                            </button>
+
+                            @if (count > 0)
+                            {
+                                <button class="btn btn-sm btn-outline-danger"
+                                        disabled
+                                        title="Cannot delete: category has linked funds">
+                                    Delete
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick='() => ConfirmDelete(x.MFCatId, x.CategoryName)'>
+                                    Delete
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
 <!-- Pagination -->
 <div class="d-flex align-items-center justify-content-between">
     <div>Showing @FromRow–@ToRow of @totalCount</div>
@@ -183,37 +200,6 @@
 
     <div class="modal-backdrop fade show"></div>
 }
-
-<style>
-    /* small & bold headers + tidy caret, consistent with AMC page */
-    .table-head-sm-bold th {
-        font-weight: 600;
-        font-size: .85rem;
-        white-space: nowrap;
-        vertical-align: middle;
-    }
-
-    th .th-sort {
-        user-select: none;
-        cursor: pointer;
-        gap: .35rem;
-        padding-right: .25rem;
-        color: inherit;
-    }
-
-        th .th-sort:hover .th-title {
-            color: #0d6efd;
-            text-decoration: none;
-        }
-
-    th .th-caret {
-        display: inline-flex;
-        width: .9rem;
-        justify-content: center;
-        align-items: center;
-        color: #6c757d;
-    }
-</style>
 
 @code {
     private List<MFCategory>? _items;

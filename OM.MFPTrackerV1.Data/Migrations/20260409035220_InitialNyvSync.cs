@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialNyvSync : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -73,6 +73,20 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 {
                     table.PrimaryKey("PK_TMFCategory", x => x.MFCatId);
                     table.CheckConstraint("CK_MFCat_Name_Len", "length(CategoryName) BETWEEN 3 AND 50");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TSystemState",
+                columns: table => new
+                {
+                    Key = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false, collation: "NOCASE"),
+                    Value = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true, collation: "NOCASE"),
+                    InDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdateDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TSystemState", x => x.Key);
                 });
 
             migrationBuilder.CreateTable(
@@ -147,6 +161,31 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TFundNav",
+                columns: table => new
+                {
+                    FundNavId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    FundId = table.Column<int>(type: "INTEGER", nullable: false),
+                    NavDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    NavValue = table.Column<decimal>(type: "TEXT", precision: 18, scale: 4, nullable: false),
+                    Source = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, collation: "NOCASE"),
+                    FetchedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    InDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TFundNav", x => x.FundNavId);
+                    table.CheckConstraint("CK_FundNav_NavValue_Positive", "NavValue > 0.0");
+                    table.ForeignKey(
+                        name: "FK_TFundNav_TFund_FundId",
+                        column: x => x.FundId,
+                        principalTable: "TFund",
+                        principalColumn: "FundId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "TMutualFundTransaction",
                 columns: table => new
                 {
@@ -179,6 +218,31 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_TMutualFundTransaction_TFund_FundId",
+                        column: x => x.FundId,
+                        principalTable: "TFund",
+                        principalColumn: "FundId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TSpecialEvent",
+                columns: table => new
+                {
+                    SpecialEventId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Title = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false, collation: "NOCASE"),
+                    Description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true, collation: "NOCASE"),
+                    EventDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    FundId = table.Column<int>(type: "INTEGER", nullable: true),
+                    EventType = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false, collation: "NOCASE"),
+                    Severity = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Info", collation: "NOCASE"),
+                    InDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TSpecialEvent", x => x.SpecialEventId);
+                    table.ForeignKey(
+                        name: "FK_TSpecialEvent_TFund_FundId",
                         column: x => x.FundId,
                         principalTable: "TFund",
                         principalColumn: "FundId",
@@ -256,6 +320,28 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 });
 
             migrationBuilder.InsertData(
+                table: "TSpecialEvent",
+                columns: new[] { "SpecialEventId", "Description", "EventDate", "EventType", "FundId", "InDate", "Severity", "Title" },
+                values: new object[,]
+                {
+                    { 1, "Global equity markets corrected sharply due to COVID-19 pandemic fears.", new DateTime(2020, 3, 23, 0, 0, 0, 0, DateTimeKind.Unspecified), "Market", null, new DateTime(2020, 3, 23, 0, 0, 0, 0, DateTimeKind.Unspecified), "Critical", "COVID-19 Market Crash" },
+                    { 2, "Government reintroduced 10% LTCG tax on equity gains exceeding ₹1L.", new DateTime(2018, 2, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Regulatory", null, new DateTime(2018, 2, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Warning", "Reintroduction of LTCG Tax on Equity" },
+                    { 3, "RBI increased repo rate to curb inflation, impacting debt fund NAVs.", new DateTime(2022, 5, 4, 0, 0, 0, 0, DateTimeKind.Unspecified), "Macro", null, new DateTime(2022, 5, 4, 0, 0, 0, 0, DateTimeKind.Unspecified), "Info", "RBI Begins Rate Hike Cycle" },
+                    { 4, "Annual Union Budget presented with implications for equity and debt markets.", new DateTime(2023, 2, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Market", null, new DateTime(2023, 2, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Info", "Union Budget Announcement" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "TSystemState",
+                columns: new[] { "Key", "Value" },
+                values: new object[,]
+                {
+                    { "AppName", "MFT" },
+                    { "AppVersion", "1.0.0" },
+                    { "LastNavFetch", null },
+                    { "LastTransactionSync", null }
+                });
+
+            migrationBuilder.InsertData(
                 table: "TFolio",
                 columns: new[] { "FolioId", "AMCId", "AttachedBank", "FolioHolderId", "FolioNumber", "FolioPurpose", "IsActive" },
                 values: new object[,]
@@ -301,6 +387,11 @@ namespace OM.MFPTrackerV1.Data.Migrations
                     { 2, 2210.00m, 1, 1, new DateTime(2023, 2, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), 44.2000m, "Monthly SIP", "TXN1002", "SIP", new DateTime(2023, 2, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, 50.000000m, new DateTime(2023, 2, 10, 0, 0, 0, 0, DateTimeKind.Unspecified) },
                     { 3, 4899.78m, 1, 2, new DateTime(2023, 3, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), 65.1000m, "Diversification", "TXN1003", "Lumpsum", new DateTime(2023, 3, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, 75.250000m, new DateTime(2023, 3, 5, 0, 0, 0, 0, DateTimeKind.Unspecified) }
                 });
+
+            migrationBuilder.InsertData(
+                table: "TSpecialEvent",
+                columns: new[] { "SpecialEventId", "Description", "EventDate", "EventType", "FundId", "InDate", "Severity", "Title" },
+                values: new object[] { 5, "Expense ratio revised by fund house.", new DateTime(2024, 1, 15, 0, 0, 0, 0, DateTimeKind.Unspecified), "Fund", 1, new DateTime(2024, 1, 15, 0, 0, 0, 0, DateTimeKind.Unspecified), "Info", "Expense Ratio Revision" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_TAMC_AMCName",
@@ -376,6 +467,12 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 column: "MFCatId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TFundNav_FundId_NavDate",
+                table: "TFundNav",
+                columns: new[] { "FundId", "NavDate" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TMFCategory_CategoryName",
                 table: "TMFCategory",
                 column: "CategoryName",
@@ -395,6 +492,26 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 name: "IX_TMutualFundTransaction_TxnType",
                 table: "TMutualFundTransaction",
                 column: "TxnType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TSpecialEvent_EventDate",
+                table: "TSpecialEvent",
+                column: "EventDate");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TSpecialEvent_EventType",
+                table: "TSpecialEvent",
+                column: "EventType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TSpecialEvent_FundId",
+                table: "TSpecialEvent",
+                column: "FundId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SystemState_Key",
+                table: "TSystemState",
+                column: "Key");
         }
 
         /// <inheritdoc />
@@ -404,7 +521,16 @@ namespace OM.MFPTrackerV1.Data.Migrations
                 name: "TFolioOwner");
 
             migrationBuilder.DropTable(
+                name: "TFundNav");
+
+            migrationBuilder.DropTable(
                 name: "TMutualFundTransaction");
+
+            migrationBuilder.DropTable(
+                name: "TSpecialEvent");
+
+            migrationBuilder.DropTable(
+                name: "TSystemState");
 
             migrationBuilder.DropTable(
                 name: "TFolio");

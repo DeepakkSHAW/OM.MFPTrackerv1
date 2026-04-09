@@ -44,68 +44,86 @@
 </div>
 
 <!-- Data table -->
-<table class="table table-sm table-striped align-middle">
-    <thead class="table-head-sm-bold">
-        <tr>
-            <th aria-sort="@AriaSort("AMCName")">
-                <div class="th-sort d-flex align-items-center"
-                     role="button"
-                     title="Sort by AMC"
-                     @onclick='() => Sort("AMCName")'>
-                    <span class="th-title">AMC</span>
-                    <span class="th-caret">@((MarkupString)SortGlyph("AMCName").Value)</span>
-                </div>
-            </th>
-            <th style="width:120px;">Funds</th>
-            <th style="width:160px;"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (_items is null)
-        {
-            <tr><td colspan="3">Loading...</td></tr>
-        }
-        else if (_items.Count == 0)
-        {
-            <tr><td colspan="3">No data</td></tr>
-        }
-        else
-        {
-            @foreach (var x in _items)
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th role="button" @onclick="@(() => Sort(nameof(AMC.AMCName)))">
+                    AMC @SortGlyph(nameof(AMC.AMCName))
+                </th>
+
+                <th role="button" style="width:120px;"
+                    @onclick="@(() => Sort("Funds"))">
+                    Funds @SortGlyph("Funds")
+                </th>
+
+                <th role="button" style="width:120px;"
+                    @onclick="@(() => Sort("Folios"))">
+                    Folios @SortGlyph("Folios")
+                </th>
+
+                <th style="width:140px;"></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (_items == null)
             {
-                var count = _fundCounts.TryGetValue(x.AMCId, out var c) ? c : 0;
-
                 <tr>
-                    <td>@x.AMCName</td>
-                    <td>@count</td>
-                    <td class="text-end">
-                        <button class="btn btn-outline-secondary btn-sm me-1"
-                                @onclick="() => OpenEdit(x)">
-                            Edit
-                        </button>
-
-                        @* Optional: disable Delete when funds exist *@
-                        @if (count > 0)
-                        {
-                            <button class="btn btn-outline-danger btn-sm" disabled
-                                    title="Cannot delete: funds are linked">
-                                Delete
-                            </button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-outline-danger btn-sm"
-                                    @onclick='() => ConfirmDelete(x.AMCId, x.AMCName)'>
-                                Delete
-                            </button>
-                        }
+                    <td colspan="4" class="text-center text-muted">
+                        Loading...
                     </td>
                 </tr>
             }
-        }
-    </tbody>
-</table>
+            else if (_items.Count == 0)
+            {
+                <tr>
+                    <td colspan="4" class="text-center text-muted">
+                        No records found.
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var amc in _items)
+                {
+                    var fundCount = _fundCounts.TryGetValue(amc.AMCId, out var fc) ? fc : 0;
+                    var folioCount = _folioCounts.TryGetValue(amc.AMCId, out var flc) ? flc : 0;
 
+                    <tr>
+                        <td>@amc.AMCName</td>
+
+                        <td>@fundCount</td>
+
+                        <td>@folioCount</td>
+
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary me-2"
+                                    @onclick="@(() => OpenEdit(amc))">
+                                Edit
+                            </button>
+
+                            @if (fundCount > 0 || folioCount > 0)
+                            {
+                                <button class="btn btn-sm btn-outline-danger" disabled
+                                        title="Cannot delete: linked Funds or Folios">
+                                    Delete
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="@(() => ConfirmDelete(amc.AMCId, amc.AMCName))">
+                                    Delete
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
 <!-- Pagination -->
 <div class="d-flex align-items-center justify-content-between">
     <div>Showing @FromRow–@ToRow of @totalCount</div>
@@ -188,37 +206,6 @@
 
     <div class="modal-backdrop fade show"></div>
 }
-<style>
-    /* small & bold headers + tidy caret, consistent with your style */
-    .table-head-sm-bold th {
-        font-weight: 600;
-        font-size: .85rem;
-        white-space: nowrap;
-        vertical-align: middle;
-    }
-
-    th .th-sort {
-        user-select: none;
-        cursor: pointer;
-        gap: .35rem;
-        padding-right: .25rem;
-        color: inherit;
-    }
-
-        th .th-sort:hover .th-title {
-            color: #0d6efd;
-            text-decoration: none;
-        }
-
-    th .th-caret {
-        display: inline-flex;
-        width: .9rem;
-        justify-content: center;
-        align-items: center;
-        color: #6c757d;
-    }
-</style>
-
 @code {
     private List<AMC>? _items;
 
@@ -258,7 +245,7 @@
     private string? validationMessage;
     private AMC editModel = new();
     private Dictionary<int, int> _fundCounts = new();
-
+    private Dictionary<int, int> _folioCounts = new();
     protected override async Task OnInitializedAsync() => await Reload();
 
     // private async Task Reload()
@@ -299,6 +286,7 @@
 
         // Load counts once per refresh
         _fundCounts = await Repo.GetFundCountsAsync();
+        _folioCounts = await Repo.GetFolioCountsAsync();
 
         if (pageNumber > totalPages && totalPages > 0)
         {

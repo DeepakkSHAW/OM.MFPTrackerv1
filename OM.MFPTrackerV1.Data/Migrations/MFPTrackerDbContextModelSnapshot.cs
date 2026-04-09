@@ -1103,6 +1103,64 @@ namespace OM.MFPTrackerV1.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.SystemState", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<DateTime>("InDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("UpdateDate")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("Key")
+                        .HasDatabaseName("IX_SystemState_Key");
+
+                    b.ToTable("TSystemState", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Key = "LastNavFetch",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdateDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Key = "LastTransactionSync",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdateDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Key = "AppVersion",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdateDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "1.0.0"
+                        },
+                        new
+                        {
+                            Key = "AppName",
+                            InDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdateDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "MFT"
+                        });
+                });
+
             modelBuilder.Entity("OM.MFPTrackerV1.Data.Models.Folio", b =>
                 {
                     b.HasOne("OM.MFPTrackerV1.Data.Models.AMC", "AMC")

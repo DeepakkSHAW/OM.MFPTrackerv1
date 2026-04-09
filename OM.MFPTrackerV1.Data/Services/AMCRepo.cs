@@ -19,6 +19,8 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task UpdateAsync(AMC entity, CancellationToken ct = default);
 		Task DeleteAsync(int id, CancellationToken ct = default);
 		Task<Dictionary<int, int>> GetFundCountsAsync(CancellationToken ct = default);
+		Task<Dictionary<int, int>> GetFolioCountsAsync(CancellationToken ct = default);
+		
 	}
 
 	public class AMCRepo : IAMCRepo
@@ -122,5 +124,13 @@ namespace OM.MFPTrackerV1.Data.Services
 							.ToDictionaryAsync(x => x.Key, x => x.Cnt, ct);
 		}
 
-	}
+        public async Task<Dictionary<int, int>> GetFolioCountsAsync(CancellationToken ct = default)
+        {
+			return await _db.Set<Folio>()
+				 .AsNoTracking()
+				 .GroupBy(f => f.AMCId)
+				 .Select(g => new { g.Key, Cnt = g.Count() })
+				 .ToDictionaryAsync(x => x.Key, x => x.Cnt, ct);
+		}
+    }
 }

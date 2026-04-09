@@ -3,6 +3,7 @@ using OM.MFPTrackerV1.Data;
 using OM.MFPTrackerV1.Data.Models;
 using OM.MFPTrackerV1.Data.Services;
 using OM.MFPTrackerV1.Web.Components;
+using OM.MFPTrackerV1.Web.Services;
 
 namespace OM.MFPTrackerV1.Web
 {
@@ -58,6 +59,8 @@ namespace OM.MFPTrackerV1.Web
 			builder.Services.AddScoped<IAmfiNavService, AmfiNavService>();
 			builder.Services.AddScoped<ISpecialEventRepo, SpecialEventRepo>();
 			builder.Services.AddScoped<IFundNavRepo, FundNavRepo>();
+			builder.Services.AddScoped<ISystemStateRepo, SystemStateRepo>();
+			builder.Services.AddHostedService<NavAutoSyncService>(); //BackgroundService to auto-sync NAV data from AMFI daily
 			builder.Services.AddScoped<IFolioOwnerRepository, FolioOwnerRepository>(); // delete after FolioOwner is removed
 			/////////////END DK Added /////////////
 

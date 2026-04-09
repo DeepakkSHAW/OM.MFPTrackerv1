@@ -15,9 +15,10 @@ namespace OM.MFPTrackerV1.Data
 		public DbSet<MutualFundTransaction> MutualFundTransactions => Set<MutualFundTransaction>();
 		public DbSet<FundNav> FundNavs => Set<FundNav>();
 		public DbSet<SpecialEvent> SpecialEvents => Set<SpecialEvent>();
+		public DbSet<SystemState> SystemStates => Set<SystemState>();
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
-
+			var seedDate = new DateTime(2024, 01, 01, 0, 0, 0, DateTimeKind.Utc);
 			// -------------------- AMC --------------------
 			modelBuilder.Entity<AMC>(e =>
 			{
@@ -706,6 +707,29 @@ namespace OM.MFPTrackerV1.Data
 					}
 );
 			});
+
+			// -------------------- System to keep app State in db table --------------------
+			modelBuilder.Entity<SystemState>(entity =>
+			{
+				entity.ToTable("TSystemState");
+
+				entity.HasKey(e => e.Key);
+				entity.Property(e => e.Key).HasMaxLength(100).IsRequired().UseCollation("NOCASE");
+				entity.Property(e => e.Value).HasMaxLength(500).UseCollation("NOCASE");
+				entity.Property(e => e.InDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
+				entity.Property(e => e.UpdateDate).IsRequired().HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAddOrUpdate();
+				//	// Optional: explicit index (PK is already indexed,
+				//	// but this makes intent clear and future‑proof)
+				entity.HasIndex(e => e.Key).HasDatabaseName("IX_SystemState_Key");
+				entity.HasData(
+					new SystemState { Key = "LastNavFetch", Value = null, UpdateDate = seedDate },
+					new SystemState { Key = "LastTransactionSync", Value = null, UpdateDate = seedDate },
+					new SystemState { Key = "AppVersion", Value = "1.0.0", UpdateDate = seedDate },
+					new SystemState { Key = "AppName", Value = "MFT", UpdateDate = seedDate }
+				);
+			});
+
+
 		}
 	}
 }
