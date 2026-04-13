@@ -34,6 +34,12 @@ namespace OM.MFPTrackerV1.Data.Models
 
 		// Preview classification
 		public PreviewRowStatus Status { get; set; }
+
+		// optional metadata
+		public string? ReferenceNo { get; set; }
+		public string? Source { get; set; }
+		public string? Note { get; set; }
+
 	}
 	public enum PreviewRowStatus
 	{

@@ -332,8 +332,12 @@ namespace OM.MFPTrackerV1.Data.Services
 					Units = r.Units,
 					NAV = r.Nav,
 					AmountPaid = r.Amount,
-					Source = "CSV",
-					InDate = DateTime.UtcNow
+					Source = string.IsNullOrWhiteSpace(r.Source) ? "CSV" : r.Source,
+					InDate = DateTime.UtcNow,
+
+					// ✅ NEW
+					ReferenceNo = r.ReferenceNo,
+					Note = r.Note
 				});
 
 				existingKeys.Add(key);

@@ -47,7 +47,10 @@
         <p class="text-muted small">
             CSV format:
             <br />
-            <code>FolioNumber,FundCode,TransactionDate,Units,NAV</code>
+            <code>
+                FolioNumber,FundCode,TransactionDate,Units,NAV,
+                ReferenceNo,Source,Note
+            </code>
             <br />
             Single transaction type per file. NAV is mandatory. Amount is derived.
         </p>
@@ -226,7 +229,7 @@
             }
 
             var parts = line.Split(',');
-            if (parts.Length != 5)
+            if (parts.Length < 5) //if (parts.Length != 5)
             {
                 invalid++;
                 continue;
@@ -238,6 +241,10 @@
             bool dateOk = DateTime.TryParse(parts[2], out var dateTmp);
             bool unitsOk = decimal.TryParse(parts[3], NumberStyles.Any, CultureInfo.InvariantCulture, out var unitsTmp);
             bool navOk = decimal.TryParse(parts[4], NumberStyles.Any, CultureInfo.InvariantCulture, out var navTmp);
+            
+            string? referenceNo = parts.Length > 5 ? parts[5]?.Trim() : null;
+            string? source = parts.Length > 6 ? parts[6]?.Trim() : "Import";
+            string? note = parts.Length > 7 ? parts[7]?.Trim() : null;
 
             if (!dateOk || !unitsOk || !navOk || unitsTmp == 0 || navTmp <= 0)
             {
@@ -266,6 +273,16 @@
 
             seenKeys.Add(key);
 
+            // previewRows.Add(new FolioTransactionPreviewRow
+            // {
+            //     FolioNumber = folioNo,
+            //     FundCode = fundCode,
+            //     TransactionDate = dateTmp.Date,
+            //     Units = unitsTmp,
+            //     Nav = navTmp,
+            //     Amount = Math.Round(unitsTmp * navTmp, 2),
+            //     Status = PreviewRowStatus.Valid
+            // });
             previewRows.Add(new FolioTransactionPreviewRow
             {
                 FolioNumber = folioNo,
@@ -274,9 +291,13 @@
                 Units = unitsTmp,
                 Nav = navTmp,
                 Amount = Math.Round(unitsTmp * navTmp, 2),
-                Status = PreviewRowStatus.Valid
-            });
+                Status = PreviewRowStatus.Valid,
 
+                // ✅ NEW
+                ReferenceNo = referenceNo,
+                Source = source,
+                Note = note
+            });
             valid++;
         }
 

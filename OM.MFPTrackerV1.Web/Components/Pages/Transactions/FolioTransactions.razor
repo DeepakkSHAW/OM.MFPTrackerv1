@@ -4,22 +4,25 @@
 @using System.ComponentModel.DataAnnotations
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
+
 @inject IMutualFundTransactionRepo TxnRepo
 @inject IFolioRepo FolioRepo
 @inject IMFFundRepo FundRepo
 @inject IAMCRepo AmcRepo
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <h4 class="mt-2 mb-3">Folio Transactions</h4>
 
 <!-- ================= Toolbar ================= -->
 <div class="row g-2 align-items-end mb-3">
+
     <div class="col-md-4">
         <label class="form-label small fw-bold">AMC</label>
         <InputSelect TValue="int?"
                      class="form-select"
                      @bind-Value="selectedAmcId"
-                     @bind-Value:after="AmcChanged">
+                     @bind-Value:after="OnAmcChanged">
             <option value="">-- Select AMC --</option>
             @foreach (var a in allAmcs)
             {
@@ -27,32 +30,30 @@
             }
         </InputSelect>
     </div>
+
     <div class="col-md-4">
         <label class="form-label small fw-bold">Folio</label>
         <InputSelect TValue="int?"
                      class="form-select"
                      disabled="@(!selectedAmcId.HasValue)"
                      @bind-Value="selectedFolioId"
-                     @bind-Value:after="FolioChanged">
+                     @bind-Value:after="OnFolioChanged">
             <option value="">-- Select Folio --</option>
             @foreach (var f in filteredFolios)
             {
                 <option value="@f.FolioId">
                     @f.FolioNumber - @($"{f.Holder.FirstName} {f.Holder.LastName} [{f.AttachedBank}]")
-@*                     <div>
-                        <div>@f.FolioNumber – @($"{f.Holder.FirstName} {f.Holder.LastName}")</div>
-                        <div class="text-muted small">@f.AttachedBank</div>
-                    </div> *@
                 </option>
             }
         </InputSelect>
     </div>
+
     <div class="col-md-4">
         <label class="form-label small fw-bold">Filter Fund</label>
         <select class="form-select"
                 disabled="@(!selectedAmcId.HasValue)"
                 @bind="selectedFundId"
-                @bind:after="Reload">
+                @bind:after="ReloadWrapper">
             <option value="">All Funds</option>
             @foreach (var f in filteredFunds)
             {
@@ -60,15 +61,14 @@
             }
         </select>
     </div>
+
     <div class="col text-end">
         <label class="form-label small fw-bold d-block">&nbsp;</label>
         <button class="btn btn-primary"
-                @attributes="(selectedFolioId is null ? DisabledAttr : null)"
-                title="Select a folio to add transactions"
-                @onclick="OpenAdd">
+                @onclick="OpenAdd"
+                @attributes="(selectedFolioId is null ? DisabledAttr : null)">
             Add Transaction
         </button>
-
     </div>
 </div>
 
@@ -77,21 +77,18 @@
     <table class="table table-sm table-hover align-middle">
         <thead class="table-light">
             <tr>
-                <th>#</th>
-
+@*                 <th>#</th> *@
                 <th role="button" @onclick="@(() => SortBy(nameof(MutualFundTransaction.TransactionDate)))">
                     Date @SortIcon(nameof(MutualFundTransaction.TransactionDate))
                 </th>
-
                 <th>Fund</th>
-
                 <th role="button" @onclick="@(() => SortBy(nameof(MutualFundTransaction.TxnType)))">
                     Type @SortIcon(nameof(MutualFundTransaction.TxnType))
                 </th>
-
                 <th class="text-end">Units</th>
                 <th class="text-end">NAV</th>
                 <th class="text-end">Amount</th>
+                <th style="width:140px"></th>
             </tr>
         </thead>
 
@@ -99,7 +96,7 @@
             @if (!selectedFolioId.HasValue)
             {
                 <tr>
-                    <td colspan="7" class="text-center text-muted">
+                    <td colspan="8" class="text-center text-muted">
                         Select a folio to view transactions.
                     </td>
                 </tr>
@@ -107,23 +104,33 @@
             else if (items.Count == 0)
             {
                 <tr>
-                    <td colspan="7" class="text-center text-muted">
+                    <td colspan="8" class="text-center text-muted">
                         No transactions found.
                     </td>
                 </tr>
             }
             else
             {
-                @foreach (var x in items.Select((t, i) => new { t, i }))
+                @foreach (var row in items.Select((t, i) => new { t, i }))
                 {
                     <tr>
-                        <td>@(x.i + 1)</td>
-                        <td>@x.t.TransactionDate.ToString("dd-MMM-yyyy")</td>
-                        <td>@x.t.Fund.FundName</td>
-                        <td>@x.t.TxnType</td>
-                        <td class="text-end">@x.t.Units</td>
-                        <td class="text-end">@x.t.NAV</td>
-                        <td class="text-end">@x.t.AmountPaid</td>
+@*                         <td>@(row.i + 1)</td> *@
+                        <td>@row.t.TransactionDate.ToString("dd-MMM-yyyy")</td>
+                        <td>@row.t.Fund.FundName</td>
+                        <td>@row.t.TxnType</td>
+                        <td class="text-end">@row.t.Units.ToString("0.#####")</td>
+                        <td class="text-end">@row.t.NAV.ToString("0.#####")</td>
+                        <td class="text-end">@row.t.AmountPaid.ToString("0.00")</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary me-2"
+                                    @onclick="@(() => OpenEdit(row.t))">
+                                Edit
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick="@(() => ConfirmDelete(row.t.TransactionId))">
+                                Delete
+                            </button>
+                        </td>
                     </tr>
                 }
             }
@@ -134,33 +141,25 @@
 <!-- ================= Paging ================= -->
 @if (selectedFolioId.HasValue)
 {
-    <div class="d-flex align-items-center gap-2 mt-2">
+    <div class="d-flex align-items-center mt-2 gap-2">
         <span class="text-muted small">Total: @totalCount</span>
 
         <div class="ms-auto d-flex align-items-center gap-2">
-            <div class="btn-group">
-                <button class="btn btn-sm btn-outline-primary"
-                        disabled="@(pageNumber == 1)"
-                        @onclick="FirstPage">
-                    «
-                </button>
+            <button class="btn btn-sm btn-outline-primary"
+                    disabled="@(pageNumber == 1)"
+                    @onclick="PrevPage">
+                ‹
+            </button>
 
-                <button class="btn btn-sm btn-outline-primary"
-                        disabled="@(pageNumber == 1)"
-                        @onclick="PrevPage">
-                    ‹
-                </button>
+            <span class="btn btn-sm btn-outline-secondary disabled">
+                Page @pageNumber
+            </span>
 
-                <span class="btn btn-sm btn-outline-secondary disabled">
-                    Page @pageNumber
-                </span>
-
-                <button class="btn btn-sm btn-outline-primary"
-                        disabled="@((pageNumber * pageSize) >= totalCount)"
-                        @onclick="NextPage">
-                    ›
-                </button>
-            </div>
+            <button class="btn btn-sm btn-outline-primary"
+                    disabled="@((pageNumber * pageSize) >= totalCount)"
+                    @onclick="NextPage">
+                ›
+            </button>
 
             <select class="form-select form-select-sm"
                     style="width:90px"
@@ -174,17 +173,16 @@
     </div>
 }
 
-<!-- ================= Modal ================= -->
+<!-- ================= Modal (Add / Edit) ================= -->
 @if (showModal)
 {
     <div class="modal-backdrop fade show"></div>
-
     <div class="modal d-block">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
 
                 <div class="modal-header py-2">
-                    <h5 class="modal-title">Add Transaction</h5>
+                    <h5 class="modal-title">@((isEdit ? "Edit" : "Add") + " Transaction")</h5>
                     <button class="btn-close" @onclick="CloseModal"></button>
                 </div>
 
@@ -192,6 +190,12 @@
                     <EditForm Model="@editModel" OnValidSubmit="SaveAsync">
                         <DataAnnotationsValidator />
                         <ValidationSummary />
+                        @if (!string.IsNullOrWhiteSpace(serverError))
+                        {
+                            <div class="alert alert-danger">
+                                @serverError
+                            </div>
+                        }
 
                         <div class="row g-3">
 
@@ -199,26 +203,28 @@
                                 <label class="form-label">Date</label>
                                 <InputDate class="form-control"
                                            @bind-Value="editModel.TransactionDate" />
+                                <ValidationMessage For="@(() => editModel.TransactionDate)" />
                             </div>
 
                             <div class="col-md-8">
                                 <label class="form-label">Fund</label>
                                 <InputSelect class="form-select"
-                                             @bind-Value="editModel.FundId"
-                                             @bind-Value:after="UpdateAvailableUnits">
+                                             disabled="@isEdit"
+                                             @bind-Value="editModel.FundId">
                                     <option value="">-- Select Fund --</option>
                                     @foreach (var f in filteredFunds)
                                     {
                                         <option value="@f.FundId">@f.FundName</option>
                                     }
                                 </InputSelect>
+                                <ValidationMessage For="@(() => editModel.FundId)" />
                             </div>
 
                             <div class="col-md-4">
                                 <label class="form-label">Transaction Type</label>
                                 <InputSelect class="form-select"
-                                             @bind-Value="editModel.TxnType"
-                                             @bind-Value:after="UpdateAvailableUnits">
+                                             disabled="@isEdit"
+                                             @bind-Value="editModel.TxnType">
                                     @foreach (var t in Enum.GetValues<TransactionType>())
                                     {
                                         <option value="@t">@t</option>
@@ -228,49 +234,47 @@
 
                             <div class="col-md-4">
                                 <label class="form-label">Units</label>
-                                <InputNumber class="form-control" step="0.000001"
-                                             @bind-Value="editModel.Units" />
+                                <InputNumber class="form-control"
+                                             step="0.00001"
+                                             @bind-Value="editModel.Units"
+                                             @bind-Value:after="LimitUnits" />
+                               @*  <ValidationMessage For="@(() => editModel.Units)" /> *@
                             </div>
 
                             <div class="col-md-4">
                                 <label class="form-label">NAV</label>
-                                <InputNumber class="form-control" step="0.0001"
-                                             @bind-Value="editModel.NAV" />
+                                <InputNumber class="form-control"
+                                             step="0.00001"
+                                             @bind-Value="editModel.NAV"
+                                             @bind-Value:after="LimitNav" />
+                               @*  <ValidationMessage For="@(() => editModel.NAV)" /> *@
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Reference No</label>
                                 <InputText class="form-control"
+                                           maxlength="50"
                                            @bind-Value="editModel.ReferenceNo" />
+                                <ValidationMessage For="@(() => editModel.ReferenceNo)" />
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Source</label>
                                 <InputText class="form-control"
+                                           maxlength="50"
                                            @bind-Value="editModel.Source" />
+                                <ValidationMessage For="@(() => editModel.Source)" />
                             </div>
 
                             <div class="col-md-12">
                                 <label class="form-label">Note</label>
-                                <InputTextArea class="form-control" rows="2"
+                                <InputTextArea class="form-control"
+                                               rows="2"
+                                               maxlength="100"
                                                @bind-Value="editModel.Note" />
+                                <ValidationMessage For="@(() => editModel.Note)" />
                             </div>
                         </div>
-
-                        @if (showAvailableUnits)
-                        {
-                            <div class="alert alert-info mt-3">
-                                Available Units: <strong>@availableUnits</strong>
-                            </div>
-                        }
-
-                        @if (!string.IsNullOrWhiteSpace(serverError))
-                        {
-                            <div class="alert alert-danger mb-3">
-                                <i class="bi bi-exclamation-triangle me-1"></i>
-                                @serverError
-                            </div>
-                        }
 
                         <div class="text-end mt-3">
                             <button type="button"
@@ -284,6 +288,7 @@
                         </div>
                     </EditForm>
                 </div>
+
             </div>
         </div>
     </div>
@@ -291,80 +296,54 @@
 
 @code {
 
+    /* ================= State ================= */
+
     [Parameter] public int? FolioId { get; set; }
 
-    // Master data caches
     private List<AMC> allAmcs = new();
     private List<Folio> allFolios = new();
     private List<Fund> allFunds = new();
 
-    // Filtered dropdown data
     private List<Folio> filteredFolios = new();
     private List<Fund> filteredFunds = new();
     private List<MutualFundTransaction> items = new();
-  
-    // Selected values
+
     private int? selectedAmcId;
     private int? selectedFolioId;
     private int? selectedFundId;
 
+    private bool showModal;
+    private bool isEdit;
+    private int editingId;
+
+    private int pageNumber = 1;
+    private int pageSize = 10;
     private int totalCount;
     private string sortBy = nameof(MutualFundTransaction.TransactionDate);
     private bool sortDesc = true;
-    private int pageNumber = 1;
-
-    private int _pageSize = 10;
-    private int pageSize
-    {
-        get => _pageSize;
-        set { _pageSize = value; pageNumber = 1; _ = Reload(); }
-    }
-
-    private bool showModal;
-    private decimal availableUnits;
-    private bool showAvailableUnits;
     private string? serverError;
-
     private EditModel editModel = new();
+
+    private readonly Dictionary<string, object> DisabledAttr =
+        new() { { "disabled", "disabled" } };
+
+    /* ================= Lifecycle ================= */
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            // Load all reference data in parallel
-            var amcTask = AmcRepo.GetAsync(null, 0, int.MaxValue);
-            var folioTask = FolioRepo.GetAsync(null, null, false, 1, int.MaxValue);
-            var fundTask = FundRepo.GetAsync(null, null, false, 1, int.MaxValue);
+        var amcTask = AmcRepo.GetAsync(null, 0, int.MaxValue);
+        var folioTask = FolioRepo.GetAsync(null, null, false, 1, int.MaxValue);
+        var fundTask = FundRepo.GetAsync(null, null, false, 1, int.MaxValue);
 
-            await Task.WhenAll(amcTask, folioTask, fundTask);
+        await Task.WhenAll(amcTask, folioTask, fundTask);
 
-            allAmcs = amcTask.Result.Items.ToList();
-            allFolios = folioTask.Result.Items.ToList();
-            allFunds = fundTask.Result.Items.ToList();
-
-            /*
-               Optional deep-link handling:
-               If you come to this page with a FolioId,
-               infer AMC from it and auto-select.
-            */
-            if (FolioId.HasValue)
-            {
-                var folio = allFolios.FirstOrDefault(f => f.FolioId == FolioId.Value);
-                if (folio != null)
-                {
-                    selectedAmcId = folio.AMCId;
-                    ApplyAmcFilter();
-
-                    selectedFolioId = folio.FolioId;
-                    ApplyFolioFilter();
-                }
-            }
-        }
-        catch
-        {
-            serverError = "Failed to load reference data. Please try again.";
-        }
+        allAmcs = amcTask.Result.Items.ToList();
+        allFolios = folioTask.Result.Items.ToList();
+        allFunds = fundTask.Result.Items.ToList();
     }
+
+    /* ================= Helpers ================= */
+
     private async Task Reload()
     {
         if (!selectedFolioId.HasValue)
@@ -385,66 +364,102 @@
         items = r.Items.ToList();
         totalCount = r.TotalCount;
     }
-    private void ApplyAmcFilter()
+
+    private void ReloadWrapper() => _ = Reload();
+
+    private void OpenAdd()
     {
-        filteredFolios = allFolios
-            .Where(f => f.AMCId == selectedAmcId)
-            .OrderBy(f => f.FolioNumber)
-            .ToList();
+        isEdit = false;
+        editingId = 0;
 
-        filteredFunds = allFunds
-            .Where(f => f.AMCId == selectedAmcId)
-            .OrderBy(f => f.FundName)
-            .ToList();
-
-        selectedFolioId = null;
-        selectedFundId = null;
-    }
-    private void AmcChanged()
-    {
-        selectedFolioId = null;
-        selectedFundId = null;
-
-        filteredFolios = allFolios
-            .Where(f => f.AMCId == selectedAmcId)
-            .OrderBy(f => f.FolioNumber)
-            .ToList();
-
-        filteredFunds = allFunds
-            .Where(f => f.AMCId == selectedAmcId)
-            .OrderBy(f => f.FundName)
-            .ToList();
-
-        Reload();
-    }
-    private void ApplyFolioFilter()
-    {
-        // Optional: only narrow funds further if you have transaction history
-        // Otherwise, do nothing and allow all AMC funds
-    }
-    private async Task OnFilterChanged()
-    {
-        if (selectedAmcId.HasValue)
+        editModel = new EditModel
         {
-            await Reload();
-        }
+            FolioId = selectedFolioId!.Value,
+            TransactionDate = DateTime.Today,
+            TxnType = TransactionType.BUY
+        };
+
+        showModal = true;
     }
-    private readonly Dictionary<string, object> DisabledAttr = new() { { "disabled", "disabled" } };
 
-    private async Task FolioChanged()
+    private void OpenEdit(MutualFundTransaction t)
     {
-        pageNumber = 1;
+        isEdit = true;
+        editingId = t.TransactionId;
 
-        if (selectedFolioId.HasValue)
+        editModel = new EditModel
         {
-            await Reload();  
-            Nav.NavigateTo($"/folio-transactions/{selectedFolioId.Value}", replace: true);
+            FolioId = t.FolioId,
+            FundId = t.FundId,
+            TransactionDate = t.TransactionDate,
+            TxnType = t.TxnType,
+            Units = t.Units,
+            NAV = t.NAV,
+            ReferenceNo = t.ReferenceNo,
+            Source = t.Source,
+            Note = t.Note
+        };
+
+        showModal = true;
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private async Task SaveAsync()
+    {
+        if (isEdit)
+        {
+            var entity = new MutualFundTransaction
+            {
+                TransactionId = editingId,
+                FolioId = editModel.FolioId,
+                FundId = editModel.FundId,
+                TransactionDate = editModel.TransactionDate,
+                TxnType = editModel.TxnType,
+                Units = editModel.Units,
+                NAV = editModel.NAV,
+                AmountPaid = Math.Round(editModel.Units * editModel.NAV, 5),
+                ReferenceNo = editModel.ReferenceNo,
+                Source = editModel.Source,
+                Note = editModel.Note
+            };
+
+            await TxnRepo.UpdateAsync(entity);
         }
         else
         {
-            items.Clear();
-            totalCount = 0;
+            await TxnRepo.AddAsync(editModel.ToEntity());
         }
+
+        showModal = false;
+        await Reload();
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Delete this transaction permanently?"))
+            return;
+
+        await TxnRepo.DeleteAsync(id);
+        await Reload();
+    }
+
+    private Task OnFolioChanged() => Reload();
+
+    private void OnAmcChanged()
+    {
+        filteredFolios = allFolios
+            .Where(f => f.AMCId == selectedAmcId)
+            .OrderBy(f => f.FolioNumber)
+            .ToList();
+
+        filteredFunds = allFunds
+            .Where(f => f.AMCId == selectedAmcId)
+            .OrderBy(f => f.FundName)
+            .ToList();
+
+        selectedFolioId = null;
+        selectedFundId = null;
     }
 
     private void SortBy(string field)
@@ -456,11 +471,19 @@
 
     private RenderFragment SortIcon(string f) => b =>
     {
-        if (sortBy == f) b.AddContent(0, sortDesc ? " ▼" : " ▲");
+        if (sortBy == f)
+            b.AddContent(0, sortDesc ? " ▼" : " ▲");
     };
 
-    private async Task FirstPage() { pageNumber = 1; await Reload(); }
-    private async Task PrevPage() { if (pageNumber > 1) { pageNumber--; await Reload(); } }
+    private async Task PrevPage()
+    {
+        if (pageNumber > 1)
+        {
+            pageNumber--;
+            await Reload();
+        }
+    }
+
     private async Task NextPage()
     {
         if ((pageNumber * pageSize) < totalCount)
@@ -470,67 +493,27 @@
         }
     }
 
-    private void OpenAdd()
-    {
-        editModel = new EditModel
-        {
-            FolioId = selectedFolioId!.Value,
-            TransactionDate = DateTime.Today,
-            TxnType = TransactionType.BUY
-        };
-        showModal = true;
-        serverError = null;
-        showAvailableUnits = false;
-    }
+    private void LimitUnits() => editModel.Units = Math.Round(editModel.Units, 5);
+    private void LimitNav() => editModel.NAV = Math.Round(editModel.NAV, 5);
 
-    private void CloseModal() => showModal = false;
-
-    private async Task UpdateAvailableUnits()
-    {
-        showAvailableUnits = false;
-
-        if (editModel.FundId == 0)
-            return;
-
-        if (editModel.TxnType is TransactionType.SELL or TransactionType.SWITCH_OUT)
-        {
-            availableUnits = await TxnRepo
-                .GetAvailableUnitsAsync(editModel.FolioId, editModel.FundId);
-
-            showAvailableUnits = true;
-        }
-    }
-
-    private async Task SaveAsync()
-    {
-        serverError = null;
-
-        try
-        {
-            await TxnRepo.AddAsync(editModel.ToEntity());
-            showModal = false;
-            await Reload();
-        }
-        catch (Exception ex)
-        {
-            serverError = ex.Message;
-        }
-    }
+    /* ================= Models ================= */
 
     public sealed class EditModel
     {
-        public int FolioId { get; set; }
-
+        [Required] public int FolioId { get; set; }
         [Required] public int FundId { get; set; }
         [Required] public DateTime TransactionDate { get; set; }
         [Required] public TransactionType TxnType { get; set; }
 
+        [Range(0.000001, double.MaxValue)]
         public decimal Units { get; set; }
+
+        [Range(0.000001, double.MaxValue)]
         public decimal NAV { get; set; }
 
-        public string? ReferenceNo { get; set; }
-        public string? Source { get; set; }
-        public string? Note { get; set; }
+        [MaxLength(50)] public string? ReferenceNo { get; set; }
+        [MaxLength(50)] public string? Source { get; set; }
+        [MaxLength(100)] public string? Note { get; set; }
 
         public MutualFundTransaction ToEntity() => new()
         {
@@ -540,6 +523,7 @@
             TxnType = TxnType,
             Units = Units,
             NAV = NAV,
+            AmountPaid = Math.Round(Units * NAV, 5),
             ReferenceNo = ReferenceNo,
             Source = Source,
             Note = Note

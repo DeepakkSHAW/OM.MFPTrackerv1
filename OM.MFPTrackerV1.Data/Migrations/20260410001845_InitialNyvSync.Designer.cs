@@ -11,7 +11,7 @@ using OM.MFPTrackerV1.Data;
 namespace OM.MFPTrackerV1.Data.Migrations
 {
     [DbContext(typeof(MFPTrackerDbContext))]
-    [Migration("20260409035220_InitialNyvSync")]
+    [Migration("20260410001845_InitialNyvSync")]
     partial class InitialNyvSync
     {
         /// <inheritdoc />
