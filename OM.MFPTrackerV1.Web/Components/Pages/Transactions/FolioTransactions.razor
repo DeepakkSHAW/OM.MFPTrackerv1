@@ -1,6 +1,7 @@
 ﻿@page "/folio-transactions"
 @page "/folio-transactions/{FolioId:int}"
-
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
 @using System.ComponentModel.DataAnnotations
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services

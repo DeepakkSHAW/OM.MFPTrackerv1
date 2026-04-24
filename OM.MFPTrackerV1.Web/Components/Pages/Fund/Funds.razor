@@ -1,10 +1,12 @@
 ﻿@page "/mf-funds"
-
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.EntityFrameworkCore
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
 @using Microsoft.JSInterop
+
 
 @inject IMFFundRepo Repo
 @inject IAMCRepo AMCRepo

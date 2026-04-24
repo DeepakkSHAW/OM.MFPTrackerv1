@@ -1,5 +1,6 @@
 ﻿@page "/mf-folios"
-
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.EntityFrameworkCore
 @using OM.MFPTrackerV1.Data.Models

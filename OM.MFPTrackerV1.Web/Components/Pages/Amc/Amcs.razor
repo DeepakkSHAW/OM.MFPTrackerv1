@@ -1,6 +1,6 @@
 ﻿@page "/amcs"
 @rendermode InteractiveServer
-@attribute [Authorize(Roles = "User")]
+@attribute [Authorize(Roles = "User,Admin")]
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
 @using Microsoft.AspNetCore.Components

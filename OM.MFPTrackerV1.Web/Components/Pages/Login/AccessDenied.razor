@@ -1,0 +1,56 @@
+﻿@page "/login/access-denied"
+@attribute [AllowAnonymous]
+@rendermode InteractiveServer
+
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Authorization
+
+<PageTitle>Access Denied</PageTitle>
+
+<div class="container d-flex justify-content-center align-items-center"
+     style="min-height: 70vh">
+
+    <div class="card shadow-sm p-4 text-center" style="max-width: 480px;">
+        <h2 class="text-danger mb-3">Access Denied</h2>
+
+        <AuthorizeView>
+            <Authorized Context="auth">
+                <p class="mb-2">
+                    Sorry <strong>@auth.User.Identity?.Name</strong>,
+                </p>
+                <p class="mb-3">
+                    you don’t have permission to access this page.
+                </p>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <button class="btn btn-primary"
+                            @onclick="GoHome">
+                        Go to Home
+                    </button>
+
+                    <button class="btn btn-secondary"
+                            @onclick="Logout">
+                        Logout
+                    </button>
+                </div>
+            </Authorized>
+
+            <NotAuthorized>
+                <p class="mb-3">
+                    You must log in to access this resource.
+                </p>
+
+                <button class="btn btn-primary"
+                        @onclick="GoLogin">
+                    Login
+                </button>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+@code {
+    void GoHome() => Navigation.NavigateTo("/");
+    void GoLogin() => Navigation.NavigateTo("/login");
+    void Logout() => Navigation.NavigateTo("/logout");
+}

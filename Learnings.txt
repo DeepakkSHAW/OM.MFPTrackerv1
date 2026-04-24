@@ -124,3 +124,6 @@ Wire up cookie authentication
 Update Login.razor to call the API
 Protect pages with [Authorize] again
 Optional admin-only authorization
+
+// TODO: Improve returnUrl handling for prerendered Blazor Web App login
+// Currently defaults to "/" after login to avoid breaking auth flow

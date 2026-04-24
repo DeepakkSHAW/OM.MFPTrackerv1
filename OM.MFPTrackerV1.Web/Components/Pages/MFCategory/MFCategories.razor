@@ -1,4 +1,6 @@
 ﻿@page "/mf-categories"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
 @using Microsoft.AspNetCore.Components

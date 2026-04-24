@@ -82,7 +82,8 @@ namespace OM.MFPTrackerV1.Web
 					{
 						options.Cookie.Name = "OMNamahShivay-Auth";
 						options.LoginPath = "/login";
-						options.LogoutPath = "/logout"; 
+						options.LogoutPath = "/logout";
+						options.AccessDeniedPath = "/login/access-denied";
 						//options.ExpireTimeSpan = TimeSpan.FromHours(8);
 						//options.SlidingExpiration = true;
 
