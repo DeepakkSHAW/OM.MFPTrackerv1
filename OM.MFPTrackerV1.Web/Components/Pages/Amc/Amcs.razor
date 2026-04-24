@@ -1,12 +1,17 @@
 ﻿@page "/amcs"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User")]
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
 
 @inject IAMCRepo Repo
 @inject IJSRuntime JS
+@inject ILogger<Amcs> Logger
+@inject AuthenticationStateProvider AuthStateProvider
 
 <h3>Asset Management Companies (AMCs)</h3>
 
@@ -246,7 +251,7 @@
     private AMC editModel = new();
     private Dictionary<int, int> _fundCounts = new();
     private Dictionary<int, int> _folioCounts = new();
-    protected override async Task OnInitializedAsync() => await Reload();
+    //protected override async Task OnInitializedAsync() => await Reload();
 
     // private async Task Reload()
     // {
@@ -270,6 +275,25 @@
     //     }
     //     StateHasChanged();
     // }
+
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check auth state immediately before loading data (ONLY for TEST) //
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+        Logger.LogInformation("Auth debug: IsAuthenticated={IsAuthenticated}; Name={Name}; Roles={Roles}",
+            user.Identity?.IsAuthenticated ?? false,
+            user.Identity?.Name ?? "<null>",
+            string.Join(",", user.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value)));
+        //---TEST DONE ---//
+
+        await Reload();
+    }
+
+
     private async Task Reload()
     {
         var skip = (pageNumber - 1) * _pageSize;

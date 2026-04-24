@@ -15,9 +15,15 @@
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveServer" />
-    <script src="@Assets["lib/bootstrap/dist/js/bootstrap.bundle.min.js"]"></script> <!-- Ensure Bootstrap JS is included -->
-    <script src="_framework/blazor.web.js"></script> <!-- Blazor WebAssembly script -->
+@*     <CascadingAuthenticationState>
+        <Routes @rendermode="InteractiveServer" />
+    </CascadingAuthenticationState> *@
+    <CascadingAuthenticationState>
+        <Routes />
+    </CascadingAuthenticationState>
+    <script src="@Assets["lib/bootstrap/dist/js/bootstrap.bundle.min.js"]"></script>
+@*     <script src="_framework/blazor.server.js"></script> *@
+    <script src="_framework/blazor.web.js"></script>
+    <script src="/auth.js"></script>
 </body>
-
 </html>

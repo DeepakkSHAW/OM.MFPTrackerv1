@@ -20,6 +20,8 @@ dotnet ef migrations remove --project OM.MFPTracker.Data --startup-project Conso
 dotnet ef migrations add InitialCreate --project OM.MFPTracker.Data --startup-project ConsoleApp.Test
 dotnet ef database update --project OM.MFPTracker.Data --startup-project ConsoleApp.Test
 
+Icon: https://icons.getbootstrap.com/
+
 An alternative option (faster)
 Open Package Manager Console (Tools → NuGet Package Manager → Package Manager Console)
 select Data project (the project has dbcontext)
@@ -97,3 +99,28 @@ Q1. One or more errors occurred. Failed to launch debug adapter.
 A1. Tools → Options → Debugging → General Then uncheck: "Enable JavaScript debugging for ASP.NET (Chrome, Edge)”
 
 Reference: https://groww.in/mutual-funds/category
+
+Remove
+=========
+Remove all of this (important)
+You should now delete / stop using:
+
+MFTAuthStateProviderv0
+AddAuthenticationCore
+AddAuthorizationCore
+AuthorizeView + RedirectToLogin
+Manual auth state handling
+
+They are no longer needed.
+
+Change all of this (16-April-26)
+Step-by-step plan (so you see the whole path)
+We will do exactly these steps, one by one:
+
+Implement LocalAuthService
+Add minimal /api/auth/login endpoint
+Add /api/auth/logout endpoint
+Wire up cookie authentication
+Update Login.razor to call the API
+Protect pages with [Authorize] again
+Optional admin-only authorization

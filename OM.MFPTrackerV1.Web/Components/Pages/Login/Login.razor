@@ -1,0 +1,133 @@
+﻿@page "/login"
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+
+@using OM.MFPTrackerV1.Web.Models
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+
+<PageTitle>Login</PageTitle>
+
+<AuthorizeView>
+    <NotAuthorized Context="authState">
+        <div class="login-container">
+            <div class="card">
+                <h3>Sign In</h3>
+
+                @if (HasError)
+                {
+                    <div class="alert alert-danger">
+                        @ErrorMessage
+                    </div>
+                }
+
+                <EditForm Model="Model" OnValidSubmit="RSLogin">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label>Username</label>
+                        <InputText class="form-control" @bind-Value="Model.Username" />
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label>Password</label>
+                        <InputText type="password" class="form-control" @bind-Value="Model.Password" />
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">
+                        Login
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 70vh;
+    }
+
+    .card {
+        width: 100%;
+        max-width: 400px;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .alert {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+        border-radius: 0.25rem;
+        color: #721c24;
+        background-color: #f8d7da;
+    }
+</style>
+
+@code {
+    //private LoginRequest Model { get; } = new();
+    private LoginRequest Model { get; } = new LoginRequest { Username = "user", Password = "User@123!" };//only for testing, remove default values in production
+
+    private string? ErrorMessage;
+    private bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    private async Task RSLogin()
+    {
+        ErrorMessage = null;
+
+        var result = await JS.InvokeAsync<LoginResult>(
+            "auth.alogin",
+            Model.Username,
+            Model.Password
+        );
+
+        if (!result.Success)
+        {
+            ErrorMessage = result.Reason switch
+            {
+                "maintenance" => "Login is temporarily disabled due to maintenance. Please try again later.",
+                "invalid" => "Invalid username or password.",
+                _ => "An unexpected error occurred. Please try again later."
+            };
+
+            return;
+        }
+
+        // ✅ success
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+    private async Task RSLogin_old()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "auth.alogin",
+                Model.Username,
+                Model.Password
+            );
+        }
+        catch (JSException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+    // public string? error { get; set; }
+    // public string? userName = "user";
+    // public string? password = "User@123!";
+    // //private bool HasError => error == "invalid";
+    // private void DoLogin()
+    // {
+    //     // Call API via full reload so cookie is applied cleanly
+    //     var query = $"?username={Uri.EscapeDataString(userName ?? "")}&password={Uri.EscapeDataString(password ?? "")}";
+    //     query = query.Replace("%20", "+"); // Ensure spaces are encoded as + for form data
+    //     query = query.Replace("%40", "@"); // Ensure @ is encoded as @ for form data
+    //     query = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(query)); // Base64 encode the query string
+    //     Nav.NavigateTo($"/api/login?query={query}", forceLoad: true);
+    // }
+}

@@ -28,11 +28,9 @@ namespace OM.MFPTrackerV1.Web.Services
 			_startupDelayMinutes = configuration.GetValue<int>("NavSync:StartupDelayMinutes", 1);
 
 		}
-
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 		{
 			_logger.LogInformation("NAV Auto-Sync background service started");
-			var summary = new NavSyncSummary();
 
 			if (!_autoSyncEnabled)
 			{
@@ -40,50 +38,117 @@ namespace OM.MFPTrackerV1.Web.Services
 				return;
 			}
 
-			// Small startup delay
-			await Task.Delay(TimeSpan.FromMinutes(_startupDelayMinutes), stoppingToken);
-
-			while (!stoppingToken.IsCancellationRequested)
+			try
 			{
-				using var scope = _scopeFactory.CreateScope();
+				// Small startup delay
+				await Task.Delay(TimeSpan.FromMinutes(_startupDelayMinutes), stoppingToken);
 
-				var navService = scope.ServiceProvider.GetRequiredService<IAmfiNavService>();
-				var state = scope.ServiceProvider.GetRequiredService<ISystemStateRepo>();
-
-				try
+				while (!stoppingToken.IsCancellationRequested)
 				{
-					_logger.LogInformation("NAV auto-sync started");
-					var lastRun = await state.GetLastNavSyncUtcAsync();
-					var now = DateTime.UtcNow;
+					using var scope = _scopeFactory.CreateScope();
 
-					if (lastRun.HasValue && lastRun.Value > now.AddHours(-_minIntervalHours))
+					var navService = scope.ServiceProvider.GetRequiredService<IAmfiNavService>();
+					var state = scope.ServiceProvider.GetRequiredService<ISystemStateRepo>();
+
+					try
 					{
-						_logger.LogInformation("NAV auto-sync skipped — already synced at {Time}", lastRun);
+						_logger.LogInformation("NAV auto-sync started");
+
+						var lastRun = await state.GetLastNavSyncUtcAsync();
+						var now = DateTime.UtcNow;
+
+						if (lastRun.HasValue && lastRun.Value > now.AddHours(-_minIntervalHours))
+						{
+							_logger.LogInformation(
+								"NAV auto-sync skipped — already synced at {Time}", lastRun);
+						}
+						else
+						{
+							_logger.LogInformation("NAV auto-sync started at {Time}", now);
+
+							var summary =
+								await navService.FetchAndStoreLatestNavWithSummaryAsync();
+
+							await state.SetLastNavSyncUtcAsync(now);
+
+							_logger.LogInformation(
+								"NAV auto-sync completed. Inserted={Inserted}, Skipped={Skipped}",
+								summary.Inserted,
+								summary.SkippedAsDuplicate);
+						}
 					}
-					else
+					catch (Exception ex)
 					{
-
-						_logger.LogInformation("NAV auto-sync started at {Time}", DateTime.UtcNow);
-						summary = await navService.FetchAndStoreLatestNavWithSummaryAsync();
-
-						await state.SetLastNavSyncUtcAsync(now);
-
-						_logger.LogInformation("NAV auto-sync completed successfully");
+						// Real failure (not cancellation)
+						_logger.LogError(ex, "NAV auto-sync failed");
 					}
 
-					_logger.LogInformation(
-						"NAV auto-sync completed. Inserted={Inserted}, Skipped={Skipped}",
-						summary.Inserted,
-						summary.SkippedAsDuplicate);
+					// Run once per 24 hours
+					await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
 				}
-				catch (Exception ex)
-				{
-					_logger.LogError(ex, "NAV auto-sync failed");
-				}
-
-				// Run once per 24 hours
-				await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+			}
+			catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+			{
+				// ✅ Expected on shutdown — DO NOT log as error
+				_logger.LogInformation("NAV Auto-Sync background service is stopping");
 			}
 		}
+
+		//protected override async Task ExecuteAsync_redundent(CancellationToken stoppingToken)
+		//{
+		//	_logger.LogInformation("NAV Auto-Sync background service started");
+		//	var summary = new NavSyncSummary();
+
+		//	if (!_autoSyncEnabled)
+		//	{
+		//		_logger.LogInformation("NAV auto-sync is DISABLED via configuration");
+		//		return;
+		//	}
+
+		//	// Small startup delay
+		//	await Task.Delay(TimeSpan.FromMinutes(_startupDelayMinutes), stoppingToken);
+
+		//	while (!stoppingToken.IsCancellationRequested)
+		//	{
+		//		using var scope = _scopeFactory.CreateScope();
+
+		//		var navService = scope.ServiceProvider.GetRequiredService<IAmfiNavService>();
+		//		var state = scope.ServiceProvider.GetRequiredService<ISystemStateRepo>();
+
+		//		try
+		//		{
+		//			_logger.LogInformation("NAV auto-sync started");
+		//			var lastRun = await state.GetLastNavSyncUtcAsync();
+		//			var now = DateTime.UtcNow;
+
+		//			if (lastRun.HasValue && lastRun.Value > now.AddHours(-_minIntervalHours))
+		//			{
+		//				_logger.LogInformation("NAV auto-sync skipped — already synced at {Time}", lastRun);
+		//			}
+		//			else
+		//			{
+
+		//				_logger.LogInformation("NAV auto-sync started at {Time}", DateTime.UtcNow);
+		//				summary = await navService.FetchAndStoreLatestNavWithSummaryAsync();
+
+		//				await state.SetLastNavSyncUtcAsync(now);
+
+		//				_logger.LogInformation("NAV auto-sync completed successfully");
+		//			}
+
+		//			_logger.LogInformation(
+		//				"NAV auto-sync completed. Inserted={Inserted}, Skipped={Skipped}",
+		//				summary.Inserted,
+		//				summary.SkippedAsDuplicate);
+		//		}
+		//		catch (Exception ex)
+		//		{
+		//			_logger.LogError(ex, "NAV auto-sync failed");
+		//		}
+
+		//		// Run once per 24 hours
+		//		await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+		//	}
+		//}
 	}
 }

@@ -1,0 +1,10 @@
+
+@base_url = https://localhost:7071
+
+GET {{base_url}}/api/Function1
+Accept: application/json
+
+###
+
+GET http://localhost:7071/api/Function1
+Accept: application/json

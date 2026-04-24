@@ -1,7 +1,12 @@
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OM.MFPTrackerV1.Data;
 using OM.MFPTrackerV1.Data.Models;
 using OM.MFPTrackerV1.Data.Services;
+using OM.MFPTrackerV1.Web.API.Auth;
 using OM.MFPTrackerV1.Web.Components;
 using OM.MFPTrackerV1.Web.Services;
 
@@ -62,6 +67,48 @@ namespace OM.MFPTrackerV1.Web
 			builder.Services.AddScoped<ISystemStateRepo, SystemStateRepo>();
 			builder.Services.AddHostedService<NavAutoSyncService>(); //BackgroundService to auto-sync NAV data from AMFI daily
 			builder.Services.AddScoped<IFolioOwnerRepository, FolioOwnerRepository>(); // delete after FolioOwner is removed
+
+			builder.Services.AddScoped(sp =>
+			{
+				var nav = sp.GetRequiredService<NavigationManager>();
+				return new HttpClient
+				{
+					BaseAddress = new Uri(nav.BaseUri)
+				};
+			});
+
+			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+					.AddCookie(options =>
+					{
+						options.Cookie.Name = "OMNamahShivay-Auth";
+						options.LoginPath = "/login";
+						options.LogoutPath = "/logout"; 
+						//options.ExpireTimeSpan = TimeSpan.FromHours(8);
+						//options.SlidingExpiration = true;
+
+
+						//options.Cookie.HttpOnly = true;
+						//options.Cookie.SameSite = SameSiteMode.Lax;
+
+						//// ✅ THIS IS THE IMPORTANT PART
+						//options.Cookie.SecurePolicy =
+						//	builder.Environment.IsDevelopment()
+						//		? CookieSecurePolicy.SameAsRequest
+						//		: CookieSecurePolicy.Always;
+
+
+					});
+
+			//builder.Services.AddAuthorization(options =>
+			//{
+			//	options.FallbackPolicy = options.DefaultPolicy;
+			//});
+			builder.Services.AddAuthorization();
+			//builder.Services.AddHttpContextAccessor();
+			builder.Services.AddScoped<LocalAuthService>();
+			builder.Services.AddAuthorizationCore();
+			builder.Services.AddCascadingAuthenticationState();
+
 			/////////////END DK Added /////////////
 
 			// Add services to the container.
@@ -78,12 +125,20 @@ namespace OM.MFPTrackerV1.Web
                 app.UseHsts();
             }
 
-            app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+			//DK-Added//
+			app.UseStaticFiles();          // if present
+
+			app.UseRouting();              // <-- ADD THIS LINE
+
+			app.UseAuthentication();
+			app.UseAuthorization();
+			app.MapAuthEndpoints(); // login/logout APIs
+			
+			app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
             app.UseHttpsRedirection();
 
-            app.UseAntiforgery();
-
-            app.MapStaticAssets();
+			app.UseAntiforgery();/* REQUIRED FOR BLAZOR */
+			app.MapStaticAssets();
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode();
 

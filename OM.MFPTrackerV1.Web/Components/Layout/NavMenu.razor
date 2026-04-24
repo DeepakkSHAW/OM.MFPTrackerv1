@@ -1,12 +1,13 @@
 ﻿@inject NavigationManager Navigation
-
+@rendermode InteractiveServer
+@attribute [AllowAnonymous]
 <div class="nav-scrollable">
     <nav class="nav flex-column">
 
         <!-- Home -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill"></span>Home
+            <NavLink class="nav-link" href="#" Match="NavLinkMatch.All">
+                <span><span class="bi bi-shop"></span>Home</span>
             </NavLink>
         </div>
 
@@ -14,7 +15,7 @@
         <div class="nav-item px-3">
             <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
                     @onclick="TogglePeople">
-                <span><span class="oi oi-people"></span> Management</span>
+                <span><span class="bi bi-signpost-2"></span> Management</span>
                 <span class="chevron @(isPeopleOpen ? "rotate" : "")">▾</span>
             </button>
             @if (isPeopleOpen)
@@ -24,7 +25,6 @@
                     <NavLink class="nav-link" href="/folio-owners">Folio Owner (D)</NavLink>
                     <NavLink class="nav-link" href="/mf-categories">Fund Category</NavLink>
                     <NavLink class="nav-link" href="/amcs">AMC</NavLink>
-                    <NavLink class="nav-link" href="/admin/special-events">Special Events</NavLink>
                 </div>
             }
         </div>
@@ -33,7 +33,7 @@
         <div class="nav-item px-3">
             <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
                     @onclick="ToggleFunds">
-                <span><span class="oi oi-people"></span> Mutual Funds</span>
+                <span><span class="bi bi-ticket-perforated"></span> Mutual Funds</span>
                 <span class="chevron @(isFundsOpen ? "rotate" : "")">▾</span>
             </button>
             @if (isFundsOpen)
@@ -50,7 +50,7 @@
         <div class="nav-item px-3">
             <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
                     @onclick="ToggleImports">
-                <span><span class="oi oi-people"></span>Imports & Export</span>
+                <span><span class="bi bi-clipboard2-data"></span>Imports & Export</span>
                 <span class="chevron @(isImportOpen ? "rotate" : "")">▾</span>
             </button>
             @if (isImportOpen)
@@ -62,22 +62,40 @@
                 </div>
             }
         </div>
+
         <!-- NAVs Group -->
         <div class="nav-item px-3">
             <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
                     @onclick="ToggleNavs">
-                <span><span class="oi oi-people"></span>Admin</span>
+                <span><span class="bi bi-speedometer"></span>Admin</span>
                 <span class="chevron @(isNavsOpen ? "rotate" : "")">▾</span>
             </button>
             @if (isNavsOpen)
             {
                 <div class="ps-3">
                     <NavLink class="nav-link" href="/admin/nav">NAV Mgmt</NavLink>
+                    <NavLink class="nav-link" href="/admin/special-events">Special Events</NavLink>
                     <NavLink class="nav-link" href="#">DK</NavLink>
                 </div>
             }
         </div>
-
+        <!-- Login/LogOut Links -->
+        <AuthorizeView>
+            <Authorized Context="auth">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/logout">
+                        <span><span class="bi bi-door-closed-fill"></span>Logout [@(auth.User.Identity?.Name is { Length: > 5 } n ? n[..5] : auth.User.Identity?.Name)]</span>
+                    </NavLink>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/login">
+                        <span><span class="bi bi-door-open-fill"></span>Login</span>
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 </div>
 

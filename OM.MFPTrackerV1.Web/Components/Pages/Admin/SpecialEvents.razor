@@ -1,6 +1,7 @@
 ﻿@page "/admin/special-events"
-
+@attribute [Authorize(Roles = "Admin")]
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
 

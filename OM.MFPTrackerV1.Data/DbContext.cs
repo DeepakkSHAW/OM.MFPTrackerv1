@@ -387,60 +387,32 @@ namespace OM.MFPTrackerV1.Data
 
 
 				e.HasData(
-					new Folio
-					{
-						FolioId = 1,
-						FolioNumber = "37959966", // JAG HDFC Small cap and Gold ETF
-						AMCId = 9,
-						FolioHolderId = 3,
-						FolioPurpose = "Long term Portfolio",
-						AttachedBank = "JAG IDFC NRO",
-					},
-					new Folio
-					{
-						FolioId = 2,
-						FolioNumber = "499183354147", // Nippon India Small Cap Fund - Direct Plan - Growth (DK)
-						AMCId = 6,
-						FolioHolderId = 2,
-						FolioPurpose = "Small can investment - experiment",
-						AttachedBank = "DK HDFC NRO",
-					},
-					new Folio
-					{
-						FolioId = 3,
-						FolioNumber = "10121489", // PP Flex cap 
-						AMCId = 7,
-						FolioHolderId = 2,
-						FolioPurpose = "Long term Investment",
-						AttachedBank = "DK HDFC NRO",
-					},
-					new Folio
-					{
-						FolioId = 4,
-						FolioNumber = "10510544", // Linked with KOTAK NRE
-						AMCId = 7,
-						FolioHolderId = 2,
-						FolioPurpose = "Long term Repatriate Inv",
-						AttachedBank = "DK KOTAK NRE",
-					},
-					new Folio
-					{
-						FolioId = 5,
-						FolioNumber = "17412588", // Linked with IDFC NRO
-						AMCId = 7,
-						FolioHolderId = 2,
-						FolioPurpose = "Long term Repatriate Inv",
-						AttachedBank = "DK IDFC NRO",
-					},
-					new Folio
-					{
-						FolioId = 6,
-						FolioNumber = "17713086", // Linked with IDFC NRO
-						AMCId = 7,
-						FolioHolderId = 3,
-						FolioPurpose = "Long term Repatriate Inv",
-						AttachedBank = "DK IDFC NRO",
-					}
+						new Folio { FolioId = 1, FolioNumber = "37959966", FolioPurpose = "Long term Portfolio", AttachedBank = "JAG IDFC NRO", IsActive = true, AMCId = 9, FolioHolderId = 3 },
+						new Folio { FolioId = 2, FolioNumber = "499183354147", FolioPurpose = "Small can investment - experiment", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 6, FolioHolderId = 2 },
+						new Folio { FolioId = 3, FolioNumber = "10121489", FolioPurpose = "Long term Investment", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 7, FolioHolderId = 2},
+						new Folio { FolioId = 4, FolioNumber = "10510544", FolioPurpose = "Long term Repatriate Inv", AttachedBank = "DK KOTAK NRE", IsActive = true, AMCId = 7, FolioHolderId = 2},
+						new Folio { FolioId = 5, FolioNumber = "17412588", FolioPurpose = "Long term Repatriate Inv", AttachedBank = "DK IDFC NRO", IsActive = true, AMCId = 7, FolioHolderId = 2},
+						new Folio { FolioId = 6, FolioNumber = "17713086", FolioPurpose = "Long term Repatriate Inv", AttachedBank = "DK IDFC NRO", IsActive = true, AMCId = 7, FolioHolderId = 3},
+						new Folio { FolioId = 7, FolioNumber = "12938622", FolioPurpose = "Retirement Savings", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 10, FolioHolderId = 2},
+						new Folio { FolioId = 8, FolioNumber = "18968155", FolioPurpose = "Diversification", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 8, FolioHolderId = 2},
+						new Folio { FolioId = 9, FolioNumber = "19915197402", FolioPurpose = "Big Investment", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 3, FolioHolderId = 2},
+						new Folio { FolioId = 10, FolioNumber = "4183002", FolioPurpose = "Index Tracking", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 10, FolioHolderId = 2 },
+						new Folio { FolioId = 11, FolioNumber = "4751368", FolioPurpose = "Diversification", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 4, FolioHolderId = 2},
+						new Folio { FolioId = 12, FolioNumber = "79931281531", FolioPurpose = "Diversification", AttachedBank = "DK KOTAK NRE", IsActive = true, AMCId = 5, FolioHolderId = 2},
+						new Folio { FolioId = 13, FolioNumber = "79931510915", FolioPurpose = "SIP", AttachedBank = "DK KOTAK NRE", IsActive = true, AMCId = 5, FolioHolderId = 2},
+						new Folio { FolioId = 14, FolioNumber = "79933657726", FolioPurpose = "SIP for JAG", AttachedBank = "DK KOTAK NRE", IsActive = true, AMCId = 5, FolioHolderId = 2},
+						new Folio { FolioId = 15, FolioNumber = "79944037504", FolioPurpose = "One more SIP on MIR", AttachedBank = "DK KOTAK NRE", IsActive = true, AMCId = 5, FolioHolderId = 2},
+						new Folio { FolioId = 16, FolioNumber = "79954053351", FolioPurpose = "Tax saving purpose", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 5, FolioHolderId = 2},
+						new Folio { FolioId = 17, FolioNumber = "910146098564", FolioPurpose = "Diversification", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 1, FolioHolderId = 2},
+						new Folio { FolioId = 18, FolioNumber = "910160295815", FolioPurpose = "INV for JAG (LIC Money)", AttachedBank = "DK HDFC NRO", IsActive = true, AMCId = 1, FolioHolderId = 2},
+						new Folio { FolioId = 19, FolioNumber = "91093138511", FolioPurpose = "Parking in small cap", AttachedBank = "DK KOTAK NRE", IsActive = true, AMCId = 1, FolioHolderId = 2},
+						new Folio { FolioId = 20, FolioNumber = "91093138814", FolioPurpose = "JAG long term SIP", AttachedBank = "DK KOTAK NRE", IsActive = true, AMCId = 1, FolioHolderId = 2 },
+						new Folio {FolioId = 21, FolioNumber = "91093138965", FolioPurpose = "DIV long term SIP", AttachedBank = "DK KOTAK NRE", IsActive = true, AMCId = 1, FolioHolderId = 2 },
+						new Folio { FolioId = 22, FolioNumber = "18917658", FolioPurpose = "RUPs INV", AttachedBank = "RS SBI", IsActive = true, AMCId = 8, FolioHolderId = 1},
+						new Folio {FolioId = 23, FolioNumber = "10231846", FolioPurpose = "Rups Inv", AttachedBank = "RS SBI", IsActive = true, AMCId = 7, FolioHolderId = 6 },
+						new Folio {FolioId = 24, FolioNumber = "79936204371", FolioPurpose = "SIP", AttachedBank = "SBI", IsActive = true, AMCId = 5, FolioHolderId = 1 },
+						new Folio { FolioId = 25, FolioNumber = "910111376902", FolioPurpose = "Diversification", AttachedBank = "SBI", IsActive = true, AMCId = 1, FolioHolderId = 1 },
+						new Folio { FolioId = 26, FolioNumber = "910146844882", FolioPurpose = "RS INV", AttachedBank = "SBI", IsActive = true, AMCId = 1, FolioHolderId = 1 }
 				);
 			});
 

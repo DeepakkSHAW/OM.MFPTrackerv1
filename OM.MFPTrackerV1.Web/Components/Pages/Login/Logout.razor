@@ -1,0 +1,27 @@
+﻿@page "/logout"
+@attribute [AllowAnonymous]
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<h3>Signing out…</h3>
+
+@code {
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     await JS.InvokeVoidAsync("auth.alogout");
+    //     //Nav.NavigateTo("/api/logout", forceLoad: true);
+
+    //     // Force reload so cookie removal is respected
+    //     //Nav.NavigateTo("/login", forceLoad: true);
+    // }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("auth.alogout");
+        }
+    }
+
+}
