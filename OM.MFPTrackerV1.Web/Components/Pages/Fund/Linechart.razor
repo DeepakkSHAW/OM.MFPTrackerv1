@@ -1,0 +1,11 @@
+﻿@page "/test-chart"
+@rendermode InteractiveServer
+
+<h3>Reusable Line Chart</h3>
+
+<LineChart Labels="@labels" Data="@data" />
+
+@code {
+    private string[] labels = { "Jan", "Feb", "Mar", "Apr", "May" };
+    private double[] data = { 10, 25, 15, 30, 45 };
+}

@@ -1,0 +1,29 @@
+﻿@inject IJSRuntime JS
+
+<div style="height:300px;">
+    <canvas id="@_id"></canvas>
+</div>
+
+@code {
+    [Parameter] public string[] Labels { get; set; } = [];
+    [Parameter] public double[] Data { get; set; } = [];
+
+    private string _id = $"chart_{Guid.NewGuid():N}";
+    private bool _rendered;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_rendered) return;
+
+        _rendered = true;
+
+        await Task.Delay(50);
+
+        await JS.InvokeVoidAsync(
+            "chartInterop.renderLineChart",
+            _id,
+            Labels,
+            Data
+        );
+    }
+}

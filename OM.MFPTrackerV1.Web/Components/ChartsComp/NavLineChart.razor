@@ -1,0 +1,39 @@
+﻿@inject IJSRuntime JS
+
+<div style="height:350px;">
+    <canvas id="@_id"></canvas>
+</div>
+
+@code {
+    [Parameter] public string[] Labels { get; set; } = [];
+    [Parameter] public double[] NavValues { get; set; } = [];
+
+    [Parameter] public List<PurchasePoint> Purchases { get; set; } = new();
+
+    private string _id = $"nav_{Guid.NewGuid():N}";
+    private bool _rendered;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_rendered) return;
+
+        _rendered = true;
+
+        await Task.Delay(50);
+
+        await JS.InvokeVoidAsync(
+            "chartInterop.renderNavWithPurchasesv1",
+            _id,
+            Labels,
+            NavValues,
+            Purchases
+        );
+    }
+
+    public class PurchasePoint
+    {
+        public int Index { get; set; }
+        public double Value { get; set; }
+        public double Amount { get; set; }
+    }
+}

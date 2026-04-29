@@ -1,5 +1,6 @@
 ﻿@page "/admin/nav-sync"
 @attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
 @inject IAmfiNavService AmfiNavService

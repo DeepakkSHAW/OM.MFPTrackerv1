@@ -190,12 +190,7 @@ namespace OM.MFPTrackerV1.Data.Services
 
 	public interface IMFFundRepo
 	{
-		Task<(IReadOnlyList<Fund> Items, int TotalCount)> GetAsync(
-			string? search,
-			string? sortBy,
-			bool sortDesc,
-			int pageNumber,
-			int pageSize);
+		Task<(IReadOnlyList<Fund> Items, int TotalCount)> GetAsync(string? search, string? sortBy, bool sortDesc, int pageNumber, int pageSize);
 
 		Task<Fund?> GetByIdAsync(int id);
 
@@ -212,6 +207,7 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task DeleteAsync(int id);
 
 		Task<int> CountAsync();
+		Task<IReadOnlyList<FundLookupDto>> GetFundsAsync();
 	}
 	public class MFFundRepo : IMFFundRepo
 	{
@@ -423,5 +419,22 @@ namespace OM.MFPTrackerV1.Data.Services
 			_db.Set<Fund>().Remove(existing);
 			await _db.SaveChangesAsync();
 		}
-	}
+
+
+public async Task<IReadOnlyList<FundLookupDto>> GetFundsAsync()
+    {
+        var items = await _db.Funds
+            .AsNoTracking()                     // ✅ lookup = read‑only
+            .Where(f => f.IsNavAllowed)             // ✅ only active funds (adjust if needed)
+            .OrderBy(f => f.FundName)               // ✅ stable UX ordering
+            .Select(f => new FundLookupDto(
+                f.FundId,
+                f.FundName
+            ))
+            .ToListAsync();
+
+        return items;
+    }
+
+    }
 }

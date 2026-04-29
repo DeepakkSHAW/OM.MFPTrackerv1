@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OM.MFPTrackerV1.Data;
-using OM.MFPTrackerV1.Data.Models;
 using OM.MFPTrackerV1.Data.Services;
 using OM.MFPTrackerV1.Web.API.Auth;
 using OM.MFPTrackerV1.Web.Components;
@@ -12,13 +9,13 @@ using OM.MFPTrackerV1.Web.Services;
 
 namespace OM.MFPTrackerV1.Web
 {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
-			
-            ////////////DK Added /////////////
+	public class Program
+	{
+		public static void Main(string[] args)
+		{
+			var builder = WebApplication.CreateBuilder(args);
+
+			////////////DK Added /////////////
 			var dbFolder = builder.Configuration["Database:Folder"] ?? "data";
 			var dbFile = builder.Configuration["Database:FileName"] ?? "portfolio.db";
 			var urlAmf = builder.Configuration["Amfi:NavUrl"] ?? "https://portal.amfiindia.com/spages/NAVOpen.txt";
@@ -77,33 +74,93 @@ namespace OM.MFPTrackerV1.Web
 				};
 			});
 
-			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-					.AddCookie(options =>
+			//builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+			//		.AddCookie(options =>
+			//		{
+			//			options.Cookie.Name = "OMNamahShivay-Auth";
+			//			options.LoginPath = "/login";
+			//			options.LogoutPath = "/logout";
+			//			options.AccessDeniedPath = "/login/access-denied";
+			//			//options.ExpireTimeSpan = TimeSpan.FromHours(8);
+			//			//options.SlidingExpiration = true;
+
+
+			//			//options.Cookie.HttpOnly = true;
+			//			//options.Cookie.SameSite = SameSiteMode.Lax;
+
+			//			//// ✅ THIS IS THE IMPORTANT PART
+			//			//options.Cookie.SecurePolicy =
+			//			//	builder.Environment.IsDevelopment()
+			//			//		? CookieSecurePolicy.SameAsRequest
+			//			//		: CookieSecurePolicy.Always;
+
+
+			//		});
+
+			builder.Services
+				.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+				.AddCookie(options =>
+				{
+					// -------------------------------
+					// Cookie identity
+					// -------------------------------
+					options.Cookie.Name = ".OM.MFPTracker.Auth";
+
+					// -------------------------------
+					// Navigation paths
+					// -------------------------------
+					options.LoginPath = "/login";
+					options.LogoutPath = "/logout";
+					options.AccessDeniedPath = "/account/access-denied";
+
+					// -------------------------------
+					// Lifetime & expiration
+					// -------------------------------
+					options.ExpireTimeSpan = TimeSpan.FromHours(8);
+					options.SlidingExpiration = true;
+
+					// -------------------------------
+					// Security best practices
+					// -------------------------------
+					options.Cookie.HttpOnly = true;
+					options.Cookie.SameSite = SameSiteMode.Lax;
+
+					options.Cookie.SecurePolicy =
+						builder.Environment.IsDevelopment()
+							? CookieSecurePolicy.SameAsRequest
+							: CookieSecurePolicy.Always;
+
+					// -------------------------------
+					// Ensure APIs return 401/403 instead of redirects
+					// -------------------------------
+					options.Events = new CookieAuthenticationEvents
 					{
-						options.Cookie.Name = "OMNamahShivay-Auth";
-						options.LoginPath = "/login";
-						options.LogoutPath = "/logout";
-						options.AccessDeniedPath = "/login/access-denied";
-						//options.ExpireTimeSpan = TimeSpan.FromHours(8);
-						//options.SlidingExpiration = true;
+						OnRedirectToLogin = context =>
+						{
+							if (context.Request.Path.StartsWithSegments("/api"))
+							{
+								context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+								return Task.CompletedTask;
+							}
 
+							context.Response.Redirect(context.RedirectUri);
+							return Task.CompletedTask;
+						},
 
-						//options.Cookie.HttpOnly = true;
-						//options.Cookie.SameSite = SameSiteMode.Lax;
+						OnRedirectToAccessDenied = context =>
+						{
+							if (context.Request.Path.StartsWithSegments("/api"))
+							{
+								context.Response.StatusCode = StatusCodes.Status403Forbidden;
+								return Task.CompletedTask;
+							}
 
-						//// ✅ THIS IS THE IMPORTANT PART
-						//options.Cookie.SecurePolicy =
-						//	builder.Environment.IsDevelopment()
-						//		? CookieSecurePolicy.SameAsRequest
-						//		: CookieSecurePolicy.Always;
+							context.Response.Redirect(context.RedirectUri);
+							return Task.CompletedTask;
+						}
+					};
+				});
 
-
-					});
-
-			//builder.Services.AddAuthorization(options =>
-			//{
-			//	options.FallbackPolicy = options.DefaultPolicy;
-			//});
 			builder.Services.AddAuthorization();
 			//builder.Services.AddHttpContextAccessor();
 			builder.Services.AddScoped<LocalAuthService>();
@@ -114,36 +171,36 @@ namespace OM.MFPTrackerV1.Web
 
 			// Add services to the container.
 			builder.Services.AddRazorComponents()
-                .AddInteractiveServerComponents();
+				.AddInteractiveServerComponents();
 
-            var app = builder.Build();
+			var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
-            if (!app.Environment.IsDevelopment())
-            {
-                app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
-            }
+			// Configure the HTTP request pipeline.
+			if (!app.Environment.IsDevelopment())
+			{
+				app.UseExceptionHandler("/Error");
+				// The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+				app.UseHsts();
+			}
 
 			//DK-Added//
 			app.UseStaticFiles();          // if present
-
+			app.MapStaticAssets();
 			app.UseRouting();              // <-- ADD THIS LINE
 
 			app.UseAuthentication();
 			app.UseAuthorization();
 			app.MapAuthEndpoints(); // login/logout APIs
-			
+
 			app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-            app.UseHttpsRedirection();
+			app.UseHttpsRedirection();
 
 			app.UseAntiforgery();/* REQUIRED FOR BLAZOR */
-			app.MapStaticAssets();
-            app.MapRazorComponents<App>()
-                .AddInteractiveServerRenderMode();
 
-            app.Run();
-        }
-    }
+			app.MapRazorComponents<App>()
+				.AddInteractiveServerRenderMode();
+
+			app.Run();
+		}
+	}
 }

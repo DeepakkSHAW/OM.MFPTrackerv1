@@ -1,0 +1,251 @@
+﻿@page "/nav-dashboard"
+@rendermode InteractiveServer
+
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+
+@inject IFundNavRepo FundNavRepo
+@inject IMFFundRepo FundLookupRepo
+@inject IMutualFundTransactionRepo TransactionRepo  
+@* Step 3 *@
+
+<h3>NAV Dashboard</h3>
+
+<!-- ================= Controls ================= -->
+<div class="card mb-3">
+    <div class="card-body">
+
+        <div class="row g-3 align-items-end">
+
+            <!-- Fund selector -->
+            <div class="col-md-4">
+                <label class="form-label">Fund</label>
+                <select class="form-select" @bind="selectedFundId">
+                    <option value="">-- Select fund --</option>
+                    @foreach (var fund in funds)
+                    {
+                        <option value="@fund.Id">@fund.Name</option>
+                    }
+                </select>
+            </div>
+
+            <!-- From date -->
+            <div class="col-md-3">
+                <label class="form-label">From date</label>
+                <input type="date"
+                       class="form-control"
+                       @bind="fromDate" />
+            </div>
+
+            <!-- To date -->
+            <div class="col-md-3">
+                <label class="form-label">To date</label>
+                <input type="date"
+                       class="form-control"
+                       @bind="toDate" />
+            </div>
+
+            <!-- Load button -->
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100"
+                        @onclick="LoadNavAsync"
+                        disabled="@(!CanLoad)">
+                    Load
+                </button>
+            </div>
+        </div>
+
+        <!-- Purchase toggle -->
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="includePurchases"
+                           @bind="includePurchases" />
+
+                    <label class="form-check-label" for="includePurchases">
+                        Include purchase details
+                    </label>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= Chart ================= -->
+@if (isLoading)
+{
+    <p>Loading NAV data…</p>
+}
+else if (navValues.Length > 0)
+{
+    <NavLineChart Labels="@labels"
+                  NavValues="@navValues"
+                  Purchases="@(includePurchases ? purchases : EmptyPurchases)" />
+}
+else
+{
+    <p class="text-muted">No data loaded.</p>
+}
+
+@code {
+
+    /* ================= UI state ================= */
+
+    private IReadOnlyList<FundLookupDto> funds = [];
+    private int? selectedFundId;
+
+    private DateTime fromDate = DateTime.Today.AddMonths(-6);
+    private DateTime toDate = DateTime.Today;
+
+    private bool includePurchases;
+    private bool isLoading;
+
+    /* ================= Chart data ================= */
+
+    private string[] labels = [];
+    private double[] navValues = [];
+
+    private List<NavLineChart.PurchasePoint> purchases = new();
+
+    // ✅ shared empty list (never pass null to JS)
+    private static readonly List<NavLineChart.PurchasePoint>
+        EmptyPurchases = new();
+
+    /* ================= Lifecycle ================= */
+
+    protected override async Task OnInitializedAsync()
+    {
+        funds = await FundLookupRepo.GetFundsAsync();
+    }
+
+    private bool CanLoad =>
+        selectedFundId.HasValue &&
+        fromDate < toDate;
+
+    /* ================= Data loading ================= */
+
+    private async Task LoadNavAsync()
+    {
+        if (!selectedFundId.HasValue)
+            return;
+
+        isLoading = true;
+
+        try
+        {
+            // 1️⃣ Load NAV history
+            var navHistory =
+                await FundNavRepo.GetNavHistoryAsync(
+                    selectedFundId.Value,
+                    fromDate,
+                    toDate);
+
+            labels = navHistory
+                .Select(n => n.NavDate.ToString("dd MMM"))
+                .ToArray();
+
+            navValues = navHistory
+                .Select(n => (double)n.NavValue)   // decimal → double
+                .ToArray();
+
+            // 2️⃣ Load purchase overlay if requested
+            purchases.Clear();
+
+            if (includePurchases)
+            {
+                await LoadPurchasePointsAsync(navHistory);
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /* ================= Step 3 (Stub for real data) ================= */
+
+    // private async Task LoadPurchasePointsAsync(
+    //     IReadOnlyList<FundNavPoint> navHistory)
+    // {
+    //     // 🔜 REAL IMPLEMENTATION (next step):
+    //     // - Query TMutualFundTransaction by FundId & date range
+    //     // - Match transaction date to nearest NAV index
+    //     // - Set Index, Value (NAV), AmountPaid
+
+    //     // ✅ Temporary placeholder to validate wiring
+    //     if (navHistory.Count > 2)
+    //     {
+    //         purchases.Add(new NavLineChart.PurchasePoint
+    //         {
+    //             Index = 2,
+    //             Value = (double)navHistory[2].NavValue,
+    //             Amount = 1500
+    //         });
+    //     }
+
+    //     await Task.CompletedTask;
+    // }
+    private async Task LoadPurchasePointsAsync(
+        IReadOnlyList<FundNavPoint> navHistory)
+    {
+        if (!selectedFundId.HasValue || navHistory.Count == 0)
+            return;
+
+        // 1️⃣ Fetch ALL transactions for this fund
+        // Large pageSize to avoid paging loops
+        var (items, _) = await TransactionRepo.GetAsync(
+            folioId: null,
+            fundId: selectedFundId.Value,
+            sortBy: nameof(MutualFundTransaction.TransactionDate),
+            sortDesc: false,
+            pageNumber: 1,
+            pageSize: 10_000);
+
+        if (items.Count == 0)
+            return;
+
+        // 2️⃣ Filter investment-type transactions in date range
+        var investmentTxns = items
+            .Where(tx =>
+                (tx.TxnType == TransactionType.BUY ||
+                 tx.TxnType == TransactionType.SIP ||
+                 tx.TxnType == TransactionType.SWITCH_IN ||
+                 tx.TxnType == TransactionType.DIV_REINVEST) &&
+                tx.TransactionDate.Date >= fromDate.Date &&
+                tx.TransactionDate.Date <= toDate.Date)
+            .ToList();
+
+        if (investmentTxns.Count == 0)
+            return;
+
+        // 3️⃣ Build NAV lookup (date → index)
+        var navLookup = navHistory
+            .Select((nav, index) => new
+            {
+                nav.NavDate,
+                Index = index,
+                nav.NavValue
+            })
+            .ToList();
+
+        // 4️⃣ Align each investment to NAV-on-or-after transaction date
+        foreach (var tx in investmentTxns)
+        {
+            var navMatch = navLookup
+                .FirstOrDefault(n => n.NavDate >= tx.TransactionDate.Date);
+
+            if (navMatch is null)
+                continue; // no NAV available after this transaction
+
+            purchases.Add(new NavLineChart.PurchasePoint
+            {
+                Index = navMatch.Index,
+                Value = (double)navMatch.NavValue,
+                Amount = (double)tx.AmountPaid
+            });
+        }
+    }
+}

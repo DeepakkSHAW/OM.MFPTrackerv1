@@ -8,14 +8,7 @@ namespace OM.MFPTrackerV1.Data.Services
 {
 	public interface IFundNavRepo
 	{
-		Task<(IReadOnlyList<FundNav> Items, int TotalCount)> GetAsync(
-			int? fundId,
-			DateTime? fromDate,
-			DateTime? toDate,
-			string? sortBy,
-			bool sortDesc,
-			int pageNumber,
-			int pageSize);
+		Task<(IReadOnlyList<FundNav> Items, int TotalCount)> GetAsync(int? fundId, DateTime? fromDate, DateTime? toDate, string? sortBy, bool sortDesc, int pageNumber, int pageSize);
 
 		Task<FundNav?> GetByIdAsync(int id);
 		Task<bool> ExistsAsync(int fundId, DateTime navDate, int? excludeId = null);
@@ -23,11 +16,12 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task AddAsync(FundNav nav);
 		Task UpdateAsync(FundNav nav);
 		Task DeleteAsync(int id);
-
 		Task AddRangeAsync(IEnumerable<FundNav> navs);
+
+		Task<IReadOnlyList<FundNavPoint>> GetNavHistoryAsync(int fundId, DateTime fromDate, DateTime toDate);
 	}
 
-public sealed class FundNavRepo : IFundNavRepo
+	public sealed class FundNavRepo : IFundNavRepo
 	{
 		private readonly MFPTrackerDbContext _db;
 
@@ -36,14 +30,7 @@ public sealed class FundNavRepo : IFundNavRepo
 			_db = db;
 		}
 
-		public async Task<(IReadOnlyList<FundNav> Items, int TotalCount)> GetAsync(
-			int? fundId,
-			DateTime? fromDate,
-			DateTime? toDate,
-			string? sortBy,
-			bool sortDesc,
-			int pageNumber,
-			int pageSize)
+		public async Task<(IReadOnlyList<FundNav> Items, int TotalCount)> GetAsync(int? fundId, DateTime? fromDate, DateTime? toDate, string? sortBy, bool sortDesc, int pageNumber, int pageSize)
 		{
 			if (pageNumber < 1) pageNumber = 1;
 			if (pageSize < 1) pageSize = 10;
@@ -166,5 +153,29 @@ public sealed class FundNavRepo : IFundNavRepo
 			_db.FundNavs.AddRange(navs);
 			await _db.SaveChangesAsync();
 		}
+
+
+		public async Task<IReadOnlyList<FundNavPoint>> GetNavHistoryAsync(int fundId, DateTime fromDate, DateTime toDate)
+		{
+			// ✅ Defensive normalization
+			fromDate = fromDate.Date;
+			toDate = toDate.Date;
+
+			if (fromDate > toDate)
+				throw new ArgumentException("From date cannot be after To date.");
+
+			return await _db.FundNavs
+				.AsNoTracking()                     // ✅ read-only = faster
+				.Where(n =>
+					n.FundId == fundId &&
+					n.NavDate >= fromDate &&
+					n.NavDate <= toDate)
+				.OrderBy(n => n.NavDate)            // ✅ time series order
+				.Select(n => new FundNavPoint(
+					n.NavDate,
+					n.NavValue))
+				.ToListAsync();
+		}
+
 	}
 }

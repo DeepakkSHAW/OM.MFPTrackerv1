@@ -65,4 +65,10 @@ namespace OM.MFPTrackerV1.Data.Models
 				   $"{InvalidRows} skipped (invalid rows)";
 		}
 	}
+
+	public sealed record FundLookupDto(int Id, string Name);
+	public sealed record FundNavPoint(
+		DateTime NavDate,
+		decimal NavValue
+	);
 }
