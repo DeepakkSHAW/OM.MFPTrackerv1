@@ -1,4 +1,15 @@
-﻿window.baseCategoryColors = {
+﻿
+// Deterministic color based on label (for AMC, Funds, etc.)
+function colorFromLabel(label) {
+    let hash = 0;
+    for (let i = 0; i < label.length; i++) {
+        hash = label.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 55%)`;
+}
+
+window.baseCategoryColors = {
     Equity: "#2E86DE",      // Blue
     Debt: "#27AE60",        // Green
     Hybrid: "#F39C12",      // Orange
@@ -261,7 +272,7 @@ window.chartInterop.renderPieChartV1 = function (
     });
 };
 
-window.chartInterop.renderPieChart = function (
+window.chartInterop.renderPieChartv2 = function (
     canvasId,
     labels,
     values
@@ -272,33 +283,63 @@ window.chartInterop.renderPieChart = function (
     const ctx = canvas.getContext("2d");
     canvas._chartInstance?.destroy();
 
-    // ✅ Count subcategories per parent
+    // ------------------------------------------------------------
+    // Helper: deterministic distinct color per label (AMC, Fund)
+    // ------------------------------------------------------------
+    function colorFromLabel(label) {
+        let hash = 0;
+        for (let i = 0; i < label.length; i++) {
+            hash = label.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash) % 360;
+        return `hsl(${hue}, 65%, 55%)`;
+    }
+
+    // ------------------------------------------------------------
+    // Detect whether this is a CATEGORY pie or a GENERIC (AMC) pie
+    // ------------------------------------------------------------
+
+    // Count subcategories per parent (for category pies)
     const groups = {};
     labels.forEach(label => {
         const parent = label.split("-")[0].trim();
         groups[parent] = (groups[parent] || 0) + 1;
     });
 
-    // Track order inside each group
+    // If ANY parent exists in baseCategoryColors,
+    // we treat this as a Category pie
+    const isCategoryPie = labels.some(label => {
+        const parent = label.split("-")[0].trim();
+        return window.baseCategoryColors &&
+            window.baseCategoryColors[parent];
+    });
+
     const indexes = {};
 
     const colors = labels.map(label => {
         const parent = label.split("-")[0].trim();
-        const baseColor =
-            window.baseCategoryColors[parent] || "#95A5A6";
 
-        indexes[parent] = indexes[parent] ?? 0;
+        // ✅ Category pie → base color + shades
+        if (isCategoryPie && window.baseCategoryColors[parent]) {
+            indexes[parent] = indexes[parent] ?? 0;
 
-        const color = getShadedColor(
-            baseColor,
-            indexes[parent],
-            groups[parent]
-        );
+            const color = getShadedColor(
+                window.baseCategoryColors[parent],
+                indexes[parent],
+                groups[parent]
+            );
 
-        indexes[parent]++;
-        return color;
+            indexes[parent]++;
+            return color;
+        }
+
+        // ✅ AMC pie / generic pie → distinct color per label
+        return colorFromLabel(label);
     });
 
+    // ------------------------------------------------------------
+    // Render chart
+    // ------------------------------------------------------------
     canvas._chartInstance = new Chart(ctx, {
         type: "pie",
         data: {
@@ -330,6 +371,124 @@ window.chartInterop.renderPieChart = function (
         }
     });
 };
+
+window.chartInterop.renderPieChart = function (
+    canvasId,
+    labels,
+    values
+) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    canvas._chartInstance?.destroy();
+
+    // ------------------------------------------------------------
+    // Base blue color (single hue)
+    // ------------------------------------------------------------
+    const baseBlue = "#2E86DE";
+
+    // ------------------------------------------------------------
+    // Helpers: HEX ➜ HSL
+    // ------------------------------------------------------------
+    function hexToHsl(hex) {
+        const r = parseInt(hex.substr(1, 2), 16) / 255;
+        const g = parseInt(hex.substr(3, 2), 16) / 255;
+        const b = parseInt(hex.substr(5, 2), 16) / 255;
+
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+
+        if (max === min) {
+            h = s = 0;
+        } else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+
+        return [h * 360, s * 100, l * 100];
+    }
+
+    function hslCss(h, s, l) {
+        return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+
+    // ------------------------------------------------------------
+    // Value-based lightness calculation
+    // ------------------------------------------------------------
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+
+    // Lightness range (in %)
+    const minL = 35; // darkest (biggest investment)
+    const maxL = 75; // lightest (smallest investment)
+
+    const [h, s] = hexToHsl(baseBlue);
+
+    const colors = values.map(v => {
+        // Normalize value to 0–1
+        const ratio =
+            maxValue === minValue
+                ? 0.5
+                : (v - minValue) / (maxValue - minValue);
+
+        // Invert so higher value = darker color
+        const lightness = maxL - ratio * (maxL - minL);
+
+        return hslCss(h, s, lightness);
+    });
+
+    // ------------------------------------------------------------
+    // Render chart
+    // ------------------------------------------------------------
+    canvas._chartInstance = new Chart(ctx, {
+        type: "pie",
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                overOffset: 14
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: "nearest",
+                intersect: false
+            },
+            elements: {
+                arc: {
+                    hoverOffset: 4
+                }
+            },
+            plugins: {
+                legend: {
+                    position: "right"
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const total =
+                                ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const percent =
+                                ((ctx.raw / total) * 100).toFixed(2);
+
+                            return `${ctx.label}: ₹${ctx.raw.toLocaleString()} (${percent}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+``
 // ============================================================
 // ✅ DEBUG AID (OPTIONAL – SAFE TO KEEP)
 // ============================================================

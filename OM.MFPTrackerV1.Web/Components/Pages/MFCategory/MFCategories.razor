@@ -3,6 +3,7 @@
 @attribute [Authorize(Roles = "User,Admin")]
 
 @using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Web.Helpers
 @using OM.MFPTrackerV1.Data.Services
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
@@ -39,6 +40,10 @@
             <div class="col-md-6 d-flex justify-content-end gap-2">
                 <button class="btn btn-sm btn-primary" @onclick="ApplyFilters">Search</button>
                 <button class="btn btn-sm btn-secondary" @onclick="ClearFilters">Clear</button>
+                <a href="/mf-category-allocation" class="btn btn-sm btn-outline-primary">
+                    View Category Allocation
+                </a>
+
             </div>
         </div>
 
@@ -68,7 +73,7 @@
                     aria-sort="@AriaSort("TotalInvestment")"
                     title="Sort by Total Investment"
                     @onclick='() => Sort("TotalInvestment")'>
-                    Total Investment (₹)
+                    Investment (₹)
                     @((MarkupString)SortGlyph("TotalInvestment").Value)
                 </th>
 
@@ -164,7 +169,7 @@
                     aria-sort="@AriaSort("TotalInvestment")"
                     title="Sort by Total Investment"
                     @onclick='() => Sort("TotalInvestment")'>
-                    Total Investment (₹)
+                    Investment (₹)
                     @((MarkupString)SortGlyph("TotalInvestment").Value)
                 </th>
 
@@ -212,7 +217,7 @@
                         <!-- ✅ Total Investment (compact + tooltip) -->
                         <td class="text-end money"
                             title="@totalInv.ToString("N2")">
-                            @FormatAmount(totalInv)
+                            @CurrencyFormatter.FormatAmount(totalInv)
                         </td>
 
                         <!-- Fund count -->
@@ -547,15 +552,5 @@
         {
             filterMessage = ex.Message;
         }
-    }
-    private static string FormatAmount(decimal value)
-    {
-        if (value >= 1_00_00_000) // 1 Crore
-            return $"{value / 1_00_00_000M:0.##} Cr";
-
-        if (value >= 1_00_000) // 1 Lakh
-            return $"{value / 1_00_000M:0.##} L";
-
-        return value.ToString("N0");
     }
 }

@@ -24,11 +24,9 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task DeleteAsync(int transactionId);
 
 		Task<int> CountAsync(int? folioId = null);
-		Task<TransactionImportSummary> ImportFolioTransactionsAsync(
-			int amcId,
-			TransactionType transactionType,
-			IEnumerable<FolioTransactionPreviewRow> rows);
-
+		Task<TransactionImportSummary> ImportFolioTransactionsAsync(int amcId, TransactionType transactionType, IEnumerable<FolioTransactionPreviewRow> rows);
+		Task<Dictionary<int, decimal>> GetTotalInvestmentByFundAsync(CancellationToken ct = default);
+		Task<Dictionary<int, decimal>> GetTotalInvestmentByFolioAsync(CancellationToken ct = default);
 	}
 	public sealed class MutualFundTransactionRepo : IMutualFundTransactionRepo
 	{
@@ -354,5 +352,44 @@ namespace OM.MFPTrackerV1.Data.Services
 				InvalidRows = invalid
 			};
 		}
+		public async Task<Dictionary<int, decimal>> GetTotalInvestmentByFundAsync(CancellationToken ct = default)
+		{
+			var result =
+				await _db.MutualFundTransactions
+					.Where(tx =>
+						tx.TxnType == TransactionType.BUY ||
+						tx.TxnType == TransactionType.SIP ||
+						tx.TxnType == TransactionType.SWITCH_IN ||
+						tx.TxnType == TransactionType.DIV_REINVEST)
+					.GroupBy(tx => tx.FundId)
+					.Select(g => new
+					{
+						FundId = g.Key,
+						Total = g.Sum(x => x.AmountPaid)
+					})
+					.ToDictionaryAsync(
+						x => x.FundId,
+						x => x.Total,
+						ct);
+
+			return result;
+		}
+		public async Task<Dictionary<int, decimal>> GetTotalInvestmentByFolioAsync(CancellationToken ct = default)
+		{
+			return await _db.MutualFundTransactions
+				.Where(t =>
+					t.TxnType == TransactionType.BUY ||
+					t.TxnType == TransactionType.SIP ||
+					t.TxnType == TransactionType.SWITCH_IN ||
+					t.TxnType == TransactionType.DIV_REINVEST)
+				.GroupBy(t => t.FolioId)
+				.Select(g => new
+				{
+					FolioId = g.Key,
+					Total = g.Sum(x => x.AmountPaid)
+				})
+				.ToDictionaryAsync(x => x.FolioId, x => x.Total, ct);
+		}
+
 	}
 }

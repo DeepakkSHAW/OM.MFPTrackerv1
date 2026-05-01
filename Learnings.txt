@@ -130,3 +130,8 @@ Optional admin-only authorization
 
 // TODO: Improve returnUrl handling for prerendered Blazor Web App login
 // Currently defaults to "/" after login to avoid breaking auth flow
+
+for AI
+Start from your original, fully tested code as the base —
+apply all changes at once —
+and return ONE final, complete file

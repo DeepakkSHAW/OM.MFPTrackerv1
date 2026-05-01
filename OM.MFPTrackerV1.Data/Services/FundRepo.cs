@@ -193,7 +193,7 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task<(IReadOnlyList<Fund> Items, int TotalCount)> GetAsync(string? search, string? sortBy, bool sortDesc, int pageNumber, int pageSize);
 
 		Task<Fund?> GetByIdAsync(int id);
-
+		Task<List<Fund>> GetAllAsync(CancellationToken ct = default);
 		Task<bool> ExistsByISINAsync(string isin, int? excludeId = null);
 		Task<bool> ExistsBySchemeCodeAsync(string schemeCode, int amcId, int? excludeId = null);
 
@@ -308,6 +308,16 @@ namespace OM.MFPTrackerV1.Data.Services
 		public Task<int> CountAsync() =>
 			_db.Set<Fund>().CountAsync();
 
+		public async Task<List<Fund>> GetAllAsync(CancellationToken ct = default)
+		{
+			return await _db.Funds
+				.Include(f => f.AMC)
+				.Include(f => f.Category)
+				.AsNoTracking()
+				.OrderBy(f => f.FundName)
+				.ToListAsync(ct);
+		}
+
 		// -------------------------------------------------
 		public async Task<Fund?> GetByIdAsync(int id)
 		{
@@ -421,20 +431,20 @@ namespace OM.MFPTrackerV1.Data.Services
 		}
 
 
-public async Task<IReadOnlyList<FundLookupDto>> GetFundsAsync()
-    {
-        var items = await _db.Funds
-            .AsNoTracking()                     // ✅ lookup = read‑only
-            .Where(f => f.IsNavAllowed)             // ✅ only active funds (adjust if needed)
-            .OrderBy(f => f.FundName)               // ✅ stable UX ordering
-            .Select(f => new FundLookupDto(
-                f.FundId,
-                f.FundName
-            ))
-            .ToListAsync();
+		public async Task<IReadOnlyList<FundLookupDto>> GetFundsAsync()
+		{
+			var items = await _db.Funds
+				.AsNoTracking()                     // ✅ lookup = read‑only
+				.Where(f => f.IsNavAllowed)             // ✅ only active funds (adjust if needed)
+				.OrderBy(f => f.FundName)               // ✅ stable UX ordering
+				.Select(f => new FundLookupDto(
+					f.FundId,
+					f.FundName
+				))
+				.ToListAsync();
 
-        return items;
-    }
+			return items;
+		}
 
-    }
+	}
 }

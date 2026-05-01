@@ -14,6 +14,8 @@ namespace OM.MFPTrackerV1.Data.Services
 
 		Task<Folio?> GetByIdAsync(int id);
 
+		Task<List<Folio>> GetAllAsync(CancellationToken ct = default);
+
 		Task<bool> ExistsByFolioNumberAsync(
 			string folioNumber,
 			int amcId,
@@ -132,7 +134,15 @@ namespace OM.MFPTrackerV1.Data.Services
 				.Include(x => x.Holder)
 				.FirstOrDefaultAsync(x => x.FolioId == id);
 		}
-
+		public async Task<List<Folio>> GetAllAsync(CancellationToken ct = default)
+		{
+			return await _db.Folios
+				.Include(f => f.AMC)
+				.Include(f => f.Holder)
+				.AsNoTracking()
+				.OrderBy(f => f.FolioNumber)
+				.ToListAsync(ct);
+		}
 		// -------- Uniqueness --------
 		public async Task<bool> ExistsByFolioNumberAsync(
 			string folioNumber,

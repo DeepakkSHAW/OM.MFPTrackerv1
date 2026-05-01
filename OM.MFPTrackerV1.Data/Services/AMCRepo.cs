@@ -20,7 +20,8 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task DeleteAsync(int id, CancellationToken ct = default);
 		Task<Dictionary<int, int>> GetFundCountsAsync(CancellationToken ct = default);
 		Task<Dictionary<int, int>> GetFolioCountsAsync(CancellationToken ct = default);
-		
+		Task<Dictionary<int, decimal>> GetTotalInvestmentByAmcAsync(CancellationToken ct = default);
+
 	}
 
 	public class AMCRepo : IAMCRepo
@@ -124,13 +125,39 @@ namespace OM.MFPTrackerV1.Data.Services
 							.ToDictionaryAsync(x => x.Key, x => x.Cnt, ct);
 		}
 
-        public async Task<Dictionary<int, int>> GetFolioCountsAsync(CancellationToken ct = default)
-        {
+		public async Task<Dictionary<int, int>> GetFolioCountsAsync(CancellationToken ct = default)
+		{
 			return await _db.Set<Folio>()
 				 .AsNoTracking()
 				 .GroupBy(f => f.AMCId)
 				 .Select(g => new { g.Key, Cnt = g.Count() })
 				 .ToDictionaryAsync(x => x.Key, x => x.Cnt, ct);
 		}
-    }
+		public async Task<Dictionary<int, decimal>> GetTotalInvestmentByAmcAsync(CancellationToken ct = default)
+		{
+			var result =
+				await (from tx in _db.MutualFundTransactions
+					   join fund in _db.Funds
+						   on tx.FundId equals fund.FundId
+					   join amc in _db.AMCs
+						   on fund.AMCId equals amc.AMCId
+					   where
+						   tx.TxnType == TransactionType.BUY ||
+						   tx.TxnType == TransactionType.SIP ||
+						   tx.TxnType == TransactionType.SWITCH_IN ||
+						   tx.TxnType == TransactionType.DIV_REINVEST
+					   group tx by amc.AMCId into g
+					   select new
+					   {
+						   AmcId = g.Key,
+						   Total = g.Sum(x => x.AmountPaid)
+					   })
+				.ToDictionaryAsync(
+					x => x.AmcId,
+					x => x.Total,
+					ct);
+
+			return result;
+		}
+	}
 }

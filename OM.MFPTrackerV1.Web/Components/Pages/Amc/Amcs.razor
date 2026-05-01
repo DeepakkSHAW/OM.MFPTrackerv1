@@ -1,7 +1,9 @@
 ﻿@page "/amcs"
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "User,Admin")]
+
 @using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Web.Helpers
 @using OM.MFPTrackerV1.Data.Services
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
@@ -20,24 +22,28 @@
     <button class="btn btn-sm btn-success" @onclick="OpenAdd">Add AMC</button>
 </div>
 
-<!-- Filters (two-row compact layout) -->
+<!-- Filters -->
 <div class="card mb-3">
     <div class="card-body">
 
-        <!-- Row 1: text filters -->
         <div class="row g-2 mb-2">
             <div class="col-md-6">
                 <label class="form-label mb-0 small fw-semibold">AMC name</label>
-                <input class="form-control form-control-sm" @bind="filterName" placeholder="e.g., Axis" />
+                <input class="form-control form-control-sm"
+                       @bind="filterName"
+                       placeholder="e.g., Axis" />
             </div>
         </div>
 
-        <!-- Row 2: actions -->
         <div class="row g-2 align-items-end">
             <div class="col-md-6"></div>
             <div class="col-md-6 d-flex justify-content-end gap-2">
                 <button class="btn btn-sm btn-primary" @onclick="ApplyFilters">Search</button>
                 <button class="btn btn-sm btn-secondary" @onclick="ClearFilters">Clear</button>
+                <a href="/amc-allocation" class="btn btn-sm btn-outline-primary">
+                    View AMC Allocation
+                </a>
+
             </div>
         </div>
 
@@ -53,21 +59,35 @@
     <table class="table table-sm table-hover align-middle">
         <thead class="table-light">
             <tr>
-                <th role="button" @onclick="@(() => Sort(nameof(AMC.AMCName)))">
+                <th role="button"
+                    aria-sort="@AriaSort(nameof(AMC.AMCName))"
+                    @onclick="@(() => Sort(nameof(AMC.AMCName)))">
                     AMC @SortGlyph(nameof(AMC.AMCName))
                 </th>
 
-                <th role="button" style="width:120px;"
+                <th role="button"
+                    class="text-end text-nowrap"
+                    style="width:200px;"
+                    aria-sort="@AriaSort("TotalInvestment")"
+                    @onclick="@(() => Sort("TotalInvestment"))">
+                    Investment (₹) @SortGlyph("TotalInvestment")
+                </th>
+
+                <th role="button"
+                    class="text-center"
+                    style="width:100px;"
                     @onclick="@(() => Sort("Funds"))">
                     Funds @SortGlyph("Funds")
                 </th>
 
-                <th role="button" style="width:120px;"
+                <th role="button"
+                    class="text-center"
+                    style="width:100px;"
                     @onclick="@(() => Sort("Folios"))">
                     Folios @SortGlyph("Folios")
                 </th>
 
-                <th style="width:140px;"></th>
+                <th style="width:160px;"></th>
             </tr>
         </thead>
 
@@ -75,7 +95,7 @@
             @if (_items == null)
             {
                 <tr>
-                    <td colspan="4" class="text-center text-muted">
+                    <td colspan="5" class="text-center text-muted">
                         Loading...
                     </td>
                 </tr>
@@ -83,7 +103,7 @@
             else if (_items.Count == 0)
             {
                 <tr>
-                    <td colspan="4" class="text-center text-muted">
+                    <td colspan="5" class="text-center text-muted">
                         No records found.
                     </td>
                 </tr>
@@ -92,15 +112,25 @@
             {
                 @foreach (var amc in _items)
                 {
-                    var fundCount = _fundCounts.TryGetValue(amc.AMCId, out var fc) ? fc : 0;
-                    var folioCount = _folioCounts.TryGetValue(amc.AMCId, out var flc) ? flc : 0;
+                    var fundCount =
+                    _fundCounts.TryGetValue(amc.AMCId, out var fc) ? fc : 0;
+
+                    var folioCount =
+                    _folioCounts.TryGetValue(amc.AMCId, out var flc) ? flc : 0;
+
+                    var totalInv =
+                    _investmentTotals.TryGetValue(amc.AMCId, out var t) ? t : 0m;
 
                     <tr>
                         <td>@amc.AMCName</td>
 
-                        <td>@fundCount</td>
+                        <td class="text-end money"
+                            title="@totalInv.ToString("N2")">
+                            @CurrencyFormatter.FormatAmount(totalInv)
+                        </td>
 
-                        <td>@folioCount</td>
+                        <td class="text-center">@fundCount</td>
+                        <td class="text-center">@folioCount</td>
 
                         <td class="text-end">
                             <button class="btn btn-sm btn-outline-secondary me-2"
@@ -110,7 +140,8 @@
 
                             @if (fundCount > 0 || folioCount > 0)
                             {
-                                <button class="btn btn-sm btn-outline-danger" disabled
+                                <button class="btn btn-sm btn-outline-danger"
+                                        disabled
                                         title="Cannot delete: linked Funds or Folios">
                                     Delete
                                 </button>
@@ -129,14 +160,16 @@
         </tbody>
     </table>
 </div>
+
 <!-- Pagination -->
 <div class="d-flex align-items-center justify-content-between">
     <div>Showing @FromRow–@ToRow of @totalCount</div>
     <div class="d-flex align-items-center gap-2">
         <div class="input-group input-group-sm" style="width:auto;">
             <span class="input-group-text">Page size</span>
-            <!-- @bind with setter avoids duplicate onchange -->
-            <select class="form-select form-select-sm" style="width:auto" @bind="PageSize">
+            <select class="form-select form-select-sm"
+                    style="width:auto"
+                    @bind="PageSize">
                 <option value="10">10</option>
                 <option value="25">25</option>
                 <option value="50">50</option>
@@ -165,8 +198,6 @@
         </nav>
     </div>
 </div>
-
-@* ---------------- Modal (JS-free; Add & Edit) ---------------- *@
 @if (showModal)
 {
     <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
@@ -177,14 +208,11 @@
                     <button class="btn-close" @onclick="CloseModal" disabled="@saving"></button>
                 </div>
 
-                @* Wrap fields with EditForm to enable DataAnnotations validation *@
                 <EditForm Model="editModel" OnValidSubmit="Save">
                     <DataAnnotationsValidator />
-                    @* Optional: shows a summary list of model validation errors *@
                     <ValidationSummary />
 
                     <div class="modal-body">
-                        @* If you still want to surface repo/DB errors, keep this banner *@
                         @if (!string.IsNullOrEmpty(validationMessage))
                         {
                             <div class="alert alert-danger py-1">@validationMessage</div>
@@ -192,15 +220,27 @@
 
                         <div class="mb-2">
                             <label class="form-label">AMC Name</label>
-                            <InputText class="form-control" @bind-Value="editModel.AMCName" maxlength="100" pattern="[A-Za-z0-9 \-&() _-]{2,100}" title="Only letters, numbers, spaces; 2–100 characters" />
-                           @*  <ValidationMessage For="@(() => editModel.AMCName)" /> *@
-                            <small class="text-muted">2–100 characters; unique (case-insensitive)</small>
+                            <InputText class="form-control"
+                                       @bind-Value="editModel.AMCName"
+                                       maxlength="100"
+                                       pattern="[A-Za-z0-9 \-&() _-]{2,100}"
+                                       title="Only letters, numbers, spaces; 2–100 characters" />
+                            <small class="text-muted">
+                                2–100 characters; unique (case‑insensitive)
+                            </small>
                         </div>
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal" disabled="@saving">Cancel</button>
-                        <button type="submit" class="btn btn-success" disabled="@saving">
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                @onclick="CloseModal"
+                                disabled="@saving">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="btn btn-success"
+                                disabled="@saving">
                             @(saving ? "Saving..." : "Save")
                         </button>
                     </div>
@@ -212,19 +252,23 @@
     <div class="modal-backdrop fade show"></div>
 }
 @code {
+
     private List<AMC>? _items;
 
-    // Filters
+    private Dictionary<int, int> _fundCounts = new();
+    private Dictionary<int, int> _folioCounts = new();
+
+    private Dictionary<int, decimal> _investmentTotals = new();
+
     private string? filterName;
     private string? filterMessage;
 
-    // Sorting
-    private string sortBy = "AMCName";
-    private bool sortDesc = false;
+    private string sortBy = nameof(AMC.AMCName);
+    private bool sortDesc;
 
-    // Paging
     private int pageNumber = 1;
     private int _pageSize = 10;
+
     private int PageSize
     {
         get => _pageSize;
@@ -233,93 +277,78 @@
             if (_pageSize == value) return;
             _pageSize = value;
             pageNumber = 1;
-            _ = Reload(); // fire-and-forget
+            _ = Reload();
         }
     }
 
     private int totalCount;
-    private int totalPages => Math.Max(1, (int)Math.Ceiling((double)totalCount / _pageSize));
-    private int FromRow => totalCount == 0 ? 0 : ((pageNumber - 1) * _pageSize) + 1;
-    private int ToRow => Math.Min(pageNumber * _pageSize, totalCount);
+    private int totalPages => Math.Max(1,
+        (int)Math.Ceiling((double)totalCount / _pageSize));
 
-    // Modal
-    private bool showModal = false;
-    private bool isEdit = false;
-    private bool saving = false;
+    private int FromRow =>
+        totalCount == 0 ? 0 : ((pageNumber - 1) * _pageSize) + 1;
+
+    private int ToRow =>
+        Math.Min(pageNumber * _pageSize, totalCount);
+
+    private bool showModal;
+    private bool isEdit;
+    private bool saving;
     private string modalTitle = "Add AMC";
     private string? validationMessage;
     private AMC editModel = new();
-    private Dictionary<int, int> _fundCounts = new();
-    private Dictionary<int, int> _folioCounts = new();
-    //protected override async Task OnInitializedAsync() => await Reload();
-
-    // private async Task Reload()
-    // {
-    //     var skip = (pageNumber - 1) * _pageSize;
-
-    //     var (items, total) = await Repo.GetAsync(
-    //         nameContains: filterName,
-    //         skip: skip,
-    //         take: _pageSize,
-    //         sortBy: sortBy,
-    //         desc: sortDesc);
-
-    //     _items = items.ToList();
-    //     totalCount = total;
-
-    //     if (pageNumber > totalPages && totalPages > 0)
-    //     {
-    //         pageNumber = totalPages;
-    //         await Reload();
-    //         return;
-    //     }
-    //     StateHasChanged();
-    // }
-
-
-
 
     protected override async Task OnInitializedAsync()
     {
-        // Check auth state immediately before loading data (ONLY for TEST) //
-        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = auth.User;
-        Logger.LogInformation("Auth debug: IsAuthenticated={IsAuthenticated}; Name={Name}; Roles={Roles}",
-            user.Identity?.IsAuthenticated ?? false,
-            user.Identity?.Name ?? "<null>",
-            string.Join(",", user.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value)));
-        //---TEST DONE ---//
-
         await Reload();
     }
-
 
     private async Task Reload()
     {
         var skip = (pageNumber - 1) * _pageSize;
 
+        // ✅ Server sorts ONLY by AMCName
         var (items, total) = await Repo.GetAsync(
             nameContains: filterName,
             skip: skip,
             take: _pageSize,
-            sortBy: sortBy,
-            desc: sortDesc);
+            sortBy: nameof(AMC.AMCName),
+            desc: false);
 
         _items = items.ToList();
         totalCount = total;
 
-        // Load counts once per refresh
         _fundCounts = await Repo.GetFundCountsAsync();
         _folioCounts = await Repo.GetFolioCountsAsync();
+        _investmentTotals = await Repo.GetTotalInvestmentByAmcAsync();
+
+        // ✅ ALL computed sorts are client-side
+        _items = sortBy switch
+        {
+            "Funds" => sortDesc
+                ? _items.OrderByDescending(a => _fundCounts.GetValueOrDefault(a.AMCId)).ToList()
+                : _items.OrderBy(a => _fundCounts.GetValueOrDefault(a.AMCId)).ToList(),
+
+            "Folios" => sortDesc
+                ? _items.OrderByDescending(a => _folioCounts.GetValueOrDefault(a.AMCId)).ToList()
+                : _items.OrderBy(a => _folioCounts.GetValueOrDefault(a.AMCId)).ToList(),
+
+            "TotalInvestment" => sortDesc
+                ? _items.OrderByDescending(a => _investmentTotals.GetValueOrDefault(a.AMCId)).ToList()
+                : _items.OrderBy(a => _investmentTotals.GetValueOrDefault(a.AMCId)).ToList(),
+
+            _ => sortDesc
+                ? _items.OrderByDescending(a => a.AMCName).ToList()
+                : _items.OrderBy(a => a.AMCName).ToList()
+        };
 
         if (pageNumber > totalPages && totalPages > 0)
         {
             pageNumber = totalPages;
             await Reload();
-            return;
         }
-        StateHasChanged();
     }
+
     private async Task ApplyFilters()
     {
         filterMessage = null;
@@ -335,11 +364,11 @@
         await Reload();
     }
 
-    // Sorting
     private async Task Sort(string column)
     {
         if (sortBy == column) sortDesc = !sortDesc;
         else { sortBy = column; sortDesc = false; }
+
         pageNumber = 1;
         await Reload();
     }
@@ -350,21 +379,22 @@
         var glyph = sortDesc ? "▾" : "▴";
         return new MarkupString($"<span class=\"ms-1\">{glyph}</span>");
     }
-    private string AriaSort(string column) => sortBy != column ? "none" : (sortDesc ? "descending" : "ascending");
 
-    // Paging handlers
-    private async Task FirstPage() { if (pageNumber != 1) { pageNumber = 1; await Reload(); } }
+    private string AriaSort(string column) =>
+        sortBy != column ? "none" :
+        (sortDesc ? "descending" : "ascending");
+
+    private async Task FirstPage() { pageNumber = 1; await Reload(); }
     private async Task PrevPage() { if (pageNumber > 1) { pageNumber--; await Reload(); } }
     private async Task NextPage() { if (pageNumber < totalPages) { pageNumber++; await Reload(); } }
-    private async Task LastPage() { if (pageNumber < totalPages) { pageNumber = totalPages; await Reload(); } }
+    private async Task LastPage() { pageNumber = totalPages; await Reload(); }
 
-    // Modal control
     private void OpenAdd()
     {
         isEdit = false;
         modalTitle = "Add AMC";
         validationMessage = null;
-        editModel = new AMC();
+        editModel = new AMC { AMCName = string.Empty };
         showModal = true;
     }
 
@@ -373,38 +403,19 @@
         isEdit = true;
         modalTitle = "Edit AMC";
         validationMessage = null;
-
-        editModel = new AMC
-        {
-            AMCId = src.AMCId,
-            AMCName = src.AMCName
-        };
-
+        editModel = new AMC { AMCId = src.AMCId, AMCName = src.AMCName };
         showModal = true;
     }
 
     private void CloseModal() => showModal = false;
-    private void HandleKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key is "Escape" or "Esc")
-            showModal = false;
-    }
 
-    // Save with friendly error handling
     private async Task Save()
     {
         validationMessage = null;
 
-        if (string.IsNullOrWhiteSpace(editModel.AMCName))
-        {
-            validationMessage = "AMC Name is required.";
-            return;
-        }
-
         try
         {
             saving = true;
-
             if (isEdit) await Repo.UpdateAsync(editModel);
             else await Repo.AddAsync(editModel);
 
@@ -413,15 +424,11 @@
         }
         catch (InvalidOperationException ex)
         {
-            validationMessage = ex.Message; // duplicate friendly message from repo
+            validationMessage = ex.Message;
         }
         catch (DbUpdateException)
         {
-            validationMessage = "Save failed due to a unique constraint or database error. Please check the AMC name.";
-        }
-        catch (Exception ex)
-        {
-            validationMessage = $"Unexpected error: {ex.Message}";
+            validationMessage = "Save failed due to a database constraint.";
         }
         finally
         {
@@ -431,7 +438,9 @@
 
     private async Task ConfirmDelete(int id, string display)
     {
-        if (!await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete “{display}”?")) return;
+        if (!await JS.InvokeAsync<bool>(
+            "confirm", $"Are you sure you want to delete “{display}”?"))
+            return;
 
         try
         {
@@ -441,8 +450,15 @@
         }
         catch (InvalidOperationException ex)
         {
-            filterMessage = ex.Message; // e.g., "linked Funds or Folios"
-            StateHasChanged();
+            filterMessage = ex.Message;
+        }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Escape" or "Esc")
+        {
+            showModal = false;
         }
     }
 }

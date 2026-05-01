@@ -1,0 +1,69 @@
+﻿@page "/amc-allocation"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
+
+@using OM.MFPTrackerV1.Data.Services
+@using OM.MFPTrackerV1.Web.Components   @* where PieChart.razor lives *@
+
+@inject IAMCRepo Repo
+
+<h3>Investment Allocation by AMC</h3>
+
+<p class="text-muted">
+    Distribution of total invested amount across Asset Management Companies.
+</p>
+
+@if (isLoading)
+{
+    <p>Loading data…</p>
+}
+else if (values.Length == 0)
+{
+    <div class="alert alert-info">
+        No investment data available.
+    </div>
+}
+else
+{
+    <!-- ✅ Reusing existing PieChart -->
+    <PieChart Labels="@labels" Values="@values" />
+}
+
+@code {
+
+    private string[] labels = [];
+    private double[] values = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+
+        // 1️⃣ Fetch AMC master data
+        var amcs = await Repo.GetAllAsync();
+
+        // 2️⃣ Fetch aggregated investment totals (already implemented earlier)
+        var totals = await Repo.GetTotalInvestmentByAmcAsync();
+
+        // 3️⃣ Shape data for pie chart
+        var data = amcs
+            .Select(a => new
+            {
+                a.AMCName,
+                Value = totals.TryGetValue(a.AMCId, out var v) ? v : 0m
+            })
+            .Where(x => x.Value > 0)
+            .OrderByDescending(x => x.Value)
+            .ToList();
+
+        labels = data.Select(x => x.AMCName).ToArray();
+        values = data.Select(x => (double)x.Value).ToArray();
+
+        isLoading = false;
+    }
+}
