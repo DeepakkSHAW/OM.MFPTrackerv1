@@ -1,7 +1,6 @@
-﻿@page "/mf-categories"
+﻿@page "/mf-categories-old"
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "User,Admin")]
-
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
 @using Microsoft.AspNetCore.Components
@@ -18,24 +17,20 @@
     <button class="btn btn-sm btn-success" @onclick="OpenAdd">Add Category</button>
 </div>
 
-<!-- Filters -->
+<!-- Filters (two-row compact layout) -->
 <div class="card mb-3">
     <div class="card-body">
-
         <!-- Row 1 -->
         <div class="row g-2 mb-2">
             <div class="col-md-6">
                 <label class="form-label mb-0 small fw-semibold">Category contains</label>
-                <input class="form-control form-control-sm"
-                       @bind="filterName"
-                       placeholder="e.g., Equity" />
+                <input class="form-control form-control-sm" @bind="filterName" placeholder="e.g., Equity" />
             </div>
         </div>
 
         <!-- Row 2 -->
         <div class="row g-2 align-items-end">
             <div class="col-md-6"></div>
-
             <div class="col-md-6 d-flex justify-content-end gap-2">
                 <button class="btn btn-sm btn-primary" @onclick="ApplyFilters">Search</button>
                 <button class="btn btn-sm btn-secondary" @onclick="ClearFilters">Clear</button>
@@ -50,7 +45,7 @@
 </div>
 
 <!-- ===================== Table ===================== -->
-@* <div class="table-responsive">
+<div class="table-responsive">
     <table class="table table-sm table-hover align-middle">
         <thead class="table-light">
             <tr>
@@ -59,17 +54,6 @@
                     title="Sort by Category"
                     @onclick='() => Sort("CategoryName")'>
                     Category @((MarkupString)SortGlyph("CategoryName").Value)
-                </th>
-
-                <!-- ✅ NEW COLUMN -->
-                <th role="button"
-                    class="text-end"
-                    style="width:200px;"
-                    aria-sort="@AriaSort("TotalInvestment")"
-                    title="Sort by Total Investment"
-                    @onclick='() => Sort("TotalInvestment")'>
-                    Total Investment (₹)
-                    @((MarkupString)SortGlyph("TotalInvestment").Value)
                 </th>
 
                 <th style="width:120px;">
@@ -84,7 +68,7 @@
             @if (_items is null)
             {
                 <tr>
-                    <td colspan="4" class="text-center text-muted">
+                    <td colspan="3" class="text-center text-muted">
                         Loading...
                     </td>
                 </tr>
@@ -92,7 +76,7 @@
             else if (_items.Count == 0)
             {
                 <tr>
-                    <td colspan="4" class="text-center text-muted">
+                    <td colspan="3" class="text-center text-muted">
                         No records found.
                     </td>
                 </tr>
@@ -101,20 +85,12 @@
             {
                 @foreach (var x in _items)
                 {
-                    var fundCount =
-                    _fundCounts.TryGetValue(x.MFCatId, out var c) ? c : 0;
-
-                    var totalInv =
-                    _investmentTotals.TryGetValue(x.MFCatId, out var t) ? t : 0m;
+                    var count = _fundCounts.TryGetValue(x.MFCatId, out var c) ? c : 0;
 
                     <tr>
                         <td>@x.CategoryName</td>
 
-                        <td class="text-end">
-                            @totalInv.ToString("N2")
-                        </td>
-
-                        <td>@fundCount</td>
+                        <td>@count</td>
 
                         <td class="text-end">
                             <button class="btn btn-sm btn-outline-secondary me-2"
@@ -122,112 +98,7 @@
                                 Edit
                             </button>
 
-                            @if (fundCount > 0)
-                            {
-                                <button class="btn btn-sm btn-outline-danger"
-                                        disabled
-                                        title="Cannot delete: category has linked funds">
-                                    Delete
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-sm btn-outline-danger"
-                                        @onclick='() => ConfirmDelete(x.MFCatId, x.CategoryName)'>
-                                    Delete
-                                </button>
-                            }
-                        </td>
-                    </tr>
-                }
-            }
-        </tbody>
-    </table>
-</div> *@
-
-<div class="table-responsive">
-    <table class="table table-sm table-hover align-middle">
-        <thead class="table-light">
-            <tr>
-                <!-- Category -->
-                <th role="button"
-                    aria-sort="@AriaSort("CategoryName")"
-                    title="Sort by Category"
-                    @onclick='() => Sort("CategoryName")'>
-                    Category @((MarkupString)SortGlyph("CategoryName").Value)
-                </th>
-
-                <!-- ✅ Total Investment -->
-                <th role="button"
-                    class="text-end text-nowrap"
-                    style="width:200px;"
-                    aria-sort="@AriaSort("TotalInvestment")"
-                    title="Sort by Total Investment"
-                    @onclick='() => Sort("TotalInvestment")'>
-                    Total Investment (₹)
-                    @((MarkupString)SortGlyph("TotalInvestment").Value)
-                </th>
-
-                <!-- Funds -->
-                <th class="text-center" style="width:80px;">
-                    Funds
-                </th>
-
-                <!-- Actions -->
-                <th style="width:160px;"></th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @if (_items is null)
-            {
-                <tr>
-                    <td colspan="4" class="text-center text-muted">
-                        Loading...
-                    </td>
-                </tr>
-            }
-            else if (_items.Count == 0)
-            {
-                <tr>
-                    <td colspan="4" class="text-center text-muted">
-                        No records found.
-                    </td>
-                </tr>
-            }
-            else
-            {
-                @foreach (var x in _items)
-                {
-                    var fundCount =
-                    _fundCounts.TryGetValue(x.MFCatId, out var c) ? c : 0;
-
-                    var totalInv =
-                    _investmentTotals.TryGetValue(x.MFCatId, out var t) ? t : 0m;
-
-                    <tr>
-                        <!-- Category -->
-                        <td>@x.CategoryName</td>
-
-                        <!-- ✅ Total Investment (compact + tooltip) -->
-                        <td class="text-end money"
-                            title="@totalInv.ToString("N2")">
-                            @FormatAmount(totalInv)
-                        </td>
-
-                        <!-- Fund count -->
-                        <td class="text-center">
-                            @fundCount
-                        </td>
-
-                        <!-- Actions -->
-                        <td class="text-end">
-                            <button class="btn btn-sm btn-outline-secondary me-2"
-                                    @onclick="() => OpenEdit(x)">
-                                Edit
-                            </button>
-
-                            @if (fundCount > 0)
+                            @if (count > 0)
                             {
                                 <button class="btn btn-sm btn-outline-danger"
                                         disabled
@@ -252,13 +123,10 @@
 <!-- Pagination -->
 <div class="d-flex align-items-center justify-content-between">
     <div>Showing @FromRow–@ToRow of @totalCount</div>
-
     <div class="d-flex align-items-center gap-2">
         <div class="input-group input-group-sm" style="width:auto;">
             <span class="input-group-text">Page size</span>
-            <select class="form-select form-select-sm"
-                    style="width:auto"
-                    @bind="PageSize">
+            <select class="form-select form-select-sm" style="width:auto" @bind="PageSize">
                 <option value="10">10</option>
                 <option value="25">25</option>
                 <option value="50">50</option>
@@ -288,7 +156,7 @@
     </div>
 </div>
 
-@* ================= Modal (Add & Edit) – UNCHANGED ================= *@
+@* ---------------- Modal (JS-free; Add & Edit) — EditForm + ValidationSummary (Option B) ---------------- *@
 @if (showModal)
 {
     <div class="modal fade show" style="display:block;" tabindex="-1" role="dialog" aria-modal="true">
@@ -304,6 +172,7 @@
                     <ValidationSummary />
 
                     <div class="modal-body">
+                        @* Only show repo/DB errors here *@
                         @if (!string.IsNullOrEmpty(validationMessage))
                         {
                             <div class="alert alert-danger py-1">@validationMessage</div>
@@ -313,20 +182,16 @@
                             <label class="form-label">Category Name</label>
                             <InputText class="form-control"
                                        @bind-Value="editModel.CategoryName"
-                                       maxlength="50" />
+                                       maxlength="50"
+                                       pattern="[A-Za-z0-9 \-&() _-]{3,50}"
+                                       title="Letters, numbers, spaces, - & ( ) allowed; 3–50 characters" />
+                            <small class="text-muted">Alphanumeric; 3–50 chars; case-insensitive unique</small>
                         </div>
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button"
-                                class="btn btn-outline-secondary"
-                                @onclick="CloseModal"
-                                disabled="@saving">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="btn btn-success"
-                                disabled="@saving">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal" disabled="@saving">Cancel</button>
+                        <button type="submit" class="btn btn-success" disabled="@saving">
                             @(saving ? "Saving..." : "Save")
                         </button>
                     </div>
@@ -334,17 +199,13 @@
             </div>
         </div>
     </div>
+
     <div class="modal-backdrop fade show"></div>
 }
 
 @code {
-
     private List<MFCategory>? _items;
-
     private Dictionary<int, int> _fundCounts = new();
-
-    // ✅ NEW: Total Investment per category
-    private Dictionary<int, decimal> _investmentTotals = new();
 
     // Filters
     private string? filterName;
@@ -352,12 +213,11 @@
 
     // Sorting
     private string sortBy = "CategoryName";
-    private bool sortDesc;
+    private bool sortDesc = false;
 
     // Paging
     private int pageNumber = 1;
     private int _pageSize = 10;
-
     private int PageSize
     {
         get => _pageSize;
@@ -366,30 +226,24 @@
             if (_pageSize == value) return;
             _pageSize = value;
             pageNumber = 1;
-            _ = Reload();
+            _ = Reload(); // fire-and-forget
         }
     }
 
     private int totalCount;
-    private int totalPages => Math.Max(1,
-        (int)Math.Ceiling((double)totalCount / _pageSize));
+    private int totalPages => Math.Max(1, (int)Math.Ceiling((double)totalCount / _pageSize));
+    private int FromRow => totalCount == 0 ? 0 : ((pageNumber - 1) * _pageSize) + 1;
+    private int ToRow => Math.Min(pageNumber * _pageSize, totalCount);
 
-    private int FromRow =>
-        totalCount == 0 ? 0 : ((pageNumber - 1) * _pageSize) + 1;
-
-    private int ToRow =>
-        Math.Min(pageNumber * _pageSize, totalCount);
-
-    // Modal state (UNCHANGED)
-    private bool showModal;
-    private bool isEdit;
-    private bool saving;
+    // Modal
+    private bool showModal = false;
+    private bool isEdit = false;
+    private bool saving = false;
     private string modalTitle = "Add Category";
     private string? validationMessage;
     private MFCategory editModel = new();
 
-    protected override async Task OnInitializedAsync()
-        => await Reload();
+    protected override async Task OnInitializedAsync() => await Reload();
 
     private async Task Reload()
     {
@@ -399,27 +253,14 @@
             nameContains: filterName,
             skip: skip,
             take: _pageSize,
-            sortBy: sortBy == "TotalInvestment" ? "CategoryName" : sortBy,
+            sortBy: sortBy,
             desc: sortDesc);
 
         _items = items.ToList();
         totalCount = total;
 
+        // Load fund counts
         _fundCounts = await Repo.GetFundCountsAsync();
-
-        // ✅ NEW – server-side aggregation
-        _investmentTotals = await Repo.GetTotalInvestmentByCategoryAsync();
-
-        // ✅ Client-side sort when sorting by investment
-        if (sortBy == "TotalInvestment" && _items != null)
-        {
-            _items = (sortDesc
-                ? _items.OrderByDescending(c =>
-                    _investmentTotals.GetValueOrDefault(c.MFCatId))
-                : _items.OrderBy(c =>
-                    _investmentTotals.GetValueOrDefault(c.MFCatId)))
-                .ToList();
-        }
 
         if (pageNumber > totalPages && totalPages > 0)
         {
@@ -427,7 +268,6 @@
             await Reload();
             return;
         }
-
         StateHasChanged();
     }
 
@@ -446,34 +286,30 @@
         await Reload();
     }
 
+    // Sorting
     private async Task Sort(string column)
     {
         if (sortBy == column) sortDesc = !sortDesc;
         else { sortBy = column; sortDesc = false; }
-
         pageNumber = 1;
         await Reload();
     }
 
     private MarkupString SortGlyph(string column)
     {
-        if (sortBy != column)
-            return new MarkupString(string.Empty);
-
+        if (sortBy != column) return new MarkupString(string.Empty);
         var glyph = sortDesc ? "▾" : "▴";
         return new MarkupString($"<span class=\"ms-1\">{glyph}</span>");
     }
+    private string AriaSort(string column) => sortBy != column ? "none" : (sortDesc ? "descending" : "ascending");
 
-    private string AriaSort(string column)
-        => sortBy != column
-            ? "none"
-            : (sortDesc ? "descending" : "ascending");
+    // Paging handlers
+    private async Task FirstPage() { if (pageNumber != 1) { pageNumber = 1; await Reload(); } }
+    private async Task PrevPage() { if (pageNumber > 1) { pageNumber--; await Reload(); } }
+    private async Task NextPage() { if (pageNumber < totalPages) { pageNumber++; await Reload(); } }
+    private async Task LastPage() { if (pageNumber < totalPages) { pageNumber = totalPages; await Reload(); } }
 
-    private async Task FirstPage() { pageNumber = 1; await Reload(); }
-    private async Task PrevPage() { pageNumber--; await Reload(); }
-    private async Task NextPage() { pageNumber++; await Reload(); }
-    private async Task LastPage() { pageNumber = totalPages; await Reload(); }
-
+    // Modal control
     private void OpenAdd()
     {
         isEdit = false;
@@ -503,14 +339,21 @@
         if (e.Key is "Escape" or "Esc") showModal = false;
     }
 
-    private void OnInvalidSubmit() => validationMessage = null;
+    private void OnInvalidSubmit()
+    {
+        // Form failed DataAnnotations validation; hide any stale repo/DB banner
+        validationMessage = null;
+    }
 
+    // Save (DataAnnotations validated by EditForm)
     private async Task Save()
     {
         validationMessage = null;
+
         try
         {
             saving = true;
+
             if (isEdit) await Repo.UpdateAsync(editModel);
             else await Repo.AddAsync(editModel);
 
@@ -519,11 +362,11 @@
         }
         catch (InvalidOperationException ex)
         {
-            validationMessage = ex.Message;
+            validationMessage = ex.Message; // duplicate name etc.
         }
         catch (DbUpdateException)
         {
-            validationMessage = "Save failed due to a database constraint.";
+            validationMessage = "Save failed due to a unique constraint or database error. Please check the category name.";
         }
         finally
         {
@@ -533,9 +376,7 @@
 
     private async Task ConfirmDelete(int id, string display)
     {
-        if (!await JS.InvokeAsync<bool>("confirm",
-            $"Are you sure you want to delete “{display}”?"))
-            return;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete “{display}”?")) return;
 
         try
         {
@@ -545,17 +386,9 @@
         }
         catch (InvalidOperationException ex)
         {
+            // Friendly message: category has linked funds
             filterMessage = ex.Message;
+            StateHasChanged();
         }
-    }
-    private static string FormatAmount(decimal value)
-    {
-        if (value >= 1_00_00_000) // 1 Crore
-            return $"{value / 1_00_00_000M:0.##} Cr";
-
-        if (value >= 1_00_000) // 1 Lakh
-            return $"{value / 1_00_000M:0.##} L";
-
-        return value.ToString("N0");
     }
 }

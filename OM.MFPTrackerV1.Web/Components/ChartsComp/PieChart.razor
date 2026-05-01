@@ -1,0 +1,35 @@
+﻿@inject IJSRuntime JS
+
+<div style="max-width:900px; height:500px;">
+    <canvas id="@_id"></canvas>
+</div>
+
+@code {
+    private readonly string _id = $"cat-pie-{Guid.NewGuid()}";
+
+    [Parameter] public string[] Labels { get; set; } = [];
+    [Parameter] public double[] Values { get; set; } = [];
+    private int _lastCount = -1;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Render only when data changes
+        if (Values.Length == 0 || _lastCount == Values.Length)
+            return;
+
+        _lastCount = Values.Length;
+
+        await JS.InvokeVoidAsync(
+            "chartInterop.renderPieChart",
+            _id,
+            Labels,
+            Values);
+    //     await Task.Delay(50);
+
+    //     await JS.InvokeVoidAsync(
+    // "chartInterop.renderPieChart",
+    // _id,
+    // Labels,
+    // Values);
+    }
+}

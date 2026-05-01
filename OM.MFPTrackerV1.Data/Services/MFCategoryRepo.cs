@@ -155,6 +155,7 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task UpdateAsync(MFCategory entity, CancellationToken ct = default);
 		Task DeleteAsync(int id, CancellationToken ct = default);
 		Task<Dictionary<int, int>> GetFundCountsAsync(CancellationToken ct = default);
+		Task<Dictionary<int, decimal>> GetTotalInvestmentByCategoryAsync(CancellationToken ct = default);
 	}
 
 	public class MFCategoryRepo : IMFCategoryRepo
@@ -251,6 +252,33 @@ namespace OM.MFPTrackerV1.Data.Services
 				.GroupBy(f => f.MFCatId)
 				.Select(g => new { g.Key, Cnt = g.Count() })
 				.ToDictionaryAsync(x => x.Key, x => x.Cnt, ct);
+		}
+		public async Task<Dictionary<int, decimal>> GetTotalInvestmentByCategoryAsync(
+			CancellationToken ct = default)
+		{
+			var result =
+				await (from tx in _db.MutualFundTransactions
+					   join fund in _db.Funds
+						   on tx.FundId equals fund.FundId
+					   join cat in _db.MFCategories
+						   on fund.MFCatId equals cat.MFCatId
+					   where
+						   tx.TxnType == TransactionType.BUY ||
+						   tx.TxnType == TransactionType.SIP ||
+						   tx.TxnType == TransactionType.SWITCH_IN ||
+						   tx.TxnType == TransactionType.DIV_REINVEST
+					   group tx by cat.MFCatId into g
+					   select new
+					   {
+						   CategoryId = g.Key,
+						   Total = g.Sum(x => x.AmountPaid)
+					   })
+				.ToDictionaryAsync(
+					x => x.CategoryId,
+					x => x.Total,
+					ct);
+
+			return result;
 		}
 	}
 }

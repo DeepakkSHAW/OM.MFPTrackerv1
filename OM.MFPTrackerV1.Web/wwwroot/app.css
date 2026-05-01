@@ -100,3 +100,7 @@ h1:focus {
     background-color: #20c997;
     color: #fff;
 }
+.money {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}

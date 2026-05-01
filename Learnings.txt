@@ -34,6 +34,9 @@ useful tsqls
 SELECT Id, SchemeName, AmcId FROM TMutualFunds WHERE AmcId NOT IN (SELECT Id FROM TAmc);
 SELECT * FROM TAmc
 SELECT Id, SchemeName, AmcId FROM TMutualFunds
+delete and clean tabel
+DELETE FROM [TMutualFundTransaction]
+DELETE FROM SQLITE_SEQUENCE WHERE name='TMutualFundTransaction';
 
 MF NAV History
 https://www.advisorkhoj.com/mutual-funds-research/historical-NAV/Nippon%20India%20Small%20Cap%20Gr%20Gr?start_date=02-02-2025&end_date=02-02-2026

@@ -1,4 +1,4 @@
-﻿@inject IJSRuntime JS
+﻿@* @inject IJSRuntime JS
 
 <div style="height:350px;">
     <canvas id="@_id"></canvas>
@@ -31,6 +31,68 @@
     }
 
     public class PurchasePoint
+    {
+        public int Index { get; set; }
+        public double Value { get; set; }
+        public double Amount { get; set; }
+    }
+} *@
+
+@inject IJSRuntime JS
+
+<div class="chart-container" style="height:400px">
+    <canvas id="@_id"></canvas>
+</div>
+
+@code {
+    private readonly string _id = $"nav-chart-{Guid.NewGuid()}";
+
+    [Parameter] public string[] Labels { get; set; } = [];
+    [Parameter] public double[] NavValues { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<PurchasePoint> Purchases { get; set; }
+        = Array.Empty<PurchasePoint>();
+
+    // ✅ Track last render state
+    private int _lastNavCount = -1;
+    private int _lastPurchaseCount = -1;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // ✅ Only re-render if data actually changed
+        if (_lastNavCount == NavValues.Length &&
+            _lastPurchaseCount == Purchases.Count)
+        {
+            return;
+        }
+
+        _lastNavCount = NavValues.Length;
+        _lastPurchaseCount = Purchases.Count;
+
+        if (NavValues.Length == 0)
+            return;
+
+        if (Purchases.Count > 0)
+        {
+            await JS.InvokeVoidAsync(
+                "chartInterop.renderNavWithPurchasesv1",
+                _id,
+                Labels,
+                NavValues,
+                Purchases);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync(
+                "chartInterop.renderNavChart",
+                _id,
+                Labels,
+                NavValues);
+        }
+    }
+
+    public sealed class PurchasePoint
     {
         public int Index { get; set; }
         public double Value { get; set; }
