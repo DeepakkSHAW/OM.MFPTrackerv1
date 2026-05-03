@@ -488,7 +488,86 @@ window.chartInterop.renderPieChart = function (
         }
     });
 };
-``
+
+
+// ===============================
+// Bubble chart renderer
+// ===============================
+
+window.chartInterop.renderBubbleChartFromPointData = function (canvasId, datasets) {
+
+    console.log("✅ renderBubbleChartFromPointData (with date labels)", datasets);
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    canvas._chartInstance?.destroy();
+
+    //function colorFromKey(key) {
+    //    const hue = Math.abs(key * 37) % 360;
+    //    return `hsl(${hue}, 65%, 55%)`;
+    //}
+    function colorFromIndex(index, total) {
+        const hueStep = 360 / Math.max(total, 1);
+        const hue = Math.round(index * hueStep);
+        return `hsl(${hue}, 65%, 55%)`;
+    }
+    canvas._chartInstance = new Chart(ctx, {
+        type: "bubble",
+        data: {
+            datasets: datasets.map((d, i) => ({
+                label: d.label,
+                data: d.data,
+                backgroundColor: colorFromIndex(i, datasets.length)
+            }))
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: "linear",
+                    title: { display: true, text: "Transaction Date" },
+                    ticks: {
+                        callback: value =>
+                            new Date(value).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short"
+                            })
+                    }
+                },
+                y: {
+                    title: { display: true, text: "NAV" }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: "bottom"
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const d = ctx.raw;
+                            return [
+                                ctx.dataset.label,
+                                `Investment: ₹${d.investment.toLocaleString()}`,
+                                `Date: ${new Date(d.x).toLocaleDateString()}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+window.downloadFile = function (filename, base64) {
+    const link = document.createElement("a");
+    link.href = "data:text/csv;base64," + base64;
+    link.download = filename;
+    link.click();
+};
 // ============================================================
 // ✅ DEBUG AID (OPTIONAL – SAFE TO KEEP)
 // ============================================================

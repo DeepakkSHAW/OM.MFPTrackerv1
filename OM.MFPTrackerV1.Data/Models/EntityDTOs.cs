@@ -71,4 +71,28 @@ namespace OM.MFPTrackerV1.Data.Models
 		DateTime NavDate,
 		decimal NavValue
 	);
+	public class BubblePointDto
+	{
+		public DateTime Date { get; set; }
+		public decimal Nav { get; set; }
+		public decimal TotalInvestment { get; set; }
+		public decimal Units { get; set; }
+
+		public int FundId { get; set; }
+		public int HolderId { get; set; }
+
+		public string FundName { get; set; } = "";
+		public string HolderName { get; set; } = "";
+	}
+	public sealed class TransactionFilter
+	{
+		public DateTime? StartDate { get; set; }
+		public DateTime? EndDate { get; set; }
+
+		public int? CategoryId { get; set; }
+		public int? AMCId { get; set; }
+		public int? FundId { get; set; }
+		public int? FolioId { get; set; }
+		public int? HolderId { get; set; }
+	}
 }

@@ -1,0 +1,123 @@
+﻿@using OM.MFPTrackerV1.Web.Models.ViewModels
+@inject IJSRuntime JS
+
+<div style="width:100%; height:100%;">
+    <canvas id="@_canvasId"></canvas>
+</div>
+
+@code {
+
+    private readonly string _canvasId =
+        $"bubble-{Guid.NewGuid()}";
+
+    /// <summary>
+    /// Bubble chart data. Each item represents one bubble.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<BubbleChartPoint> Data { get; set; } = Array.Empty<BubbleChartPoint>();
+
+    private int _lastHash;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Data.Count == 0)
+            return;
+
+        var hash = Data.Count ^ Data.First().X.GetHashCode();
+        if (hash == _lastHash)
+            return;
+
+        _lastHash = hash;
+
+        // ✅ Convert DateTime -> Unix ms here (NOT in DTO)
+        var datasets = Data
+            .GroupBy(p => p.ColorKey)
+            .Select(g => new
+            {
+                label = $"{g.First().Fund} – {g.First().Holder}",
+                colorKey = g.Key,
+                // data = g.Select(p => new
+                // {
+                //     x = new DateTimeOffset(p.X).ToUnixTimeMilliseconds(),
+                //     y = (double)p.Y,
+                //     r = Math.Log10((double)p.Investment + 1) * 6,
+                //     fund = p.Fund,
+                //     holder = p.Holder,
+                //     investment = (double)p.Investment
+                // })
+
+                data = g.Select(p => new
+                {
+                    x = new DateTimeOffset(p.X).ToUnixTimeMilliseconds(),
+                    y = (double)p.Y,
+                    r = Math.Clamp(
+                        Math.Log10((double)p.Investment + 1) * 4 - 7,
+                        1,
+                        40
+                    ),
+                    fund = p.Fund,
+                    holder = p.Holder,
+                    investment = (double)p.Investment
+                })
+
+            });
+
+        await JS.InvokeVoidAsync(
+            "chartInterop.renderBubbleChartFromPointData",
+            _canvasId,
+            datasets
+        );
+    }
+
+
+    // protected override async Task OnAfterRenderAsync(bool firstRender)
+    // {
+    //     if (!firstRender)
+    //         return;
+
+    //     await JS.InvokeVoidAsync(
+    //         "chartInterop.renderBubbleChartDummy",
+    //         _canvasId
+    //     );
+    // }
+
+    // protected override async Task OnAfterRenderAsync(bool firstRender)
+    // {
+    //     if (Data == null || Data.Count == 0)
+    //         return;
+
+    //     // Prevent re-render loop
+    //     var hash = Data.Count ^
+    //                Data.First().X.GetHashCode() ^
+    //                Data.Last().X.GetHashCode();
+
+    //     if (hash == _lastHash)
+    //         return;
+
+    //     _lastHash = hash;
+
+    //     // Group points by color key (Fund + Holder)
+    //     var datasets = Data
+    //         .GroupBy(p => p.ColorKey)
+    //         .Select(g => new
+    //         {
+    //             label = $"{g.First().Fund} – {g.First().Holder}",
+    //             data = g.Select(p => new
+    //             {
+    //                 x = p.X,
+    //                 y = p.Y,
+    //                 r = Math.Sqrt((double)p.Investment) / 25, // size scaling
+    //                 fund = p.Fund,
+    //                 holder = p.Holder,
+    //                 investment = p.Investment
+    //             }),
+    //             colorKey = g.Key
+    //         });
+
+    //     await JS.InvokeVoidAsync(
+    //         "chartInterop.renderBubbleChart",
+    //         _canvasId,
+    //         datasets);
+    // }
+}

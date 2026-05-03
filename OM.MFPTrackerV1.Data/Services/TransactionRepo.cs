@@ -27,6 +27,8 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task<TransactionImportSummary> ImportFolioTransactionsAsync(int amcId, TransactionType transactionType, IEnumerable<FolioTransactionPreviewRow> rows);
 		Task<Dictionary<int, decimal>> GetTotalInvestmentByFundAsync(CancellationToken ct = default);
 		Task<Dictionary<int, decimal>> GetTotalInvestmentByFolioAsync(CancellationToken ct = default);
+		Task<List<FolioHolder>> GetHoldersForTransactionsAsync(int? folioId, int? fundId, int? amcId, int? categoryId);
+		Task<List<BubblePointDto>> GetBubbleDataAsync(TransactionFilter filter);
 	}
 	public sealed class MutualFundTransactionRepo : IMutualFundTransactionRepo
 	{
@@ -390,6 +392,89 @@ namespace OM.MFPTrackerV1.Data.Services
 				})
 				.ToDictionaryAsync(x => x.FolioId, x => x.Total, ct);
 		}
+		public async Task<List<FolioHolder>> GetHoldersForTransactionsAsync(
+			int? folioId,
+			int? fundId,
+			int? amcId,
+			int? categoryId)
+		{
+			var q = _db.MutualFundTransactions
+				.Include(t => t.Folio)
+					.ThenInclude(f => f.Holder)
+				.Include(t => t.Fund)
+				.AsNoTracking()
+				.AsQueryable();
 
+			if (folioId.HasValue)
+				q = q.Where(t => t.FolioId == folioId);
+
+			if (fundId.HasValue)
+				q = q.Where(t => t.FundId == fundId);
+
+			if (amcId.HasValue)
+				q = q.Where(t => t.Fund.AMCId == amcId);
+
+			if (categoryId.HasValue)
+				q = q.Where(t => t.Fund.MFCatId == categoryId);
+
+			return await q
+                .Select(t => t.Folio.Holder)
+				.Distinct()
+				.OrderBy(h => h.FirstName)
+				.ToListAsync();
+		}
+
+		public async Task<List<BubblePointDto>> GetBubbleDataAsync(TransactionFilter filter)
+		{
+			var q = _db.MutualFundTransactions
+				.Include(t => t.Fund)
+				.Include(t => t.Folio)
+					.ThenInclude(f => f.Holder)
+				.AsNoTracking()
+				.AsQueryable();
+
+			if (filter.StartDate.HasValue)
+				q = q.Where(t => t.TransactionDate >= filter.StartDate);
+
+			if (filter.EndDate.HasValue)
+				q = q.Where(t => t.TransactionDate <= filter.EndDate);
+
+			if (filter.CategoryId.HasValue)
+				q = q.Where(t => t.Fund.MFCatId == filter.CategoryId);
+
+			if (filter.AMCId.HasValue)
+				q = q.Where(t => t.Fund.AMCId == filter.AMCId);
+
+			if (filter.FundId.HasValue)
+				q = q.Where(t => t.FundId == filter.FundId);
+
+			if (filter.FolioId.HasValue)
+				q = q.Where(t => t.FolioId == filter.FolioId);
+
+			if (filter.HolderId.HasValue)
+				q = q.Where(t => t.Folio.FolioHolderId == filter.HolderId);
+
+			return await q
+				.GroupBy(t => new
+				{
+					Date = t.TransactionDate.Date,
+					t.FundId,
+					t.Fund.FundName,
+					HolderId = t.Folio.FolioHolderId,
+					Holder = t.Folio.Holder.FirstName + " " + t.Folio.Holder.LastName
+				})
+				.Select(g => new BubblePointDto
+				{
+					Date = g.Key.Date,
+					FundId = g.Key.FundId,
+					FundName = g.Key.FundName,
+					HolderId = g.Key.HolderId,
+					HolderName = g.Key.Holder,
+					TotalInvestment = g.Sum(x => x.AmountPaid),
+					Units = g.Sum(x => x.Units),
+					Nav = g.Average(x => x.NAV)
+				})
+				.ToListAsync();
+		}
 	}
 }

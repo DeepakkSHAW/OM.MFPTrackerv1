@@ -1,0 +1,506 @@
+﻿@page "/transactions-bubble-filters"
+@rendermode InteractiveServer
+
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@using OM.MFPTrackerV1.Web.Components
+@using OM.MFPTrackerV1.Web.Models.ViewModels
+@using System.Text
+
+@inject IJSRuntime JS
+@inject IMFCategoryRepo CategoryRepo
+@inject IAMCRepo AMCRepo
+@inject IMFFundRepo FundRepo
+@inject IFolioRepo FolioRepo
+@inject IMutualFundTransactionRepo TxnRepo
+
+<h4 class="mb-3">MF Transaction Filters (Validation Page)</h4>
+
+<!-- ===========================
+     FILTER PANEL
+     =========================== -->
+<div class="card">
+    <div class="card-body">
+        <div class="row g-3">
+
+            <!-- Start Date -->
+            <div class="col-md-3">
+                <label class="form-label">Start Date</label>
+                <InputDate class="form-control" @bind-Value="StartDate" />
+            </div>
+
+            <!-- End Date -->
+            <div class="col-md-3">
+                <label class="form-label">End Date</label>
+                <InputDate class="form-control" @bind-Value="EndDate" />
+            </div>
+
+            <!-- CATEGORY -->
+            <div class="col-md-3">
+                <label class="form-label">MF Category</label>
+                <InputSelect class="form-select" @bind-Value="SelectedCategoryId">
+                    <option value="">All</option>
+                    @foreach (var c in Categories)
+                    {
+                        <option value="@c.MFCatId">@c.CategoryName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- AMC -->
+            <div class="col-md-3">
+                <label class="form-label">AMC</label>
+                <InputSelect class="form-select" @bind-Value="SelectedAmcId">
+                    <option value="">All</option>
+                    @foreach (var a in FilteredAMCs)
+                    {
+                        <option value="@a.AMCId">@a.AMCName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- FUND -->
+            <div class="col-md-4">
+                <label class="form-label">Fund</label>
+                <InputSelect class="form-select" @bind-Value="SelectedFundId">
+                    <option value="">All</option>
+                    @foreach (var f in FilteredFunds)
+                    {
+                        <option value="@f.FundId">@f.FundName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- FOLIO -->
+            <div class="col-md-4">
+                <label class="form-label">Folio</label>
+                <InputSelect class="form-select" @bind-Value="SelectedFolioId">
+                    <option value="">All</option>
+                    @foreach (var f in FilteredFolios)
+                    {
+                        <option value="@f.FolioId">@f.FolioNumber</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- HOLDER -->
+            <div class="col-md-4">
+                <label class="form-label">Holder</label>
+                <InputSelect class="form-select"
+                             @bind-Value="SelectedHolderId"
+                             disabled="@(!FilteredHolders.Any())">
+                    <option value="">All</option>
+                    @foreach (var h in FilteredHolders)
+                    {
+                        <option value="@h.FolioHolderId">
+                            @($"{h.FirstName} {h.LastName}")
+                        </option>
+                    }
+                </InputSelect>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ===========================
+     DEBUG OUTPUT (IMPORTANT)
+     =========================== -->
+@* <div class="alert alert-secondary mt-3">
+    <strong>Current Selection</strong>
+    <ul class="mb-0">
+        <li>Start Date: @StartDate</li>
+        <li>End Date: @EndDate</li>
+        <li>CategoryId: @SelectedCategoryId</li>
+        <li>AMCId: @SelectedAmcId</li>
+        <li>FundId: @SelectedFundId</li>
+        <li>FolioId: @SelectedFolioId</li>
+        <li>HolderId: @SelectedHolderId</li>
+    </ul>
+</div> *@
+
+
+<!-- ===========================
+     ACTION BAR
+     =========================== -->
+<div class="d-flex gap-2 mb-2">
+    <button class="btn btn-primary" @onclick="LoadBubbles">
+        Apply Filters
+    </button>
+
+    <button class="btn btn-outline-secondary"
+            disabled="@(BubbleData.Count == 0)"
+            @onclick="() => ShowTable = !ShowTable">
+        @(ShowTable ? "View as Chart" : "View as Table")
+    </button>
+</div>
+
+<!-- ===========================
+     CONTENT AREA
+     =========================== -->
+@if (BubbleData.Count == 0)
+{
+    <div class="text-muted text-center mt-5">
+        No transactions found for the selected filters.
+    </div>
+}
+else if (!ShowTable)
+{
+    <!-- ✅ CHART VIEW -->
+    <div style="height: calc(100vh - 260px);">
+        <BubbleChart Data="@BubbleData" />
+    </div>
+}
+else
+{
+    <!-- ✅ TABLE VIEW -->
+    <!-- Header + Export button -->
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="mb-0">Transactions – Tabular View</h6>
+
+        <button class="btn btn-sm btn-outline-success"
+                @onclick="ExportToCsv">
+            Export CSV
+        </button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Fund</th>
+                    <th>Holder</th>
+                    <th class="text-end">NAV</th>
+                    <th class="text-end">Investment (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in BubbleData.OrderBy(b => b.X))
+                {
+                    <tr>
+                        <td>@item.X.ToString("dd-MMM-yyyy")</td>
+                        <td>@item.Fund</td>
+                        <td>@item.Holder</td>
+                        <td class="text-end">@item.Y.ToString("N2")</td>
+                        <td class="text-end">@item.Investment.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div style="height: calc(100vh - 260px);"
+     class="d-flex align-items-center justify-content-center">
+
+    @if (BubbleData.Count == 0)
+    {
+        <div class="text-muted text-center">
+            No transactions found for the selected filters.
+        </div>
+    }
+    else if (!ShowTable)
+    {
+        <BubbleChart Data="@BubbleData" />
+    }
+    else
+    {
+        <!-- ===========================
+             TABLE HEADER
+             =========================== -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0">Transactions – Tabular View</h6>
+
+            <button class="btn btn-sm btn-outline-success"
+                    @onclick="ExportToCsv">
+                Export CSV
+            </button>
+        </div>
+
+        <!-- ===========================
+             TABLE
+             =========================== -->
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Fund</th>
+                        <th>Holder</th>
+                        <th class="text-end">NAV</th>
+                        <th class="text-end">Investment (₹)</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var item in BubbleData.OrderBy(b => b.X))
+                    {
+                        <tr>
+                            <td>@item.X.ToString("dd-MMM-yyyy")</td>
+                            <td>@item.Fund</td>
+                            <td>@item.Holder</td>
+                            <td class="text-end">@item.Y.ToString("N2")</td>
+                            <td class="text-end">
+                                @item.Investment.ToString("N0")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+</div>
+
+@code {
+    private bool ShowTable = false;
+    private List<BubbleChartPoint> BubbleData = new();
+    private async Task LoadBubbles()
+    {
+        // ✅ Clear holder selection if it no longer applies
+        if (!FilteredHolders.Any())
+            SelectedHolderId = null;
+
+        var raw = await TxnRepo.GetBubbleDataAsync(BuildFilter());
+
+        BubbleData = raw
+            .Select(x => new BubbleChartPoint
+            {
+                X = x.Date,                    // DateTime is correct
+                Y = x.Nav,                     // NAV
+                Investment = x.TotalInvestment,
+                Fund = x.FundName,
+                Holder = x.HolderName,
+                ColorKey = HashCode.Combine(x.FundId, x.HolderId)
+            })
+            .ToList();
+
+        StateHasChanged();
+    }
+    // private async Task LoadBubbles()
+    // {
+    //     var raw = await TxnRepo.GetBubbleDataAsync(BuildFilter());
+
+    //     BubbleData = raw
+    //         .Select(x => new BubbleChartPoint
+    //         {
+    //             // X-axis: Date
+    //             X = x.Date,
+
+    //             // Y-axis: NAV
+    //             Y = x.Nav,
+
+    //             // Bubble size: Total Investment
+    //             Investment = x.TotalInvestment,
+
+    //             // Labels
+    //             Fund = x.FundName,
+    //             Holder = x.HolderName,
+
+    //             // Stable color per (Fund + Holder)
+    //             ColorKey = HashCode.Combine(x.FundId, x.HolderId)
+    //         })
+    //         .ToList();
+
+    //     // Ensure UI refresh
+    //     StateHasChanged();
+    // }
+    /* ===========================
+       DATE FILTERS
+       =========================== */
+    private DateTime? StartDate = DateTime.Today.AddMonths(-1);
+    private DateTime? EndDate = DateTime.Today;
+
+    /* ===========================
+       MASTER DATA
+       =========================== */
+    private List<MFCategory> Categories = new();
+    private List<AMC> AllAMCs = new();
+    private List<Fund> AllFunds = new();
+    private List<Folio> AllFolios = new();
+
+    /* ===========================
+       FILTERED DATA
+       =========================== */
+    private List<AMC> FilteredAMCs = new();
+    private List<Fund> FilteredFunds = new();
+    private List<Folio> FilteredFolios = new();
+    private List<FolioHolder> FilteredHolders = new();
+
+    /* ===========================
+       SELECTION BACKING FIELDS
+       (Setters handle cascade logic)
+       =========================== */
+
+    private int? _selectedCategoryId;
+    private int? SelectedCategoryId
+    {
+        get => _selectedCategoryId;
+        set
+        {
+            _selectedCategoryId = value;
+
+            // Reset downstream
+            SelectedAmcId = null;
+            SelectedFundId = null;
+            SelectedFolioId = null;
+            SelectedHolderId = null;
+
+            ApplyFilters();
+        }
+    }
+
+    private int? _selectedAmcId;
+    private int? SelectedAmcId
+    {
+        get => _selectedAmcId;
+        set
+        {
+            _selectedAmcId = value;
+
+            SelectedFundId = null;
+            SelectedFolioId = null;
+            SelectedHolderId = null;
+
+            ApplyFilters();
+        }
+    }
+
+    private int? _selectedFundId;
+    private int? SelectedFundId
+    {
+        get => _selectedFundId;
+        set
+        {
+            _selectedFundId = value;
+
+            SelectedFolioId = null;
+            SelectedHolderId = null;
+
+            ApplyFilters();
+        }
+    }
+
+    private int? _selectedFolioId;
+    private int? SelectedFolioId
+    {
+        get => _selectedFolioId;
+        set
+        {
+            _selectedFolioId = value;
+            SelectedHolderId = null;
+
+            _ = LoadHoldersAsync();
+        }
+    }
+
+    private int? SelectedHolderId;
+
+    /* ===========================
+       INITIAL LOAD
+       =========================== */
+    protected override async Task OnInitializedAsync()
+    {
+        Categories = (await CategoryRepo.GetAllAsync()).ToList();
+        AllAMCs = (await AMCRepo.GetAllAsync()).ToList();
+        AllFunds = (await FundRepo.GetAllAsync()).ToList();
+        AllFolios = (await FolioRepo.GetAllAsync()).ToList();
+
+        ApplyFilters();
+    }
+
+    /* ===========================
+       FILTER APPLICATION
+       =========================== */
+    private void ApplyFilters()
+    {
+        // Filter AMC by category through funds
+        FilteredAMCs = AllAMCs
+            .Where(a =>
+                !_selectedCategoryId.HasValue ||
+                AllFunds.Any(f =>
+                    f.AMCId == a.AMCId &&
+                    f.MFCatId == _selectedCategoryId))
+            .ToList();
+
+        // Filter funds
+        FilteredFunds = AllFunds
+            .Where(f =>
+                (!_selectedCategoryId.HasValue || f.MFCatId == _selectedCategoryId) &&
+                (!_selectedAmcId.HasValue || f.AMCId == _selectedAmcId))
+            .ToList();
+
+        // Filter folios (folio belongs to AMC)
+        FilteredFolios = AllFolios
+            .Where(f =>
+                !_selectedAmcId.HasValue || f.AMCId == _selectedAmcId)
+            .ToList();
+
+        FilteredHolders.Clear();
+    }
+
+    /* ===========================
+       HOLDER LOAD (FROM TRANSACTIONS)
+       =========================== */
+    private async Task LoadHoldersAsync()
+    {
+        if (!_selectedFolioId.HasValue)
+        {
+            FilteredHolders.Clear();
+            return;
+        }
+
+        FilteredHolders =
+            await TxnRepo.GetHoldersForTransactionsAsync(
+                _selectedFolioId,
+                _selectedFundId,
+                _selectedAmcId,
+                _selectedCategoryId);
+    }
+
+    private TransactionFilter BuildFilter()
+    {
+        return new TransactionFilter
+        {
+            StartDate = StartDate,
+            EndDate = EndDate,
+
+            CategoryId = SelectedCategoryId,
+            AMCId = SelectedAmcId,
+            FundId = SelectedFundId,
+            FolioId = SelectedFolioId,
+            HolderId = SelectedHolderId
+        };
+    }
+    private async Task ExportToCsv()
+    {
+        if (BubbleData.Count == 0)
+            return;
+
+        var sb = new StringBuilder();
+
+        // CSV header
+        sb.AppendLine("Date,Fund,Holder,NAV,Investment");
+
+        foreach (var item in BubbleData)
+        {
+            sb.AppendLine(
+                $"{item.X:yyyy-MM-dd}," +
+                $"\"{item.Fund}\"," +
+                $"\"{item.Holder}\"," +
+                $"{item.Y}," +
+                $"{item.Investment}");
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+
+        await JS.InvokeVoidAsync(
+            "downloadFile",
+            $"transactions-{DateTime.Today:yyyyMMdd}.csv",
+            base64);
+    }
+
+}

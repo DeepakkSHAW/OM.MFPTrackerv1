@@ -1,0 +1,45 @@
+﻿@page "/bubble-test"
+@rendermode InteractiveServer
+
+@using OM.MFPTrackerV1.Web.Components
+@using OM.MFPTrackerV1.Web.Models.ViewModels
+
+<h3>Bubble Chart – Existing DTO (Dummy Data)</h3>
+
+<div style="height:400px; border:1px solid #ccc;">
+    <BubbleChart Data="@BubbleData" />
+</div>
+
+@code {
+
+    private readonly List<BubbleChartPoint> BubbleData = new()
+    {
+        new BubbleChartPoint
+        {
+            X = new DateTime(2024, 1, 1),
+            Y = 100,
+            Investment = 50000,
+            Fund = "Fund A",
+            Holder = "Deepak Shaw",
+            ColorKey = HashCode.Combine("Fund A", "Deepak Shaw")
+        },
+        new BubbleChartPoint
+        {
+            X = new DateTime(2024, 2, 1),
+            Y = 105,
+            Investment = 2000,
+            Fund = "Fund A",
+            Holder = "Deepak Shaw",
+            ColorKey = HashCode.Combine("Fund A", "Deepak Shaw")
+        },
+        new BubbleChartPoint
+        {
+            X = new DateTime(2024, 3, 1),
+            Y = 102,
+            Investment = 90000,
+            Fund = "Fund B",
+            Holder = "Deepak Shaw",
+            ColorKey = HashCode.Combine("Fund B", "Deepak Shaw")
+        }
+    };
+}
