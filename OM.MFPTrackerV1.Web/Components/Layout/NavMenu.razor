@@ -44,7 +44,23 @@
                 </div>
             }
         </div>
-
+        <!-- Analysis MFunds Group -->
+        <div class="nav-item px-3">
+            <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
+                    @onclick="ToggleAnalysis">
+                <span><span class="bi bi-graph-up-arrow"></span> Analysis</span>
+                <span class="chevron @(isAnalysisOpen ? "rotate" : "")">▾</span>
+            </button>
+            @if (isAnalysisOpen)
+            {
+                <div class="ps-3">
+                    <NavLink class="nav-link" href="/transactions-bubble-filters">Investments</NavLink>
+                    <NavLink class="nav-link" href="/transactions-explorer">Explorer</NavLink>
+                    <NavLink class="nav-link" href="/#">Test</NavLink>
+                </div>
+            }
+        </div>
+        <!--Next Icon <i class="bi bi-bezier2"></i> -->
         <!-- Import Group -->
         <div class="nav-item px-3">
             <button class="btn btn-link nav-link w-100 text-start d-flex justify-content-between align-items-center"
@@ -103,6 +119,7 @@
     private bool isPeopleOpen;
     private bool isFundsOpen;
     private bool isNavsOpen;
+    private bool isAnalysisOpen;
     private bool isImportOpen;
 
     protected override void OnInitialized()
@@ -118,6 +135,7 @@
     private void TogglePeople() => isPeopleOpen = !isPeopleOpen;
     private void ToggleFunds() => isFundsOpen = !isFundsOpen;
     private void ToggleNavs() => isNavsOpen = !isNavsOpen;
+    private void ToggleAnalysis() => isAnalysisOpen = !isAnalysisOpen;
     private void ToggleImports() => isImportOpen = !isImportOpen;
 }
 

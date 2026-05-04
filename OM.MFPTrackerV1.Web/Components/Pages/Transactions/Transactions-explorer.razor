@@ -1,0 +1,429 @@
+﻿@page "/transactions-explorer"
+@rendermode InteractiveServer
+
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@using OM.MFPTrackerV1.Web.Components
+@using OM.MFPTrackerV1.Web.Models.ViewModels
+@using System.Text
+
+@inject IMFCategoryRepo CategoryRepo
+@inject IAMCRepo AMCRepo
+@inject IMFFundRepo FundRepo
+@inject IFolioRepo FolioRepo
+@inject IMutualFundTransactionRepo TxnRepo
+@inject IJSRuntime JS
+
+<!-- =====================================================
+     PAGE HEADER
+     ===================================================== -->
+<h4 class="mb-2">Transactions Explorer</h4>
+<p class="text-muted small mb-3">
+    Flexible, Excel-style querying across all transactions.
+</p>
+
+<!-- =====================================================
+     FILTER PANEL (INDEPENDENT / EXCEL-STYLE)
+     No cascading, no auto-apply
+     ===================================================== -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+
+            <!-- Date range -->
+            <div class="col-md-3">
+                <label class="form-label">Start Date</label>
+                <InputDate class="form-control" @bind-Value="Filter.StartDate" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">End Date</label>
+                <InputDate class="form-control" @bind-Value="Filter.EndDate" />
+            </div>
+
+            <!-- Structural filters -->
+            <div class="col-md-3">
+                <label class="form-label">Category</label>
+                <InputSelect class="form-select" @bind-Value="Filter.CategoryId">
+                    <option value="">All</option>
+                    @foreach (var c in Categories)
+                    {
+                        <option value="@c.MFCatId">@c.CategoryName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">AMC</label>
+                <InputSelect class="form-select" @bind-Value="Filter.AmcId">
+                    <option value="">All</option>
+                    @foreach (var a in AMCs)
+                    {
+                        <option value="@a.AMCId">@a.AMCName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Fund</label>
+                <InputSelect class="form-select" @bind-Value="Filter.FundId">
+                    <option value="">All</option>
+                    @foreach (var f in Funds)
+                    {
+                        <option value="@f.FundId">@f.FundName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Folio</label>
+                <InputSelect class="form-select" @bind-Value="Filter.FolioId">
+                    <option value="">All</option>
+                    @foreach (var f in Folios)
+                    {
+                        <option value="@f.FolioId">@f.FolioNumber</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Holder</label>
+                <InputSelect class="form-select" @bind-Value="Filter.HolderId">
+                    <option value="">All</option>
+                    @foreach (var h in Holders)
+                    {
+                        <option value="@h.FolioHolderId">
+                            @($"{h.FirstName} {h.LastName}")
+                        </option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Transaction Type</label>
+                <InputSelect class="form-select" @bind-Value="Filter.TxnType">
+                    <option value="">All</option>
+                    @foreach (var t in Enum.GetValues<TransactionType>())
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- Free text search -->
+            <div class="col-md-6">
+                <label class="form-label">Search (Reference / Source / Note)</label>
+                <InputText class="form-control"
+                           placeholder="free text search..."
+                           @bind-Value="Filter.FreeText" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================
+     ACTION BAR
+     ===================================================== -->
+<div class="d-flex align-items-center gap-2 mb-3">
+
+    <button class="btn btn-primary" @onclick="ApplyFilters">
+        Apply Filters
+    </button>
+
+    <button class="btn btn-outline-secondary"
+            disabled="@(Results.Count == 0)"
+            @onclick="ToggleView">
+        @(ShowTable ? "View as Chart" : "View as Table")
+    </button>
+
+    @if (ShowTable && Results.Count > 0)
+    {
+        <button class="btn btn-outline-success ms-1"
+                @onclick="ExportToCsv">
+            Export CSV
+        </button>
+    }
+
+    <!-- Summary on the right -->
+    <div class="ms-auto text-muted small">
+        @if (Results.Count > 0)
+        {
+            <strong>Total Investment:</strong>
+            <span class="ms-1">₹@TotalInvestment.ToString("N0")</span>
+        }
+    </div>
+</div>
+
+<!-- =====================================================
+     CONTENT AREA
+     ===================================================== -->
+@if (Results.Count == 0)
+{
+    <div class="text-muted text-center mt-5">
+        No transactions found for the selected filters.
+    </div>
+}
+else if (!ShowTable)
+{
+    <!-- Bubble chart -->
+    <div style="height: calc(100vh - 300px);">
+        <BubbleChart Data="@ChartData" />
+    </div>
+}
+else
+{
+    <!-- ===========================
+         TABLE VIEW (SORT + PAGE)
+         =========================== -->
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th role="button" @onclick="() => SortBy(nameof(BubblePointDto.Date))">
+                        Date @SortIndicator(nameof(BubblePointDto.Date))
+                    </th>
+                    <th role="button" @onclick="() => SortBy(nameof(BubblePointDto.FundName))">
+                        Fund @SortIndicator(nameof(BubblePointDto.FundName))
+                    </th>
+                    <th role="button" @onclick="() => SortBy(nameof(BubblePointDto.HolderName))">
+                        Holder @SortIndicator(nameof(BubblePointDto.HolderName))
+                    </th>
+                    <th class="text-end" role="button"
+                        @onclick="() => SortBy(nameof(BubblePointDto.Nav))">
+                        NAV @SortIndicator(nameof(BubblePointDto.Nav))
+                    </th>
+                    <th class="text-end" role="button"
+                        @onclick="() => SortBy(nameof(BubblePointDto.TotalInvestment))">
+                        Investment (₹) @SortIndicator(nameof(BubblePointDto.TotalInvestment))
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var row in PagedResults)
+                {
+                    <tr>
+                        <td>@($"{row.Date:dd-MMM-yyyy}")</td>
+                        <td>@row.FundName</td>
+                        <td>@row.HolderName</td>
+                        <td class="text-end">@($"{row.Nav:N2}")</td>
+                        <td class="text-end">@($"{row.TotalInvestment:N0}")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ================= Paging ================= -->
+    <div class="d-flex align-items-center mt-2 gap-2">
+        <span class="text-muted small">
+            Total: @totalCount
+        </span>
+
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-primary"
+                    disabled="@(pageNumber == 1)"
+                    @onclick="PrevPage">
+                ‹
+            </button>
+
+            <span class="btn btn-sm btn-outline-secondary disabled">
+                Page @pageNumber
+            </span>
+
+            <button class="btn btn-sm btn-outline-primary"
+                    disabled="@((pageNumber * pageSize) >= totalCount)"
+                    @onclick="NextPage">
+                ›
+            </button>
+
+            <select class="form-select form-select-sm"
+                    style="width:90px"
+                    @bind="pageSize">
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+            </select>
+        </div>
+    </div>
+}
+
+@code {
+
+    /* =====================================================
+       FILTER STATE
+       ===================================================== */
+    private TransactionExplorerFilter Filter = new()
+    {
+        StartDate = DateTime.Today.AddYears(-1),
+        EndDate = DateTime.Today
+    };
+
+    /* =====================================================
+       MASTER DATA (NO CASCADING)
+       ===================================================== */
+    private List<MFCategory> Categories = new();
+    private List<AMC> AMCs = new();
+    private List<Fund> Funds = new();
+    private List<Folio> Folios = new();
+    private List<FolioHolder> Holders = new();
+
+    /* =====================================================
+       QUERY RESULTS
+       ===================================================== */
+    private List<BubblePointDto> Results = new();
+    private bool ShowTable = false;
+
+    /* =====================================================
+       SORTING
+       ===================================================== */
+    private string sortColumn = nameof(BubblePointDto.Date);
+    private bool sortAscending = true;
+
+    private IEnumerable<BubblePointDto> SortedResults =>
+        sortColumn switch
+        {
+            nameof(BubblePointDto.Date) =>
+                sortAscending ? Results.OrderBy(x => x.Date)
+                              : Results.OrderByDescending(x => x.Date),
+
+            nameof(BubblePointDto.FundName) =>
+                sortAscending ? Results.OrderBy(x => x.FundName)
+                              : Results.OrderByDescending(x => x.FundName),
+
+            nameof(BubblePointDto.HolderName) =>
+                sortAscending ? Results.OrderBy(x => x.HolderName)
+                              : Results.OrderByDescending(x => x.HolderName),
+
+            nameof(BubblePointDto.Nav) =>
+                sortAscending ? Results.OrderBy(x => x.Nav)
+                              : Results.OrderByDescending(x => x.Nav),
+
+            nameof(BubblePointDto.TotalInvestment) =>
+                sortAscending ? Results.OrderBy(x => x.TotalInvestment)
+                              : Results.OrderByDescending(x => x.TotalInvestment),
+
+            _ => Results
+        };
+
+    /* =====================================================
+       PAGINATION
+       ===================================================== */
+    private int pageNumber = 1;
+    private int pageSize = 20;
+
+    private int totalCount => Results.Count;
+
+    private IEnumerable<BubblePointDto> PagedResults =>
+        SortedResults
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize);
+
+    /* =====================================================
+       CHART DATA (UI VIEW MODEL)
+       ===================================================== */
+    private IReadOnlyList<BubbleChartPoint> ChartData =>
+        Results.Select(x => new BubbleChartPoint
+        {
+            X = x.Date,
+            Y = x.Nav,
+            Investment = x.TotalInvestment,
+            Fund = x.FundName,
+            Holder = x.HolderName,
+            ColorKey = HashCode.Combine(x.FundId, x.HolderId)
+        }).ToList();
+
+    private decimal TotalInvestment =>
+        Results.Sum(x => x.TotalInvestment);
+
+    /* =====================================================
+       LIFECYCLE
+       ===================================================== */
+    protected override async Task OnInitializedAsync()
+    {
+        Categories = (await CategoryRepo.GetAllAsync()).ToList();
+        AMCs = (await AMCRepo.GetAllAsync()).ToList();
+        Funds = (await FundRepo.GetAllAsync()).ToList();
+        Folios = (await FolioRepo.GetAllAsync()).ToList();
+
+        // Deduplicate holders by HolderId
+        Holders = Folios
+            .Where(f => f.Holder != null)
+            .GroupBy(f => f.Holder!.FolioHolderId)
+            .Select(g => g.First().Holder!)
+            .OrderBy(h => h.FirstName)
+            .ThenBy(h => h.LastName)
+            .ToList();
+    }
+
+    /* =====================================================
+       ACTIONS
+       ===================================================== */
+    private async Task ApplyFilters()
+    {
+        pageNumber = 1;
+        sortColumn = nameof(BubblePointDto.Date);
+        sortAscending = true;
+
+        Results = await TxnRepo.GetTransactionExplorerAsync(Filter);
+        ShowTable = false;
+    }
+
+    private void ToggleView() => ShowTable = !ShowTable;
+
+    private void SortBy(string column)
+    {
+        if (sortColumn == column)
+            sortAscending = !sortAscending;
+        else
+        {
+            sortColumn = column;
+            sortAscending = true;
+        }
+
+        pageNumber = 1;
+    }
+
+    private MarkupString SortIndicator(string column)
+    {
+        if (sortColumn != column)
+            return new MarkupString("");
+
+        return new MarkupString(sortAscending ? " ▲" : " ▼");
+    }
+
+    private void PrevPage()
+    {
+        if (pageNumber > 1)
+            pageNumber--;
+    }
+
+    private void NextPage()
+    {
+        if ((pageNumber * pageSize) < totalCount)
+            pageNumber++;
+    }
+
+    private async Task ExportToCsv()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Date,Fund,Holder,NAV,Investment");
+
+        foreach (var r in Results)
+        {
+            sb.AppendLine(
+                $"{r.Date:yyyy-MM-dd}," +
+                $"\"{r.FundName}\"," +
+                $"\"{r.HolderName}\"," +
+                $"{r.Nav}," +
+                $"{r.TotalInvestment}");
+        }
+
+        await JS.InvokeVoidAsync(
+            "downloadFile",
+            $"transactions-explorer-{DateTime.Today:yyyyMMdd}.csv",
+            Convert.ToBase64String(
+                Encoding.UTF8.GetBytes(sb.ToString())));
+    }
+}

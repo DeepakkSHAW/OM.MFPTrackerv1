@@ -123,7 +123,8 @@
 <!-- ===========================
      ACTION BAR
      =========================== -->
-<div class="d-flex gap-2 mb-2">
+<div class="d-flex align-items-center gap-2 mb-3">
+
     <button class="btn btn-primary" @onclick="LoadBubbles">
         Apply Filters
     </button>
@@ -133,6 +134,25 @@
             @onclick="() => ShowTable = !ShowTable">
         @(ShowTable ? "View as Chart" : "View as Table")
     </button>
+
+    @if (ShowTable && BubbleData.Count > 0)
+    {
+        <button class="btn btn-outline-success ms-1"
+                @onclick="ExportToCsv">
+            Export CSV
+        </button>
+    }
+
+    <!-- ✅ Summary aligned to the right -->
+    <div class="ms-auto text-muted small">
+        @if (BubbleData.Count > 0)
+        {
+            <span>
+                <strong>Total Investment:</strong>
+                ₹@TotalInvestment.ToString("N0")
+            </span>
+        }
+    </div>
 </div>
 
 <!-- ===========================
@@ -192,7 +212,7 @@ else
     </div>
 }
 
-<div style="height: calc(100vh - 260px);"
+@* <div style="height: calc(100vh - 260px);"
      class="d-flex align-items-center justify-content-center">
 
     @if (BubbleData.Count == 0)
@@ -252,11 +272,12 @@ else
         </div>
     }
 
-</div>
+</div> *@
 
 @code {
     private bool ShowTable = false;
     private List<BubbleChartPoint> BubbleData = new();
+    private decimal TotalInvestment => BubbleData.Sum(x => x.Investment);
     private async Task LoadBubbles()
     {
         // ✅ Clear holder selection if it no longer applies

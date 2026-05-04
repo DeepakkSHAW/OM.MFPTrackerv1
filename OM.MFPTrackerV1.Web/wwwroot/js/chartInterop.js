@@ -494,7 +494,7 @@ window.chartInterop.renderPieChart = function (
 // Bubble chart renderer
 // ===============================
 
-window.chartInterop.renderBubbleChartFromPointData = function (canvasId, datasets) {
+window.chartInterop.renderBubbleChartFromPointData_old = function (canvasId, datasets) {
 
     console.log("✅ renderBubbleChartFromPointData (with date labels)", datasets);
 
@@ -553,6 +553,131 @@ window.chartInterop.renderBubbleChartFromPointData = function (canvasId, dataset
                                 ctx.dataset.label,
                                 `Investment: ₹${d.investment.toLocaleString()}`,
                                 `Date: ${new Date(d.x).toLocaleDateString()}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+window.chartInterop.renderBubbleChartFromPointData = function (canvasId, datasets) {
+
+    /* =====================================================
+       Canvas setup & cleanup
+       ===================================================== */
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    if (canvas._chartInstance) {
+        canvas._chartInstance.destroy();
+    }
+
+    /* =====================================================
+       Bubble colorizer
+       - Distinct color per dataset (Fund / Fund+Holder)
+       - Opaque fill
+       - Solid border
+       ===================================================== */
+    function colorize(opaque, context) {
+        const value = context.raw;
+        if (!value) return "rgba(0,0,0,0.3)";
+
+        // ✅ Stable dataset identity (fund-level coloring)
+        const hueIndex = context.dataset._hueIndex ?? 0;
+
+        // Spread hues nicely around the color wheel
+        const hue = (hueIndex * 47) % 360;
+
+        const saturation = 68;
+        const lightness = opaque ? 65 : 40;
+        const alpha = opaque ? 0.35 : 1;
+
+        return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+    }
+
+    /* =====================================================
+       Chart.js Bubble Chart
+       ===================================================== */
+    canvas._chartInstance = new Chart(ctx, {
+        type: "bubble",
+
+        data: {
+            datasets: datasets.map((d, index) => ({
+                label: d.label,
+                data: d.data,
+
+                // ✅ Provide dataset-level color identity
+                _hueIndex: index,
+
+                // ✅ Bubble look
+                backgroundColor: ctx => colorize(true, ctx),
+                borderColor: ctx => colorize(false, ctx),
+                borderWidth: 1.5,
+                hoverBorderWidth: 2.5
+            }))
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            /* =================================================
+               Bubble appearance
+               ================================================= */
+            elements: {
+                point: {
+                    borderWidth: 1.5,
+                    hoverRadius: ctx =>
+                        Math.max(ctx.raw.r + 2, 6)
+                }
+            },
+
+            /* =================================================
+               Axes
+               ================================================= */
+            scales: {
+                x: {
+                    type: "linear",
+                    title: {
+                        display: true,
+                        text: "Transaction Date"
+                    },
+                    ticks: {
+                        callback: value =>
+                            new Date(value).toLocaleDateString("en-IN", {
+                                month: "short",
+                                year: "numeric"
+                            })
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: "NAV"
+                    }
+                }
+            },
+
+            /* =================================================
+               Plugins
+               ================================================= */
+            plugins: {
+                legend: {
+                    position: "bottom"
+                },
+                tooltip: {
+                    callbacks: {
+                        label: context => {
+                            const d = context.raw;
+                            return [
+                                context.dataset.label,
+                                `Date: ${new Date(d.x).toLocaleDateString()}`,
+                                `NAV: ${d.y}`,
+                                `Investment: ₹${d.investment.toLocaleString()}`
                             ];
                         }
                     }

@@ -3,6 +3,8 @@
 @using System.ComponentModel.DataAnnotations
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
+@using OM.MFPTrackerV1.Web.Helpers
+
 @rendermode InteractiveServer
 @inject IFundNavRepo Repo
 @inject IMFFundRepo FundRepo
@@ -568,8 +570,8 @@
                 continue;
             }
 
-            var parts = line.Split(',');
-
+            //var parts = line.Split(',');
+            var parts = line.Trim().Split(new char[] { '|', ':', ',' });
             // Must be exactly 3 columns
             if (parts.Length != 3)
             {
@@ -580,7 +582,8 @@
             var fundCode = parts[0].Trim();
 
             if (string.IsNullOrWhiteSpace(fundCode) ||
-                !DateTime.TryParse(parts[1], out var navDate) ||
+                //!DateTime.TryParse(parts[1], out var navDate) ||
+                !DateParser.TryParseFlexible(parts[1], out var navDate) ||
                 !decimal.TryParse(parts[2], out var navValue) ||
                 navValue <= 0)
             {
@@ -669,10 +672,11 @@
 
         foreach (var line in lines)
         {
-            var parts = line.Trim().Split(',');
+            var parts = line.Trim().Split(new char[] { '|' , ':', ','});
 
             if (parts.Length != 2 ||
-                !DateTime.TryParse(parts[0], out var d) ||
+                //!DateTime.TryParse(parts[0], out var d) ||
+                !DateParser.TryParseFlexible(parts[0], out var d) ||
                 !decimal.TryParse(parts[1], out var v) ||
                 v <= 0)
             {

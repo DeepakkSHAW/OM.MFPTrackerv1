@@ -95,4 +95,17 @@ namespace OM.MFPTrackerV1.Data.Models
 		public int? FolioId { get; set; }
 		public int? HolderId { get; set; }
 	}
+	public class TransactionExplorerFilter
+	{
+		public DateTime? StartDate { get; set; }
+		public DateTime? EndDate { get; set; }
+
+		public int? CategoryId { get; set; }
+		public int? AmcId { get; set; }
+		public int? FundId { get; set; }
+		public int? FolioId { get; set; }
+		public int? HolderId { get; set; }
+		public TransactionType? TxnType { get; set; }  
+		public string? FreeText { get; set; } 
+	}
 }
