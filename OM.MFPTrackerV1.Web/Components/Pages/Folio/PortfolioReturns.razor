@@ -1,0 +1,187 @@
+﻿@page "/portfolio-returns"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@inject IFolioRepo FolioRepo
+@inject IMFFundRepo FundRepo
+@inject IPortfolioReturnService PortfolioReturnService
+
+
+
+@inject IFolioRepo FolioRepo
+@inject IMFFundRepo FundRepo
+@inject IPortfolioReturnService PortfolioReturnService
+
+<h4 class="mt-2 mb-3">Portfolio Returns</h4>
+
+<!-- ================= Toolbar ================= -->
+<div class="row g-2 align-items-end mb-3">
+
+    <!-- Folio -->
+    <div class="col-md-6">
+        <label class="form-label small fw-bold">Folio</label>
+        <InputSelect TValue="int?"
+                     class="form-select"
+                     @bind-Value="selectedFolioId"
+                     @bind-Value:after="OnFolioChanged">
+            <option value="">-- Select Folio --</option>
+            @foreach (var f in allFolios)
+            {
+                <option value="@f.FolioId">
+                    @f.FolioNumber - 
+                    @($"{f.Holder.FirstName} {f.Holder.LastName} [{f.AttachedBank}]")
+                </option>
+            }
+        </InputSelect>
+    </div>
+
+    <!-- Fund -->
+    <div class="col-md-6">
+        <label class="form-label small fw-bold">Fund</label>
+        <InputSelect TValue="int?"
+                     class="form-select"
+                     disabled="@(!selectedFolioId.HasValue)"
+                     @bind-Value="selectedFundId"
+                     @bind-Value:after="OnFundChanged">
+            <option value="">-- Select Fund --</option>
+            @foreach (var f in funds)
+            {
+                <option value="@f.Id">@f.Name</option>
+            }
+        </InputSelect>
+    </div>
+</div>
+
+<!-- ================= Summary ================= -->
+@if (result is not null)
+{
+    <div class="row mb-3">
+        <div class="col">
+            <div class="card p-3">
+                <div class="row text-center">
+                    <div class="col">
+                        <div class="small text-muted">Invested</div>
+                        <div class="fw-bold">@result.InvestedAmount.ToString("0.00")</div>
+                    </div>
+                    <div class="col">
+                        <div class="small text-muted">Current Value</div>
+                        <div class="fw-bold">@result.CurrentValue.ToString("0.00")</div>
+                    </div>
+                    <div class="col">
+                        <div class="small text-muted">Absolute Return</div>
+                        <div class="fw-bold"
+                             style="color:@(result.AbsoluteReturnAmount >= 0 ? "green" : "red")">
+                            @result.AbsoluteReturnAmount.ToString("0.00")
+                            (@result.AbsoluteReturn.ToString("0.00")%)
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="small text-muted">XIRR</div>
+                        <div class="fw-bold">
+                            @(result.Xirr.HasValue
+                                ? (result.Xirr.Value * 100).ToString("0.00") + "%"
+                                : "N/A")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ================= Table (DEBUG CASHFLOWS) ================= -->
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th class="text-end">Amount</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (!selectedFolioId.HasValue || !selectedFundId.HasValue)
+            {
+                <tr>
+                    <td colspan="3" class="text-center text-muted">
+                        Select a folio and fund to view returns.
+                    </td>
+                </tr>
+            }
+            else if (result?.CashFlows.Count == 0)
+            {
+                <tr>
+                    <td colspan="3" class="text-center text-muted">
+                        No cash flows available.
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var row in result!.CashFlows)
+                {
+                    <tr>
+                        <td>@row.Date.ToString("dd-MMM-yyyy")</td>
+                        <td>@row.TxnType</td>
+                        <td class="text-end"
+                            style="color:@(row.Amount >= 0 ? "green" : "red")">
+                            @row.Amount.ToString("0.00")
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+
+    /* ================= State ================= */
+
+    private List<Folio> allFolios = new();
+    private List<FundLookupDto> funds = new();
+
+    private int? selectedFolioId;
+    private int? selectedFundId;
+
+    private PortfolioReturnResultDto? result;
+
+    /* ================= Lifecycle ================= */
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await FolioRepo.GetAsync(null, null, false, 1, int.MaxValue);
+        allFolios = r.Items.ToList();
+    }
+
+    /* ================= Events ================= */
+
+    private async Task OnFolioChanged()
+    {
+        selectedFundId = null;
+        result = null;
+        funds.Clear();
+
+        if (selectedFolioId.HasValue)
+        {
+            funds = (await FundRepo
+                .GetFundsByFolioAsync(selectedFolioId.Value))
+                .ToList();
+        }
+    }
+
+    private async Task OnFundChanged()
+    {
+        result = null;
+
+        if (selectedFolioId.HasValue && selectedFundId.HasValue)
+        {
+            result = await PortfolioReturnService
+                .CalculatePortfolioReturnsAsync(
+                    selectedFolioId.Value,
+                    selectedFundId.Value);
+        }
+    }
+}

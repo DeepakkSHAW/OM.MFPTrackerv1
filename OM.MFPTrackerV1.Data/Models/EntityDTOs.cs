@@ -108,4 +108,27 @@ namespace OM.MFPTrackerV1.Data.Models
 		public TransactionType? TxnType { get; set; }  
 		public string? FreeText { get; set; } 
 	}
+
+	public class PortfolioCashFlowDto
+	{
+		public int? TransactionId { get; set; }   // null for NAV row
+		public DateTime Date { get; set; }
+		public decimal Amount { get; set; }       // signed cash flow
+		public string TxnType { get; set; } = "";
+	}
+	public class PortfolioReturnResultDto
+	{
+		// Existing
+		public decimal? Xirr { get; set; }
+		public decimal? AnnualizedReturn { get; set; }
+
+		// ✅ NEW
+		public decimal InvestedAmount { get; set; }
+		public decimal CurrentValue { get; set; }
+		public decimal AbsoluteReturn { get; set; }      // %
+		public decimal AbsoluteReturnAmount { get; set; }
+
+		public List<PortfolioCashFlowDto> CashFlows { get; set; }
+			= new();
+	}
 }

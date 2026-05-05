@@ -44,28 +44,14 @@ https://www.indianfundbazaar.com/historical-nav/
 https://portal.amfiindia.com/spages/NAVOpen.txt (download current date NAV of all MF)
 MF List
 https://nsdl.co.in/mutual-fund-popup.htm
+Charting Library
+https://www.chartjs.org/ (use this for performance charts, asset allocation charts, etc.)
+https://www.chartjs.org/docs/latest/samples/scriptable/bubble.html
+https://www.iheartblazor.com/StackedBarChart
 
 8) What I can deliver next (your call)
 
-🔧 Updated OnModelCreating file assembled as one block for your solution.
-🧩 Repo implementations for AMC, Fund, Category, Folio, Transactions (with uniqueness guards & AMC match).
-🖥️ Pages for AMC / Folio / Transactions aligned to your two‑row filters, small/bold headers, JS confirm delete, JS‑free modals, NOCASE filters.
-🗂️ Migration plan with example Up/Down steps to safely evolve from the previous schema.
 
-If you want to start incrementally, I suggest:
-
-Apply AMC + Folio (with AMCId) and adjust Transactions;
-Then update Fund repo/UI to respect AMCId;
-Finally adjust Transactions page to use the AMC‑safe selectors.
-
-Tell me where you want to begin (e.g., Folio + Fluent + Repo + Page), and I’ll generate the drop‑in code.
-
-If you want next, I can help you with:
-
-✅ Historical NAV backfill (NAVAll.txt)
-✅ BackgroundService for daily sync
-✅ NAV chart + valuation
-✅ Return calculations
 
 
 Trnsecation
