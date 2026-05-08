@@ -687,12 +687,6 @@ window.chartInterop.renderBubbleChartFromPointData = function (canvasId, dataset
     });
 };
 
-window.downloadFile = function (filename, base64) {
-    const link = document.createElement("a");
-    link.href = "data:text/csv;base64," + base64;
-    link.download = filename;
-    link.click();
-};
 // ============================================================
 // ✅ DEBUG AID (OPTIONAL – SAFE TO KEEP)
 // ============================================================

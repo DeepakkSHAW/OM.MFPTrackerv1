@@ -30,6 +30,7 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task<List<FolioHolder>> GetHoldersForTransactionsAsync(int? folioId, int? fundId, int? amcId, int? categoryId);
 		Task<List<BubblePointDto>> GetBubbleDataAsync(TransactionFilter filter);
 		Task<List<BubblePointDto>> GetTransactionExplorerAsync(TransactionExplorerFilter filter);
+		Task<List<(int FolioId, int FundId)>> GetDistinctFolioFundPairsAsync();
 	}
 	public sealed class MutualFundTransactionRepo : IMutualFundTransactionRepo
 	{
@@ -574,6 +575,15 @@ namespace OM.MFPTrackerV1.Data.Services
 				.ToListAsync();
 
 			return result;
+		}
+
+		public async Task<List<(int FolioId, int FundId)>> GetDistinctFolioFundPairsAsync()
+		{
+			return await _db.MutualFundTransactions
+				.Select(t => new { t.FolioId, t.FundId })
+				.Distinct()
+				.Select(x => new ValueTuple<int, int>(x.FolioId, x.FundId))
+				.ToListAsync();
 		}
 	}
 }

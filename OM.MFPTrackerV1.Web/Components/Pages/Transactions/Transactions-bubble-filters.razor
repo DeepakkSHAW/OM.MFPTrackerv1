@@ -518,10 +518,17 @@ else
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());
         var base64 = Convert.ToBase64String(bytes);
 
+        // await JS.InvokeVoidAsync(
+        //     "downloadCsv",
+        //     $"transactions-{DateTime.Today:yyyyMMdd}.csv",
+        //     base64);
+
         await JS.InvokeVoidAsync(
-            "downloadFile",
+            "downloadBase64",
             $"transactions-{DateTime.Today:yyyyMMdd}.csv",
-            base64);
+            base64,
+            "text/csv;charset=utf-8;");
+
     }
 
 }

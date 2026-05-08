@@ -1,0 +1,411 @@
+﻿@page "/portfolio-returns_oldV3"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
+
+@inject IJSRuntime JS
+
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+
+@inject IFolioRepo FolioRepo
+@inject IMFFundRepo FundRepo
+@inject IPortfolioReturnService PortfolioReturnService
+
+<h4 class="mt-2 mb-3">Portfolio Returns</h4>
+
+<!-- ================= TABS ================= -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <button class="nav-link @(currentTab == 1 ? "active" : "")"
+                @onclick="() => SwitchTab(1)">
+            Single Investment
+        </button>
+    </li>
+
+    <li class="nav-item">
+        <button class="nav-link @(currentTab == 2 ? "active" : "")"
+                @onclick="() => SwitchTab(2)">
+            Full Portfolio
+        </button>
+    </li>
+</ul>
+
+<!-- ================= TAB CONTENT ================= -->
+@if (currentTab == 1)
+{
+    <!-- ================= SINGLE INVESTMENT ================= -->
+
+    <div class="row g-2 align-items-end mb-3">
+
+        <div class="col-md-6">
+            <label class="form-label small fw-bold">Folio</label>
+            <InputSelect TValue="int?"
+                         class="form-select"
+                         @bind-Value="selectedFolioId"
+                         @bind-Value:after="OnFolioChanged">
+
+                <option value="">-- Select Folio --</option>
+
+                @foreach (var f in allFolios)
+                {
+                    <option value="@f.FolioId">
+                        @f.FolioNumber -
+                        @($"{f.Holder.FirstName} {f.Holder.LastName} [{f.AttachedBank}]")
+                    </option>
+                }
+            </InputSelect>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label small fw-bold">Fund</label>
+            <InputSelect TValue="int?"
+                         class="form-select"
+                         disabled="@(!selectedFolioId.HasValue)"
+                         @bind-Value="selectedFundId"
+                         @bind-Value:after="OnFundChanged">
+
+                <option value="">-- Select Fund --</option>
+
+                @foreach (var f in funds)
+                {
+                    <option value="@f.Id">@f.Name</option>
+                }
+
+            </InputSelect>
+        </div>
+    </div>
+
+    @if (result is not null)
+    {
+        <div class="card p-3 mb-3">
+            <div class="row text-center">
+
+                <div class="col">
+                    <div class="small text-muted">Invested</div>
+                    <div class="fw-bold">@result.InvestedAmount.ToString("0.00")</div>
+                </div>
+
+                <div class="col">
+                    <div class="small text-muted">Current Value</div>
+                    <div class="fw-bold">@result.CurrentValue.ToString("0.00")</div>
+                </div>
+
+                <div class="col">
+                    <div class="small text-muted">Avg Days</div>
+                    <div class="fw-bold">@result.WeightedAverageDays.ToString("0") days</div>
+                </div>
+
+                <div class="col">
+                    <div class="small text-muted">Absolute Return</div>
+                    <div class="fw-bold"
+                         style="color:@(result.AbsoluteReturnAmount >= 0 ? "green" : "red")">
+                        @result.AbsoluteReturnAmount.ToString("0.00")
+                        <span class="small">
+                            (@result.AbsoluteReturn.ToString("0.00")%)
+                        </span>
+                    </div>
+                </div>
+
+                <div class="col">
+                    <div class="d-flex align-items-center justify-content-center gap-2">
+                        <div>
+                            <div class="small text-muted">XIRR</div>
+                            <div class="fw-bold">
+                                @(result.Xirr.HasValue
+                                                        ? (result.Xirr.Value * 100).ToString("0.00") + "%"
+                                                        : "N/A")
+                            </div>
+                        </div>
+
+                        <button class="btn p-1"
+                                title="Export CSV"
+                                @onclick="ExportCsv">
+                            <i class="bi bi-download" style="font-size:1.4rem;"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    }
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @if (result?.CashFlows == null || result.CashFlows.Count == 0)
+                {
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">
+                            No data available
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var row in result.CashFlows)
+                    {
+                        <tr>
+                            <td>@row.Date.ToString("dd-MMM-yyyy")</td>
+                            <td>@row.TxnType</td>
+                            <td class="text-end"
+                                style="color:@(row.Amount >= 0 ? "green" : "red")">
+                                @row.Amount.ToString("0.00")
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+else if (currentTab == 2)
+{
+    <!-- ================= FULL PORTFOLIO ================= -->
+
+    <div class="row g-2 align-items-center mb-3">
+
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="LoadPortfolio">
+                Load Portfolio
+            </button>
+        </div>
+
+        @if (totals != null)
+        {
+            <div class="col">
+                <div class="d-flex justify-content-end align-items-center gap-4">
+
+                    <div class="form-check form-switch">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               @bind="showInLakhs" />
+                        <label class="form-check-label small">Compact</label>
+                    </div>
+
+                    <div>
+                        <div class="small text-muted">Invested</div>
+                        <div class="fw-bold">@FormatAmount(totals.InvestedAmount)</div>
+                    </div>
+
+                    <div>
+                        <div class="small text-muted">Current</div>
+                        <div class="fw-bold">@FormatAmount(totals.CurrentValue)</div>
+                    </div>
+
+                    <div>
+                        <div class="small text-muted">Return</div>
+                        <div class="fw-bold"
+                             style="color:@(totals.AbsoluteReturnAmount >= 0 ? "green" : "red")">
+                            @FormatAmount(totals.AbsoluteReturnAmount)
+                            <span class="small">(@totals.AbsoluteReturn.ToString("0.00")%)</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        }
+
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th @onclick="@(() => SortPortfolioBy(nameof(PortfolioRowDto.FolioDisplay)))">
+                        Folio @SortIcon(nameof(PortfolioRowDto.FolioDisplay))
+                    </th>
+
+                    <th @onclick="@(() => SortPortfolioBy(nameof(PortfolioRowDto.FundDisplay)))">
+                        Fund @SortIcon(nameof(PortfolioRowDto.FundDisplay))
+                    </th>
+
+                    <th class="text-end"
+                        @onclick="@(() => SortPortfolioBy(nameof(PortfolioRowDto.InvestedAmount)))">
+                        Invested @SortIcon(nameof(PortfolioRowDto.InvestedAmount))
+                    </th>
+
+                    <th class="text-end"
+                        @onclick="@(() => SortPortfolioBy(nameof(PortfolioRowDto.CurrentValue)))">
+                        Current @SortIcon(nameof(PortfolioRowDto.CurrentValue))
+                    </th>
+
+                    <th class="text-end"
+                        @onclick="@(() => SortPortfolioBy(nameof(PortfolioRowDto.AbsoluteReturn)))">
+                        Return @SortIcon(nameof(PortfolioRowDto.AbsoluteReturn))
+                    </th>
+
+                    <th>XIRR</th>
+                    <th class="text-end">Days</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var row in portfolioResults)
+                {
+                    <tr>
+                        <td>@row.FolioDisplay</td>
+                        <td class="small">@row.FundDisplay</td>
+
+                        <td class="text-end">@FormatAmount(row.InvestedAmount)</td>
+                        <td class="text-end">@FormatAmount(row.CurrentValue)</td>
+
+                        <td class="text-end"
+                            style="color:@(row.AbsoluteReturnAmount >= 0 ? "green" : "red")">
+                            <span class="small">
+                                @FormatAmount(row.AbsoluteReturnAmount)
+                                (@row.AbsoluteReturn.ToString("0.00")%)
+                            </span>
+                        </td>
+
+                        <td>
+                            @(row.Xirr.HasValue
+                                                ? (row.Xirr.Value * 100).ToString("0.00") + "%"
+                                                : "N/A")
+                        </td>
+
+                        <td class="text-end">@row.WeightedAverageDays.ToString("0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+
+    private int currentTab = 1;
+
+    private List<Folio> allFolios = new();
+    private List<FundLookupDto> funds = new();
+
+    private int? selectedFolioId;
+    private int? selectedFundId;
+
+    private PortfolioReturnResultDto? result;
+
+    private List<PortfolioRowDto> portfolioResults = new();
+    private PortfolioRowDto? totals;
+
+    private bool showInLakhs = true;
+
+    private string portfolioSortBy = nameof(PortfolioRowDto.InvestedAmount);
+    private bool portfolioSortDesc = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await FolioRepo.GetAsync(null, null, false, 1, int.MaxValue);
+        allFolios = r.Items.ToList();
+    }
+
+    private void SwitchTab(int tab)
+    {
+        currentTab = tab;
+    }
+
+    private async Task OnFolioChanged()
+    {
+        selectedFundId = null;
+        result = null;
+
+        funds = selectedFolioId.HasValue
+            ? (await FundRepo.GetFundsByFolioAsync(selectedFolioId.Value)).ToList()
+            : new();
+    }
+
+    private async Task OnFundChanged()
+    {
+        if (selectedFolioId.HasValue && selectedFundId.HasValue)
+        {
+            result = await PortfolioReturnService
+                .CalculatePortfolioReturnsAsync(
+                    selectedFolioId.Value,
+                    selectedFundId.Value);
+        }
+    }
+
+    private async Task LoadPortfolio()
+    {
+        portfolioResults =
+            await PortfolioReturnService.CalculatePortfolioReturnsForAllAsync();
+
+        ApplyPortfolioSorting();
+        CalculateTotals();
+    }
+
+    private void CalculateTotals()
+    {
+        var invested = portfolioResults.Sum(x => x.InvestedAmount);
+        var current = portfolioResults.Sum(x => x.CurrentValue);
+        var abs = current - invested;
+
+        totals = new PortfolioRowDto
+        {
+            InvestedAmount = invested,
+            CurrentValue = current,
+            AbsoluteReturnAmount = abs,
+            AbsoluteReturn = invested > 0 ? (abs / invested) * 100 : 0
+        };
+    }
+
+    private string FormatAmount(decimal v)
+    {
+        if (!showInLakhs) return v.ToString("N0");
+
+        if (Math.Abs(v) >= 10000000) return $"{v / 10000000:0.##} Cr";
+        if (Math.Abs(v) >= 100000) return $"{v / 100000:0.##} L";
+        if (Math.Abs(v) >= 1000) return $"{v / 1000:0.##} K";
+
+        return v.ToString("N0");
+    }
+
+    private void SortPortfolioBy(string field)
+    {
+        portfolioSortDesc = portfolioSortBy == field ? !portfolioSortDesc : false;
+        portfolioSortBy = field;
+        ApplyPortfolioSorting();
+    }
+
+    private void ApplyPortfolioSorting()
+    {
+        portfolioResults = portfolioSortBy switch
+        {
+            nameof(PortfolioRowDto.FolioDisplay) =>
+                portfolioSortDesc ? portfolioResults.OrderByDescending(x => x.FolioDisplay).ToList()
+                                  : portfolioResults.OrderBy(x => x.FolioDisplay).ToList(),
+
+            nameof(PortfolioRowDto.CurrentValue) =>
+                portfolioSortDesc ? portfolioResults.OrderByDescending(x => x.CurrentValue).ToList()
+                                  : portfolioResults.OrderBy(x => x.CurrentValue).ToList(),
+
+            _ => portfolioResults
+        };
+    }
+
+    private RenderFragment SortIcon(string field) => b =>
+    {
+        if (portfolioSortBy == field)
+            b.AddContent(0, portfolioSortDesc ? " ▼" : " ▲");
+    };
+
+    private async Task ExportCsv()
+    {
+        if (result == null) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Date,Type,Amount");
+
+        foreach (var r in result.CashFlows)
+            sb.AppendLine($"{r.Date:yyyy-MM-dd},{r.TxnType},{r.Amount}");
+
+        await JS.InvokeVoidAsync("downloadCsv", "portfolio.csv", sb.ToString());
+    }
+}

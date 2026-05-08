@@ -105,8 +105,8 @@ namespace OM.MFPTrackerV1.Data.Models
 		public int? FundId { get; set; }
 		public int? FolioId { get; set; }
 		public int? HolderId { get; set; }
-		public TransactionType? TxnType { get; set; }  
-		public string? FreeText { get; set; } 
+		public TransactionType? TxnType { get; set; }
+		public string? FreeText { get; set; }
 	}
 
 	public class PortfolioCashFlowDto
@@ -118,17 +118,41 @@ namespace OM.MFPTrackerV1.Data.Models
 	}
 	public class PortfolioReturnResultDto
 	{
-		// Existing
 		public decimal? Xirr { get; set; }
 		public decimal? AnnualizedReturn { get; set; }
-
-		// ✅ NEW
 		public decimal InvestedAmount { get; set; }
 		public decimal CurrentValue { get; set; }
 		public decimal AbsoluteReturn { get; set; }      // %
 		public decimal AbsoluteReturnAmount { get; set; }
+		public decimal WeightedAverageDays { get; set; }
+		public List<PortfolioCashFlowDto> CashFlows { get; set; } = new();
+	}
+	public class PortfolioRowDto
+	{
+		public int FolioId { get; set; }
+		public int FundId { get; set; }
 
-		public List<PortfolioCashFlowDto> CashFlows { get; set; }
-			= new();
+		public string FolioDisplay { get; set; } = "";
+		public string FundDisplay { get; set; } = "";
+
+		public decimal? Xirr { get; set; }
+		public decimal InvestedAmount { get; set; }
+		public decimal CurrentValue { get; set; }
+		public decimal AbsoluteReturn { get; set; }
+		public decimal AbsoluteReturnAmount { get; set; }
+		public decimal WeightedAverageDays { get; set; }
+	}
+	public class PortfolioAdvancedFilter
+	{
+		public int? AmcId { get; set; }
+		public int? CategoryId { get; set; }
+		public int? HolderId { get; set; }
+		public int? FolioId { get; set; }
+		public int? FundId { get; set; }
+
+		public DateTime? FromDate { get; set; }
+		public DateTime? ToDate { get; set; }
+
+		public string? FreeText { get; set; }
 	}
 }
