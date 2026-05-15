@@ -1,5 +1,9 @@
-﻿using OM.MFPTrackerV1.Data.Models;
-using OM.MFPTrackerV1.Data.Helper;
+﻿using OM.MFPTrackerV1.Data.Helper;
+using OM.MFPTrackerV1.Data.Models;
+using System;
+using System.Buffers.Text;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace OM.MFPTrackerV1.Data.Services
 {
@@ -219,70 +223,84 @@ namespace OM.MFPTrackerV1.Data.Services
 		{
 			var results = new List<PortfolioRowDto>();
 
-			// ✅ 1️⃣ Normalize dates (as per your requirement)
 			var fromDate = filter.FromDate ?? new DateTime(1900, 1, 1);
 			var toDate = filter.ToDate ?? DateTime.Today;
 
-			// ✅ 2️⃣ Get ALL transactions (filtered at repo level where possible)
+			// ✅ Load ALL data
 			var (transactions, _) = await _txnRepo.GetAsync(
-				filter.FolioId,
-				filter.FundId,
+				null, null,
 				sortBy: nameof(MutualFundTransaction.TransactionDate),
 				sortDesc: false,
 				pageNumber: 1,
 				pageSize: int.MaxValue);
 
-			// ✅ 3️⃣ Apply date filter
-			var filtered = transactions
-				.Where(t =>
-					t.TransactionDate >= fromDate &&
-					t.TransactionDate <= toDate);
+			if (transactions == null || !transactions.Any())
+				return results;
 
-			// ✅ 4️⃣ Apply free-text filter
+			var folios = (await _folioRepo
+				.GetAsync(null, null, false, 1, int.MaxValue))
+				.Items.ToList();
+
+			var funds = (await _fundRepo
+				.GetAsync(null, null, false, 1, int.MaxValue))
+				.Items.ToList();
+
+			// ✅ Apply MASTER filtering (NOT transactions yet)
+
+			if (filter.AmcId.HasValue)
+				folios = folios.Where(f => f.AMCId == filter.AmcId).ToList();
+
+			if (filter.HolderId.HasValue)
+				folios = folios.Where(f => f.FolioHolderId == filter.HolderId).ToList();
+
+			if (filter.FolioId.HasValue)
+				folios = folios.Where(f => f.FolioId == filter.FolioId).ToList();
+
+			if (filter.CategoryId.HasValue)
+				funds = funds.Where(f => f.MFCatId == filter.CategoryId).ToList();
+
+			if (filter.FundId.HasValue)
+				funds = funds.Where(f => f.FundId == filter.FundId).ToList();
+
+			// ✅ Build ALL POSSIBLE COMBINATIONS (key fix 🔥)
+			var combos = (from f in folios
+						  from fd in funds
+						  select new { f.FolioId, fd.FundId })
+						  .ToList();
+
+			// ✅ Apply transaction filtering (date + text)
+			var filteredTxns = transactions
+				.Where(t => t.TransactionDate >= fromDate &&
+							t.TransactionDate <= toDate)
+				.ToList();
+
 			if (!string.IsNullOrWhiteSpace(filter.FreeText))
 			{
 				var txt = filter.FreeText.ToLower();
 
-				filtered = filtered.Where(t =>
+				filteredTxns = filteredTxns.Where(t =>
 					(t.ReferenceNo != null && t.ReferenceNo.ToLower().Contains(txt)) ||
 					(t.Source != null && t.Source.ToLower().Contains(txt)) ||
 					(t.Note != null && t.Note.ToLower().Contains(txt))
-				);
+				).ToList();
 			}
 
-			// ✅ 5️⃣ Group by (Folio, Fund)
-			var groups = filtered
-				.GroupBy(t => new { t.FolioId, t.FundId })
-				.Select(g => new
-				{
-					g.Key.FolioId,
-					g.Key.FundId
-				})
-				.ToList();
+			// Lookups
+			var folioLookup = folios.ToDictionary(f => f.FolioId);
+			var fundLookup = funds.ToDictionary(f => f.FundId);
 
-			if (!groups.Any())
-				return results;
-
-			// ✅ 6️⃣ Load display data
-			var folios = (await _folioRepo
-				.GetAsync(null, null, false, 1, int.MaxValue))
-				.Items
-				.ToDictionary(f => f.FolioId);
-
-			var funds = (await _fundRepo
-				.GetAsync(null, null, false, 1, int.MaxValue))
-				.Items
-				.ToDictionary(f => f.FundId);
-
-			// ✅ 7️⃣ Reuse existing calculation method
-			foreach (var g in groups)
+			foreach (var c in combos)
 			{
-				var calc = await CalculatePortfolioReturnsAsync(g.FolioId, g.FundId);
+				var calc = await CalculatePortfolioReturnsAsync(c.FolioId, c.FundId);
+
+				// ✅ skip ONLY if truly no investment
+				if (calc.InvestedAmount == 0 && calc.CurrentValue == 0)
+					continue;
 
 				var row = new PortfolioRowDto
 				{
-					FolioId = g.FolioId,
-					FundId = g.FundId,
+					FolioId = c.FolioId,
+					FundId = c.FundId,
 
 					Xirr = calc.Xirr,
 					InvestedAmount = calc.InvestedAmount,
@@ -292,22 +310,111 @@ namespace OM.MFPTrackerV1.Data.Services
 					WeightedAverageDays = calc.WeightedAverageDays
 				};
 
-				// ✅ Add display values
-				if (folios.TryGetValue(g.FolioId, out var f))
+				if (folioLookup.TryGetValue(c.FolioId, out var f))
 				{
 					row.FolioDisplay =
 						$"{f.FolioNumber} - {f.Holder.FirstName} {f.Holder.LastName}";
 				}
 
-				if (funds.TryGetValue(g.FundId, out var fd))
+				if (fundLookup.TryGetValue(c.FundId, out var fd))
 				{
 					row.FundDisplay = fd.FundName;
 				}
 
 				results.Add(row);
 			}
-
 			return results;
+		}
+		//I need a portfolio query method where filters(AMC, Folio, Fund, etc.) are applied on master data to generate a full matrix of all folio–fund combinations, and the system must always return all those rows(no grouping-based elimination), while calculating returns(Invested, Absolute Return, XIRR) strictly using only the transactions within the selected date range(From/To); if a combination has no transactions in that period, it should still appear with zero values, ensuring no rows are dropped, no duplicates are created, and calculations are accurate and consistent for strict period-based analysis.
+		private async Task<PortfolioReturnResultDto> CalculateFromTransactionsAsync(int fundId, List<MutualFundTransaction> txns)
+		{
+			var result = new PortfolioReturnResultDto();
+
+			if (txns == null || !txns.Any())
+				return result;
+
+			var xirrFlows = new List<(DateTime date, decimal amount)>();
+			decimal invested = 0m;
+
+			// ✅ 1️⃣ Build cashflows from period transactions
+			foreach (var t in txns)
+			{
+				bool isInflow = t.TxnType is
+					TransactionType.SELL or
+					TransactionType.SWITCH_OUT or
+					TransactionType.DIV_PAYOUT;
+
+				var amt = t.AmountPaid;
+				var signed = isInflow ? amt : -amt;
+
+				if (!isInflow)
+					invested += amt;
+				else
+					invested -= amt;
+
+				xirrFlows.Add((t.TransactionDate, signed));
+			}
+
+			// ✅ 2️⃣ Calculate remaining units ONLY from period txns
+			decimal units = 0m;
+
+			foreach (var t in txns)
+			{
+				bool isInflow = t.TxnType is
+					TransactionType.SELL or
+					TransactionType.SWITCH_OUT or
+					TransactionType.DIV_PAYOUT;
+
+				units += isInflow ? -t.Units : t.Units;
+			}
+
+			decimal currentValue = 0m;
+			DateTime valuationDate = DateTime.Today;
+
+			// ✅ 3️⃣ Add closing value (CRITICAL FIX)
+			if (units > 0)
+			{
+				var navs = await _navRepo.GetNavHistoryAsync(
+					fundId,
+					DateTime.MinValue,
+					DateTime.Today);
+
+				var latestNav = navs
+					.OrderByDescending(n => n.NavDate)
+					.FirstOrDefault();
+
+				if (latestNav != null)
+				{
+					valuationDate = latestNav.NavDate;
+
+					currentValue = units * latestNav.NavValue;
+
+					// ✅ ADD FINAL CASHFLOW (THIS FIXES YOUR ISSUE)
+					xirrFlows.Add((valuationDate, currentValue));
+				}
+			}
+
+			// ✅ 4️⃣ Calculate XIRR
+			var xirr = xirrFlows.Count > 1
+				? XirrCalculator.Calculate(xirrFlows)
+				: null;
+
+			// ✅ 5️⃣ Absolute Return
+			var absAmt = currentValue - invested;
+
+			var absPct = invested > 0
+				? (absAmt / invested) * 100
+				: 0;
+
+			// ✅ 6️⃣ Populate result
+			result.InvestedAmount = Math.Round(invested, 2);
+			result.CurrentValue = Math.Round(currentValue, 2);
+			result.AbsoluteReturnAmount = Math.Round(absAmt, 2);
+			result.AbsoluteReturn = Math.Round(absPct, 2);
+			result.Xirr = xirr;
+			result.WeightedAverageDays = 0; // optional for strict period
+
+			return result;
 		}
 	}
 }
