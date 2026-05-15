@@ -6,6 +6,7 @@
 @using OM.MFPTrackerV1.Web.Helpers
 
 @rendermode InteractiveServer
+@inject NavigationManager NavManager
 @inject IFundNavRepo Repo
 @inject IMFFundRepo FundRepo
 @inject IAmfiNavService NavService
@@ -87,6 +88,12 @@
                 disabled="@(!selectedFundId.HasValue)"
                 @onclick="OpenBulkImport">
             <i class="bi bi-list-check"></i><span class="d-none d-md-inline"> Bulk</span>
+        </button>
+        <button class="btn btn-info btn-sm"
+                title="View NAV chart for last 1 year"
+                disabled="@(!selectedFundId.HasValue)"
+                @onclick="OpenNavDashboard">
+            <i class="bi bi-graph-up"></i>
         </button>
 
     </div>
@@ -855,5 +862,12 @@
     private void CloseSyncSummary()
     {
         showSyncSummary = false;
+    }
+    private void OpenNavDashboard()
+    {
+        if (!selectedFundId.HasValue)
+            return;
+
+        NavManager.NavigateTo($"/nav-dashboard?fundId={selectedFundId.Value}");
     }
 }

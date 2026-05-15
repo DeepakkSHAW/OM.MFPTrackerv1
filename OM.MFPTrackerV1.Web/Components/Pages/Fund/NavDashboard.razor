@@ -4,9 +4,10 @@
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
 
+@inject NavigationManager NavManager
 @inject IFundNavRepo FundNavRepo
 @inject IMFFundRepo FundLookupRepo
-@inject IMutualFundTransactionRepo TransactionRepo  
+@inject IMutualFundTransactionRepo TransactionRepo
 @* Step 3 *@
 
 <h3>NAV Dashboard</h3>
@@ -115,12 +116,25 @@ else
         EmptyPurchases = new();
 
     /* ================= Lifecycle ================= */
-
     protected override async Task OnInitializedAsync()
     {
+        // ✅ Load funds
         funds = await FundLookupRepo.GetFundsAsync();
-    }
 
+        // ✅ Read query param
+        ReadQueryParams();
+
+        // ✅ If fund passed → auto load
+        if (queryFundId.HasValue)
+        {
+            selectedFundId = queryFundId;
+
+            fromDate = DateTime.Today.AddYears(-1); // ✅ last 1 year
+            toDate = DateTime.Today;
+
+            await LoadNavAsync(); // ✅ auto load
+        }
+    }
     private bool CanLoad =>
         selectedFundId.HasValue &&
         fromDate < toDate;
@@ -165,31 +179,7 @@ else
         }
     }
 
-    /* ================= Step 3 (Stub for real data) ================= */
-
-    // private async Task LoadPurchasePointsAsync(
-    //     IReadOnlyList<FundNavPoint> navHistory)
-    // {
-    //     // 🔜 REAL IMPLEMENTATION (next step):
-    //     // - Query TMutualFundTransaction by FundId & date range
-    //     // - Match transaction date to nearest NAV index
-    //     // - Set Index, Value (NAV), AmountPaid
-
-    //     // ✅ Temporary placeholder to validate wiring
-    //     if (navHistory.Count > 2)
-    //     {
-    //         purchases.Add(new NavLineChart.PurchasePoint
-    //         {
-    //             Index = 2,
-    //             Value = (double)navHistory[2].NavValue,
-    //             Amount = 1500
-    //         });
-    //     }
-
-    //     await Task.CompletedTask;
-    // }
-    private async Task LoadPurchasePointsAsync(
-        IReadOnlyList<FundNavPoint> navHistory)
+    private async Task LoadPurchasePointsAsync(IReadOnlyList<FundNavPoint> navHistory)
     {
         if (!selectedFundId.HasValue || navHistory.Count == 0)
             return;
@@ -246,6 +236,22 @@ else
                 Value = (double)navMatch.NavValue,
                 Amount = (double)tx.AmountPaid
             });
+        }
+    }
+    //* ==============parametrization for binding (if fund id coming from some other page) ============== */
+    private int? queryFundId;
+    private void ReadQueryParams()
+    {
+        var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
+
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers
+            .ParseQuery(uri.Query)
+            .TryGetValue("fundId", out var values))
+        {
+            if (int.TryParse(values.First(), out var id))
+            {
+                queryFundId = id;
+            }
         }
     }
 }
