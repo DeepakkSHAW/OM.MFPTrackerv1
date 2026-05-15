@@ -1,0 +1,209 @@
+﻿@page "/portfolio-allocation"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
+
+@using OM.MFPTrackerV1.Data.Services
+@using OM.MFPTrackerV1.Web.Components
+@using OM.MFPTrackerV1.Web.Components.ChartsComp
+
+@inject IAMCRepo AmcRepo
+@inject IMFCategoryRepo CategoryRepo
+
+<h3 class="mb-3">Portfolio Allocation</h3>
+
+<p class="text-muted">
+    View allocation by AMC, Category, or both.
+</p>
+
+<!-- ✅ Tabs -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <button class="nav-link @(activeTab == "amc" ? "active" : "")"
+                @onclick="@(() => ChangeTab("amc"))">
+            AMC
+        </button>
+    </li>
+
+    <li class="nav-item">
+        <button class="nav-link @(activeTab == "category" ? "active" : "")"
+                @onclick="@(() => ChangeTab("category"))">
+            Category
+        </button>
+    </li>
+
+    <li class="nav-item">
+        <button class="nav-link @(activeTab == "both" ? "active" : "")"
+                @onclick="@(() => ChangeTab("both"))">
+            Both
+        </button>
+    </li>
+</ul>
+
+@if (isLoading)
+{
+    <p>Loading data…</p>
+}
+else
+{
+    <!-- ✅ AMC ONLY -->
+    @if (activeTab == "amc")
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5>Investment Allocation by AMC</h5>
+                <p class="text-muted">
+                    Distribution of total invested amount across Asset Management Companies.
+                </p>
+
+                @if (amcValues.Length == 0)
+                {
+                    <div class="alert alert-info">No AMC data</div>
+                }
+                else
+                {
+                    <PieChart Labels="@amcLabels" Values="@amcValues" />
+                }
+            </div>
+        </div>
+    }
+
+    <!-- ✅ CATEGORY ONLY -->
+    else if (activeTab == "category")
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5>Investment Allocation by Category</h5>
+                <p class="text-muted">
+                    Distribution of total invested amount across mutual fund categories.
+                </p>
+
+                @if (catValues.Length == 0)
+                {
+                    <div class="alert alert-info">No Category data</div>
+                }
+                else
+                {
+                    <PieChart Labels="@catLabels" Values="@catValues" />
+                }
+            </div>
+        </div>
+    }
+
+    <!-- ✅ BOTH -->
+    else
+    {
+        <div class="row">
+
+            <!-- AMC -->
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h6>Investment Allocation by AMC</h6>
+                        <p class="text-muted">
+                            Distribution of total invested amount across Asset Management Companies.
+                        </p>
+
+                        @if (amcValues.Length == 0)
+                        {
+                            <div class="alert alert-info">No AMC data</div>
+                        }
+                        else
+                        {
+                            <PieChart Labels="@amcLabels" Values="@amcValues" />
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category -->
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h6>Investment Allocation by Category</h6>
+                        <p class="text-muted">
+                            Distribution of total invested amount across mutual fund categories.
+                        </p>
+
+                        @if (catValues.Length == 0)
+                        {
+                            <div class="alert alert-info">No Category data</div>
+                        }
+                        else
+                        {
+                            <PieChart Labels="@catLabels" Values="@catValues" />
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    }
+}
+
+@code {
+
+    private string activeTab = "both"; // default
+
+    private string[] amcLabels = [];
+    private double[] amcValues = [];
+
+    private string[] catLabels = [];
+    private double[] catValues = [];
+
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        await LoadAmcDataAsync();
+        await LoadCategoryDataAsync();
+
+        isLoading = false;
+    }
+
+    private void ChangeTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    // ✅ AMC logic (unchanged)
+    private async Task LoadAmcDataAsync()
+    {
+        var amcs = await AmcRepo.GetAllAsync();
+        var totals = await AmcRepo.GetTotalInvestmentByAmcAsync();
+
+        var data = amcs
+            .Select(a => new
+            {
+                a.AMCName,
+                Value = totals.TryGetValue(a.AMCId, out var v) ? v : 0m
+            })
+            .Where(x => x.Value > 0)
+            .OrderByDescending(x => x.Value)
+            .ToList();
+
+        amcLabels = data.Select(x => x.AMCName).ToArray();
+        amcValues = data.Select(x => (double)x.Value).ToArray();
+    }
+
+    // ✅ Category logic (unchanged)
+    private async Task LoadCategoryDataAsync()
+    {
+        var categories = await CategoryRepo.GetAllAsync();
+        var totals = await CategoryRepo.GetTotalInvestmentByCategoryAsync();
+
+        var data = categories
+            .Select(c => new
+            {
+                c.CategoryName,
+                Value = totals.TryGetValue(c.MFCatId, out var v) ? v : 0m
+            })
+            .Where(x => x.Value > 0)
+            .OrderByDescending(x => x.Value)
+            .ToList();
+
+        catLabels = data.Select(x => x.CategoryName).ToArray();
+        catValues = data.Select(x => (double)x.Value).ToArray();
+    }
+}

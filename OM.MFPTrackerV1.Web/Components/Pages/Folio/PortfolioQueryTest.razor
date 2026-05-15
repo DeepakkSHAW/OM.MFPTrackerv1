@@ -1,0 +1,333 @@
+﻿@page "/portfolio-query-test"
+@rendermode InteractiveServer
+
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+
+@inject IFolioRepo FolioRepo
+@inject IMFFundRepo FundRepo
+@inject IAMCRepo AmcRepo
+@inject IPortfolioReturnService PortfolioReturnService
+@inject IMutualFundTransactionRepo TnxRepo
+
+<h4 class="mt-3 mb-3">Portfolio Query (Clean Test Page)</h4>
+
+<!-- ================= FILTER PANEL ================= -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+
+            <!-- AMC -->
+            <div class="col-md-4">
+                <label class="form-label">AMC</label>
+                <InputSelect TValue="int?" class="form-select"
+                             @bind-Value="SelectedAmcId">
+                    <option value="">All</option>
+                    @foreach (var a in AllAmcs)
+                    {
+                        <option value="@a.AMCId">@a.AMCName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- Folio -->
+            <div class="col-md-4">
+                <label class="form-label">Folio</label>
+                <InputSelect TValue="int?" class="form-select"
+                             @bind-Value="SelectedFolioId">
+                    <option value="">All</option>
+                    @foreach (var f in FilteredFolios)
+                    {
+                        <option value="@f.FolioId">
+                            @f.FolioNumber -
+                            @($"{f.Holder.FirstName} {f.Holder.LastName} [{f.AttachedBank}]")
+                        </option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- Fund -->
+            <div class="col-md-4">
+                <label class="form-label">Fund</label>
+                <InputSelect TValue="int?" class="form-select"
+                             @bind-Value="SelectedFundId">
+                    <option value="">All</option>
+                    @foreach (var f in FilteredFunds)
+                    {
+                        <option value="@f.FundId">@f.FundName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- Date -->
+            <div class="col-md-3">
+                <label class="form-label">From</label>
+                <InputDate class="form-control" @bind-Value="FromDate" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">To</label>
+                <InputDate class="form-control" @bind-Value="ToDate" />
+            </div>
+
+            <!-- Search -->
+            <div class="col-md-6">
+                <label class="form-label">Search</label>
+                <InputText class="form-control" @bind-Value="SearchText" />
+            </div>
+
+        </div>
+
+        <!-- APPLY -->
+        <div class="mt-3">
+@*             <button class="btn btn-primary" @onclick="LoadResults">
+                Apply Filter
+            </button> *@
+            <button class="btn btn-primary" @onclick="LoadResults" disabled="@isLoading">
+                @(isLoading ? "Loading..." : "Apply Filter")
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= RESULTS ================= -->
+@if (!results.Any())
+{
+    <div class="text-muted text-center">
+        No results loaded.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover">
+
+            <thead class="table-light">
+                <tr>
+                    <th>Folio</th>
+                    <th>Fund</th>
+                    <th class="text-end">Invested</th>
+                    <th class="text-end">Current</th>
+                    <th class="text-end">Return</th>
+                    <th>XIRR</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var row in results)
+                {
+                    <tr>
+                        <td>@row.FolioDisplay</td>
+                        <td>@row.FundDisplay</td>
+                        <td class="text-end">@row.InvestedAmount</td>
+                        <td class="text-end">@row.CurrentValue</td>
+
+                        <td class="text-end"
+                            style="color:@(row.AbsoluteReturnAmount >= 0 ? "green" : "red")">
+                            @row.AbsoluteReturnAmount (@row.AbsoluteReturn.ToString("0.00")%)
+                        </td>
+
+                        <td>
+                            @(row.Xirr.HasValue
+                                                ? (row.Xirr.Value * 100).ToString("0.00") + "%"
+                                                : "N/A")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+
+        </table>
+    </div>
+}
+
+<!-- ================= DEBUG PANEL ================= -->
+<div class="card mb-3">
+    <div class="card-body">
+
+        <h6>DEBUG PANEL</h6>
+
+        <table class="table table-sm table-bordered">
+            <tbody>
+
+                <tr>
+                    <td>AMC Id</td>
+                    <td>@(SelectedAmcId?.ToString() ?? "NULL")</td>
+                </tr>
+
+                <tr>
+                    <td>Folio Id</td>
+                    <td>@(SelectedFolioId?.ToString() ?? "NULL")</td>
+                </tr>
+
+                <tr>
+                    <td>Fund Id</td>
+                    <td>@(SelectedFundId?.ToString() ?? "NULL")</td>
+                </tr>
+
+                <tr>
+                    <td>From Date</td>
+                    <td>@(FromDate?.ToString("dd-MMM-yyyy") ?? "NULL")</td>
+                </tr>
+
+                <tr>
+                    <td>To Date</td>
+                    <td>@(ToDate?.ToString("dd-MMM-yyyy") ?? "NULL")</td>
+                </tr>
+
+                <tr>
+                    <td>Search</td>
+                    <td>@(SearchText ?? "NULL")</td>
+                </tr>
+
+                <tr>
+                    <td>Filtered Folios</td>
+                    <td>@FilteredFolios.Count</td>
+                </tr>
+
+                <tr>
+                    <td>Filtered Funds</td>
+                    <td>@FilteredFunds.Count</td>
+                </tr>
+
+                <tr>
+                    <td>Results Count</td>
+                    <td>@results.Count</td>
+                </tr>
+
+            </tbody>
+        </table>
+
+    </div>
+</div>
+
+@code {
+
+    // ✅ ================= STATE (FIXED CASCADE) =================
+
+    private int? _selectedAmcId;
+    private int? SelectedAmcId
+    {
+        get => _selectedAmcId;
+        set
+        {
+            if (_selectedAmcId != value)
+            {
+                _selectedAmcId = value;
+
+                // ✅ Reset children
+                SelectedFolioId = null;
+                SelectedFundId = null;
+
+                _ = ApplyDropdownFilters();
+            }
+        }
+    }
+
+    private int? _selectedFolioId;
+    private int? SelectedFolioId
+    {
+        get => _selectedFolioId;
+        set
+        {
+            if (_selectedFolioId != value)
+            {
+                _selectedFolioId = value;
+
+                // ✅ Reset fund only
+                SelectedFundId = null;
+
+                _ = ApplyDropdownFilters();
+            }
+        }
+    }
+
+    private int? SelectedFundId;
+    private bool isLoading;
+    private DateTime? FromDate;
+    private DateTime? ToDate;
+    private string? SearchText;
+
+    private List<AMC> AllAmcs = new();
+    private List<Folio> AllFolios = new();
+    private List<Fund> AllFunds = new();
+
+    private List<Folio> FilteredFolios = new();
+    private List<Fund> FilteredFunds = new();
+
+    private List<PortfolioRowDto> results = new();
+
+    // ✅ LOAD
+    protected override async Task OnInitializedAsync()
+    {
+        var amcTask = AmcRepo.GetAsync(null, 0, int.MaxValue);
+        var folioTask = FolioRepo.GetAsync(null, null, false, 1, int.MaxValue);
+        var fundTask = FundRepo.GetAsync(null, null, false, 1, int.MaxValue);
+
+        await Task.WhenAll(amcTask, folioTask, fundTask);
+
+        AllAmcs = amcTask.Result.Items.ToList();
+        AllFolios = folioTask.Result.Items.ToList();
+        AllFunds = fundTask.Result.Items.ToList();
+
+        FilteredFolios = AllFolios.ToList();
+        FilteredFunds = AllFunds.ToList();
+    }
+
+    // ✅ APPLY SERVICE
+    private async Task LoadResults()
+    {
+        Console.WriteLine($"Apply clicked at {DateTime.Now}");
+        isLoading = true;
+        var filter = new PortfolioAdvancedFilter
+        {
+            AmcId = SelectedAmcId,
+            FolioId = SelectedFolioId,
+            FundId = SelectedFundId,
+            FromDate = FromDate,
+            ToDate = ToDate,
+            FreeText = SearchText
+        };
+
+        results = await PortfolioReturnService
+            .CalculatePortfolioReturnsByFilterAsync(filter);
+        isLoading = false;
+    }
+
+    // ✅ CLEAN CASCADE LOGIC (NO SELF-FILTER)
+    private async Task ApplyDropdownFilters()
+    {
+        var pairs = await TnxRepo.GetDistinctFolioFundPairsAsync();
+
+        var folios = AllFolios.AsEnumerable();
+
+        // ✅ AMC filters folio
+        if (SelectedAmcId.HasValue)
+        {
+            folios = folios.Where(f => f.AMCId == SelectedAmcId);
+        }
+
+        FilteredFolios = folios.OrderBy(f => f.FolioNumber).ToList();
+
+        var folioIds = FilteredFolios.Select(f => f.FolioId).ToHashSet();
+
+        var validFundIds = pairs
+            .Where(p => folioIds.Contains(p.FolioId))
+            .Select(p => p.FundId)
+            .ToHashSet();
+
+        // ✅ Optional folio refinement
+        if (SelectedFolioId.HasValue)
+        {
+            validFundIds = pairs
+                .Where(p => p.FolioId == SelectedFolioId)
+                .Select(p => p.FundId)
+                .ToHashSet();
+        }
+
+        FilteredFunds = AllFunds
+            .Where(f => validFundIds.Contains(f.FundId))
+            .OrderBy(f => f.FundName)
+            .ToList();
+    }
+}
