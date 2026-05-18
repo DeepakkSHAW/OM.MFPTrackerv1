@@ -165,10 +165,17 @@ window.chartInterop.renderNavWithPurchasesv1 = function (
     const ctx = canvas.getContext("2d");
     canvas._chartInstance?.destroy();
 
+    // ✅ Calculate range BEFORE chart
+    const minNav = Math.min(...navValues);
+    const maxNav = Math.max(...navValues);
+    const padding = (maxNav - minNav) * 0.05;
+
     canvas._chartInstance = new Chart(ctx, {
         type: "line",
+
         data: {
             labels,
+
             datasets: [
                 {
                     label: "NAV",
@@ -181,39 +188,68 @@ window.chartInterop.renderNavWithPurchasesv1 = function (
                 {
                     label: "Purchase",
                     type: "scatter",
+
                     data: purchasePoints.map(p => ({
                         x: p.index,
                         y: p.value,
                         amount: p.amount
                     })),
-                    pointBackgroundColor: "red",
-                    pointRadius: function (context) {
-                        const amt = context.raw?.amount ?? 0;
-                        if (amt < 200) return 4;
-                        if (amt < 1000) return 8;
-                        if (amt < 5000) return 12;
-                        return 16;
+
+                    pointBackgroundColor: function (ctx) {
+                        const amt = ctx.raw?.amount ?? 0;
+                        return amt === 0 ? "transparent" : "red";
+                    },
+
+                    pointRadius: function (ctx) {
+                        const amt = ctx.raw?.amount ?? 0;
+                        if (amt === 0) return 0;
+                        if (amt < 100) return 3;
+                        if (amt < 500) return 5;
+                        if (amt < 1000) return 7;
+                        if (amt < 3000) return 10;
+                        if (amt < 7000) return 13;
+                        return 18;
+
                     }
                 }
             ]
         },
+
         options: {
             responsive: true,
             maintainAspectRatio: false,
+
             plugins: {
                 tooltip: {
                     callbacks: {
+                        title: items => labels[items[0].dataIndex],
+
                         label: ctx => {
                             if (ctx.dataset.type === "scatter") {
-                                return `Purchase: ₹${ctx.raw.amount}`;
+                                const amt = ctx.raw?.amount ?? 0;
+                                const nav = ctx.raw?.y ?? 0;
+                                return `₹${amt.toFixed(2)} @ NAV ${nav.toFixed(3)}`;
                             }
-                            return `NAV: ${ctx.raw}`;
+                            return `NAV: ${ctx.raw.toFixed(3)}`;
                         }
                     }
                 }
             },
+
             scales: {
-                x: { type: "category" }
+                x: { type: "category" },
+
+                // ✅ ✅ FINAL FIX
+                y: {
+                    min: minNav - padding,
+                    max: maxNav + padding,
+
+                    ticks: {
+                        callback: function (value) {
+                            return value.toFixed(2);
+                        }
+                    }
+                }
             }
         }
     });

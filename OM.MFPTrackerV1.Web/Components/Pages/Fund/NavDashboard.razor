@@ -140,7 +140,6 @@ else
         fromDate < toDate;
 
     /* ================= Data loading ================= */
-
     private async Task LoadNavAsync()
     {
         if (!selectedFundId.HasValue)
@@ -150,27 +149,99 @@ else
 
         try
         {
-            // 1️⃣ Load NAV history
+            // =========================
+            // 1️⃣ Load NAV data
+            // =========================
             var navHistory =
                 await FundNavRepo.GetNavHistoryAsync(
                     selectedFundId.Value,
                     fromDate,
                     toDate);
 
-            labels = navHistory
-                .Select(n => n.NavDate.ToString("dd MMM"))
-                .ToArray();
+            // =========================
+            // 2️⃣ Load Transactions
+            // =========================
+            var (items, _) = await TransactionRepo.GetAsync(
+                folioId: null,
+                fundId: selectedFundId.Value,
+                sortBy: nameof(MutualFundTransaction.TransactionDate),
+                sortDesc: false,
+                pageNumber: 1,
+                pageSize: 10_000);
 
-            navValues = navHistory
-                .Select(n => (double)n.NavValue)   // decimal → double
-                .ToArray();
+            var investmentTxns = items
+                .Where(tx =>
+                    (tx.TxnType == TransactionType.BUY ||
+                     tx.TxnType == TransactionType.SIP ||
+                     tx.TxnType == TransactionType.SWITCH_IN ||
+                     tx.TxnType == TransactionType.DIV_REINVEST) &&
+                    tx.TransactionDate.Date >= fromDate.Date &&
+                    tx.TransactionDate.Date <= toDate.Date)
+                .ToList();
 
-            // 2️⃣ Load purchase overlay if requested
-            purchases.Clear();
+            // =========================
+            // 3️⃣ UNIFIED TIMELINE ✅
+            // =========================
 
-            if (includePurchases)
+            var unified = new List<(DateTime date, double nav, bool isTxn, double amount)>();
+
+            // NAV points
+            foreach (var n in navHistory)
             {
-                await LoadPurchasePointsAsync(navHistory);
+                unified.Add((n.NavDate, (double)n.NavValue, false, 0));
+            }
+
+            // Transaction points (use TXN NAV)
+            foreach (var tx in investmentTxns)
+            {
+                unified.Add((tx.TransactionDate.Date, (double)tx.NAV, true, (double)tx.AmountPaid));
+            }
+
+            // ✅ IMPORTANT: only sort (NO grouping)
+            var finalData = unified
+                .OrderBy(x => x.date)
+                .ToList();
+
+            // =========================
+            // 4️⃣ Build chart data
+            // =========================
+
+            labels = finalData
+                .Select(x => x.date.ToString("dd-MMM-yy"))
+                .ToArray();
+
+            navValues = finalData
+                .Select(x => x.nav)
+                .ToArray();
+
+            // =========================
+            // 5️⃣ FULL-LENGTH PURCHASE ARRAY ✅
+            // =========================
+
+            purchases = new List<NavLineChart.PurchasePoint>();
+
+            for (int i = 0; i < finalData.Count; i++)
+            {
+                var row = finalData[i];
+
+                // ✅ default zero (alignment layer)
+                purchases.Add(new NavLineChart.PurchasePoint
+                {
+                    Index = i,
+                    Value = 0,
+                    Amount = 0
+                });
+
+                // ✅ overwrite if txn exists
+                if (row.isTxn)
+                {
+                    purchases[i] = new NavLineChart.PurchasePoint
+                    {
+                        Index = i,
+                        Value = row.nav,       // ✅ correct NAV (txn NAV)
+                        Amount = row.amount
+                    };
+                }
             }
         }
         finally
@@ -178,66 +249,7 @@ else
             isLoading = false;
         }
     }
-
-    private async Task LoadPurchasePointsAsync(IReadOnlyList<FundNavPoint> navHistory)
-    {
-        if (!selectedFundId.HasValue || navHistory.Count == 0)
-            return;
-
-        // 1️⃣ Fetch ALL transactions for this fund
-        // Large pageSize to avoid paging loops
-        var (items, _) = await TransactionRepo.GetAsync(
-            folioId: null,
-            fundId: selectedFundId.Value,
-            sortBy: nameof(MutualFundTransaction.TransactionDate),
-            sortDesc: false,
-            pageNumber: 1,
-            pageSize: 10_000);
-
-        if (items.Count == 0)
-            return;
-
-        // 2️⃣ Filter investment-type transactions in date range
-        var investmentTxns = items
-            .Where(tx =>
-                (tx.TxnType == TransactionType.BUY ||
-                 tx.TxnType == TransactionType.SIP ||
-                 tx.TxnType == TransactionType.SWITCH_IN ||
-                 tx.TxnType == TransactionType.DIV_REINVEST) &&
-                tx.TransactionDate.Date >= fromDate.Date &&
-                tx.TransactionDate.Date <= toDate.Date)
-            .ToList();
-
-        if (investmentTxns.Count == 0)
-            return;
-
-        // 3️⃣ Build NAV lookup (date → index)
-        var navLookup = navHistory
-            .Select((nav, index) => new
-            {
-                nav.NavDate,
-                Index = index,
-                nav.NavValue
-            })
-            .ToList();
-
-        // 4️⃣ Align each investment to NAV-on-or-after transaction date
-        foreach (var tx in investmentTxns)
-        {
-            var navMatch = navLookup
-                .FirstOrDefault(n => n.NavDate >= tx.TransactionDate.Date);
-
-            if (navMatch is null)
-                continue; // no NAV available after this transaction
-
-            purchases.Add(new NavLineChart.PurchasePoint
-            {
-                Index = navMatch.Index,
-                Value = (double)navMatch.NavValue,
-                Amount = (double)tx.AmountPaid
-            });
-        }
-    }
+    
     //* ==============parametrization for binding (if fund id coming from some other page) ============== */
     private int? queryFundId;
     private void ReadQueryParams()

@@ -1,0 +1,106 @@
+﻿@page "/nav-dashboard-test"
+@rendermode InteractiveServer
+
+<h3>🧪 NAV Dashboard (Test Mode)</h3>
+
+<button class="btn btn-primary mb-3" @onclick="LoadDummy">
+    Load Dummy Data
+</button>
+
+@if (labels.Length > 0)
+{
+    <NavLineChart Labels="@labels"
+                  NavValues="@navValues"
+                  Purchases="purchases" />
+}
+
+@code {
+
+    private string[] labels = [];
+    private double[] navValues = [];
+
+    private List<NavLineChart.PurchasePoint> purchases = new();
+
+    private void LoadDummy()
+    {
+        int index = 0;
+        // ============================
+        // ✅ NAV DATA (MIXED FREQUENCY)
+        // ============================
+
+        var navData = new List<(DateTime Date, double Nav)>
+        {
+            new(new DateTime(2025, 12, 1), 47.19),
+            new(new DateTime(2026, 1, 1), 46.57),
+            new(new DateTime(2026, 2, 1), 43.96),
+            new(new DateTime(2026, 3, 1), 43.78)
+        };
+
+        // ============================
+        // ✅ TRANSACTIONS (REAL DATES)
+        // ============================
+
+        var txnData = new List<(DateTime Date, double Nav, double Amount)>
+        {
+            new(new DateTime(2025, 12, 29), 46.05, 999.93),
+            new(new DateTime(2026, 2, 27), 44.755, 1000.95)
+        };
+
+        // ============================
+        // ✅ MERGE (NO GROUPING!)
+        // ============================
+
+        var unified = new List<(DateTime date, double nav, bool isTxn, double amount)>();
+
+        foreach (var n in navData)
+            unified.Add((n.Date, n.Nav, false, 0));
+
+        foreach (var t in txnData)
+            unified.Add((t.Date, t.Nav, true, t.Amount));
+
+        var finalData = unified
+            .OrderBy(x => x.date)
+            .ToList();
+
+        // ============================
+        // ✅ CHART DATA
+        // ============================
+
+        labels = finalData
+            .Select(x => x.date.ToString("dd-MMM-yy"))
+            .ToArray();
+
+        navValues = finalData
+            .Select(x => x.nav)
+            .ToArray();
+
+        purchases = new List<NavLineChart.PurchasePoint>();
+
+        foreach (var row in finalData)
+        {
+            if (row.isTxn)
+            {
+                purchases.Add(new NavLineChart.PurchasePoint
+                {
+                    //Date = row.date.ToString("yyyy-MM-dd"),
+                    //Date = row.date,
+                    Index = index,   // ✅ FIX
+                    Value = row.nav,
+                    Amount = row.amount
+                });
+            }
+
+            else
+            {
+                purchases.Add(new NavLineChart.PurchasePoint
+                {
+                    Index = index,
+                    Value = 0,
+                    Amount = 0
+                });
+            }
+
+            index++;
+        }
+    }
+}
