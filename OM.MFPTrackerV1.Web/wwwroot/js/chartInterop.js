@@ -408,7 +408,7 @@ window.chartInterop.renderPieChartv2 = function (
     });
 };
 
-window.chartInterop.renderPieChart = function (
+window.chartInterop.renderPieChartBlue = function (
     canvasId,
     labels,
     values
@@ -525,6 +525,81 @@ window.chartInterop.renderPieChart = function (
     });
 };
 
+window.chartInterop.renderPieChart = function (
+    canvasId,
+    labels,
+    values
+) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    canvas._chartInstance?.destroy();
+
+    // ------------------------------------------------------------
+    // ✅ Rainbow colors (evenly spaced, no repeat)
+    // ------------------------------------------------------------
+    function generateRainbowColors(count) {
+        const colors = [];
+
+        for (let i = 0; i < count; i++) {
+            const hue = (i / count) * 360;
+            const saturation = 70;
+            const lightness = 55;
+
+            colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+        }
+
+        return colors;
+    }
+
+    const colors = generateRainbowColors(values.length);
+
+    // ------------------------------------------------------------
+    // ✅ Render chart
+    // ------------------------------------------------------------
+    canvas._chartInstance = new Chart(ctx, {
+        type: "pie",
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                hoverOffset: 14
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: "nearest",
+                intersect: false
+            },
+            elements: {
+                arc: {
+                    hoverOffset: 4
+                }
+            },
+            plugins: {
+                legend: {
+                    position: "right"
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const total =
+                                ctx.dataset.data.reduce((a, b) => a + b, 0);
+
+                            const percent =
+                                ((ctx.raw / total) * 100).toFixed(2);
+
+                            return `${ctx.label}: ₹${ctx.raw.toLocaleString()} (${percent}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
 
 // ===============================
 // Bubble chart renderer
