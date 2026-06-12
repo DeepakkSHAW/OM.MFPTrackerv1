@@ -106,14 +106,6 @@ Change all of this (16-April-26)
 Step-by-step plan (so you see the whole path)
 We will do exactly these steps, one by one:
 
-Implement LocalAuthService
-Add minimal /api/auth/login endpoint
-Add /api/auth/logout endpoint
-Wire up cookie authentication
-Update Login.razor to call the API
-Protect pages with [Authorize] again
-Optional admin-only authorization
-
 // TODO: Improve returnUrl handling for prerendered Blazor Web App login
 // Currently defaults to "/" after login to avoid breaking auth flow
 
@@ -121,3 +113,6 @@ for AI
 Start from your original, fully tested code as the base —
 apply all changes at once —
 and return ONE final, complete file
+
+Feature to implement: 
+1- Month and Year transaction and its graph

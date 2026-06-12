@@ -317,6 +317,7 @@
     private bool isEdit;
     private int editingId;
 
+    private bool _initializedFromRoute;
     private int pageNumber = 1;
     private int pageSize = 10;
     private int totalCount;
@@ -328,7 +329,7 @@
     private readonly Dictionary<string, object> DisabledAttr =
         new() { { "disabled", "disabled" } };
 
-    /* ================= Lifecycle ================= */
+    /* ================= Life-cycle ================= */
 
     protected override async Task OnInitializedAsync()
     {
@@ -344,6 +345,27 @@
     }
 
     /* ================= Helpers ================= */
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_initializedFromRoute) return;
+
+        if (FolioId.HasValue && allFolios.Any())
+        {
+            var folio = allFolios.FirstOrDefault(f => f.FolioId == FolioId.Value);
+
+            if (folio != null)
+            {
+                selectedAmcId = folio.AMCId;
+                OnAmcChanged();
+                selectedFolioId = folio.FolioId;
+
+                await Reload();
+
+                _initializedFromRoute = true;
+            }
+        }
+    }
 
     private async Task Reload()
     {
@@ -448,6 +470,26 @@
     private Task OnFolioChanged() => Reload();
 
     private void OnAmcChanged()
+    {
+        filteredFolios = allFolios
+            .Where(f => f.AMCId == selectedAmcId)
+            .OrderBy(f => f.FolioNumber)
+            .ToList();
+
+        filteredFunds = allFunds
+            .Where(f => f.AMCId == selectedAmcId)
+            .OrderBy(f => f.FundName)
+            .ToList();
+
+        // ✅ ONLY clear if NOT coming from route
+        if (!FolioId.HasValue)
+        {
+            selectedFolioId = null;
+            selectedFundId = null;
+        }
+    }
+
+    private void OnAmcChanged_DEL()
     {
         filteredFolios = allFolios
             .Where(f => f.AMCId == selectedAmcId)
