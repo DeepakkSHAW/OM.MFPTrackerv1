@@ -64,7 +64,6 @@ namespace OM.MFPTrackerV1.Web
 			builder.Services.AddScoped<ISystemStateRepo, SystemStateRepo>();
 			builder.Services.AddHostedService<NavAutoSyncService>(); //BackgroundService to auto-sync NAV data from AMFI daily
 			builder.Services.AddScoped<IPortfolioReturnService, PortfolioReturnService>(); // delete after PortfolioReturnService is merged into FolioService
-			builder.Services.AddScoped<IFolioOwnerRepository, FolioOwnerRepository>(); // delete after FolioOwner is removed
 
 			builder.Services.AddScoped(sp =>
 			{

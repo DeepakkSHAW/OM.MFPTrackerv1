@@ -5,7 +5,6 @@ namespace OM.MFPTrackerV1.Data
 {
 	public class MFPTrackerDbContext : DbContext
 	{
-		public DbSet<FolioOwner> folioOwners => Set<FolioOwner>(); // delete this
 		public MFPTrackerDbContext(DbContextOptions<MFPTrackerDbContext> options) : base(options) { }
 		public DbSet<AMC> AMCs => Set<AMC>();
 		public DbSet<MFCategory> MFCategories => Set<MFCategory>();
@@ -310,24 +309,6 @@ namespace OM.MFPTrackerV1.Data
 					}
 				);
 			});
-			// -------------------- FolioOwner Only for Bug fixing --------------------
-			modelBuilder.Entity<FolioOwner>(e =>
-			{
-				e.ToTable("TFolioOwner");
-				e.HasKey(x => x.FolioOwnerId);
-
-				e.Property(x => x.FirstName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
-				e.Property(x => x.LastName).IsRequired().UseCollation("NOCASE").HasMaxLength(50);
-				e.Property(x => x.Signature).IsRequired().UseCollation("NOCASE").HasMaxLength(5);
-
-				e.HasIndex(x => x.Signature).IsUnique();
-				e.HasIndex(x => new { x.FirstName, x.LastName, x.DateOfBirth }).IsUnique();
-
-				e.HasData(
-					new FolioOwner { FolioOwnerId = 1, FirstName = "AAA", LastName = "Delete me", DateOfBirth = new DateTime(2002, 5, 15), Signature = "DK" },
-					new FolioOwner { FolioOwnerId = 2, FirstName = "BBB", LastName = "Delete me", DateOfBirth = new DateTime(2010, 12, 1), Signature = "RS" }
-				);
-			});
 
 			// -------------------- FolioHolder --------------------
 			modelBuilder.Entity<FolioHolder>(e =>
@@ -373,7 +354,7 @@ namespace OM.MFPTrackerV1.Data
 				e.Property(x => x.UpdateDate).HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
 
 				// A folio is unique per AMC + number (investors can have same folio number across AMCs)
-				//e.HasIndex(x => new { x.AMCId, x.FolioNumber }).IsUnique();// this is wrong, a invester can have as many folio they wish  
+				//e.HasIndex(x => new { x.AMCId, x.FolioNumber }).IsUnique();// this is wrong, a investor can have as many folio they wish  
 				e.HasIndex(x => new { x.FolioNumber }).IsUnique();
 				e.HasIndex(x => x.FolioHolderId);
 				e.HasIndex(x => x.AMCId);
