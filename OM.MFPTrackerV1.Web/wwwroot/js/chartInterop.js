@@ -113,6 +113,54 @@ window.chartInterop.renderLineChart = function (canvasId, labels, data) {
 };
 
 // ============================================================
+// ✅ BASIC  BAR CHART (GENERIC)
+// ============================================================
+
+window.chartInterop.renderBarChart = function (canvasId, labels, data) {
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    canvas._chartInstance?.destroy();
+
+    canvas._chartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [{
+                label: "Total Investment (₹)",
+                data,
+                backgroundColor: "rgba(54, 162, 235, 0.5)",
+                borderColor: "rgba(54, 162, 235, 1)",
+                borderWidth: 1.5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+					position: "top"
+                }
+            }
+        }
+    });
+};
+
+// ============================================================
 // ✅ NAV LINE CHART (NO PURCHASES)
 // ============================================================
 

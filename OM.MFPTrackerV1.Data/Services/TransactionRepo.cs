@@ -32,7 +32,7 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task<List<BubblePointDto>> GetTransactionExplorerAsync(TransactionExplorerFilter filter);
 		Task<List<(int FolioId, int FundId)>> GetDistinctFolioFundPairsAsync();
 		Task<List<FundSummaryDto>> GetFundSummaryAsync();
-
+		Task<List<TrendPointDto>> GetInvestmentTrendAsync(TransactionFilter filter, string groupBy);
 	}
 	public sealed class MutualFundTransactionRepo : IMutualFundTransactionRepo
 	{
@@ -52,7 +52,13 @@ namespace OM.MFPTrackerV1.Data.Services
 		TransactionType.SELL,
 		TransactionType.SWITCH_OUT
 	};
-
+		private class TrendRaw
+		{
+			public int Year { get; set; }
+			public int? Month { get; set; }
+			public int? Quarter { get; set; }
+			public decimal Amount { get; set; }
+		}
 		public MutualFundTransactionRepo(MFPTrackerDbContext db)
 		{
 			_db = db;
@@ -358,6 +364,7 @@ namespace OM.MFPTrackerV1.Data.Services
 				InvalidRows = invalid
 			};
 		}
+		
 		public async Task<Dictionary<int, decimal>> GetTotalInvestmentByFundAsync(CancellationToken ct = default)
 		{
 			var result =
@@ -380,6 +387,7 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			return result;
 		}
+		
 		public async Task<Dictionary<int, decimal>> GetTotalInvestmentByFolioAsync(CancellationToken ct = default)
 		{
 			return await _db.MutualFundTransactions
@@ -396,11 +404,8 @@ namespace OM.MFPTrackerV1.Data.Services
 				})
 				.ToDictionaryAsync(x => x.FolioId, x => x.Total, ct);
 		}
-		public async Task<List<FolioHolder>> GetHoldersForTransactionsAsync(
-			int? folioId,
-			int? fundId,
-			int? amcId,
-			int? categoryId)
+		
+		public async Task<List<FolioHolder>> GetHoldersForTransactionsAsync(int? folioId, int? fundId, int? amcId, int? categoryId)
 		{
 			var q = _db.MutualFundTransactions
 				.Include(t => t.Folio)
@@ -422,7 +427,7 @@ namespace OM.MFPTrackerV1.Data.Services
 				q = q.Where(t => t.Fund.MFCatId == categoryId);
 
 			return await q
-                .Select(t => t.Folio.Holder)
+				.Select(t => t.Folio.Holder)
 				.Distinct()
 				.OrderBy(h => h.FirstName)
 				.ToListAsync();
@@ -481,7 +486,7 @@ namespace OM.MFPTrackerV1.Data.Services
 				.ToListAsync();
 		}
 
-		public async Task<List<BubblePointDto>> GetTransactionExplorerAsync(	TransactionExplorerFilter filter)
+		public async Task<List<BubblePointDto>> GetTransactionExplorerAsync(TransactionExplorerFilter filter)
 		{
 			// Base query (no cascade assumptions)
 			var query = _db.MutualFundTransactions
@@ -578,7 +583,7 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			return result;
 		}
-
+		
 		public async Task<List<(int FolioId, int FundId)>> GetDistinctFolioFundPairsAsync()
 		{
 			return await _db.MutualFundTransactions
@@ -587,6 +592,7 @@ namespace OM.MFPTrackerV1.Data.Services
 				.Select(x => new ValueTuple<int, int>(x.FolioId, x.FundId))
 				.ToListAsync();
 		}
+		
 		public async Task<List<FundSummaryDto>> GetFundSummaryAsync()
 		{
 			var result = await _db.MutualFundTransactions
@@ -604,6 +610,106 @@ namespace OM.MFPTrackerV1.Data.Services
 				})
 				.OrderByDescending(x => x.TotalInvestment)
 				.ToListAsync();
+
+			return result;
+		}
+		
+		public async Task<List<TrendPointDto>> GetInvestmentTrendAsync(TransactionFilter filter, string groupBy)
+		{
+			var q = _db.MutualFundTransactions
+				.AsNoTracking()
+				.AsQueryable();
+
+			if (filter.StartDate.HasValue)
+				q = q.Where(t => t.TransactionDate >= filter.StartDate.Value);
+
+			if (filter.EndDate.HasValue)
+				q = q.Where(t => t.TransactionDate <= filter.EndDate.Value);
+
+			// ✅ FORCE SAME TYPE FOR ALL CASES
+			List<TrendRaw> raw;
+
+			if (groupBy == "Y")
+			{
+				raw = await q
+					.GroupBy(t => t.TransactionDate.Year)
+					.Select(g => new TrendRaw
+					{
+						Year = g.Key,
+						Month = null,
+						Quarter = null,
+						Amount = g.Sum(x => x.AmountPaid)
+					})
+					.OrderBy(x => x.Year)
+					.ToListAsync();
+			}
+			else if (groupBy == "Q")
+			{
+				raw = await q
+					.GroupBy(t => new
+					{
+						t.TransactionDate.Year,
+						Quarter = (t.TransactionDate.Month - 1) / 3 + 1
+					})
+					.Select(g => new TrendRaw
+					{
+						Year = g.Key.Year,
+						Quarter = g.Key.Quarter,
+						Month = null,
+						Amount = g.Sum(x => x.AmountPaid)
+					})
+					.OrderBy(x => x.Year).ThenBy(x => x.Quarter)
+					.ToListAsync();
+			}
+			else
+			{
+				// ✅ Monthly default
+				raw = await q
+					.GroupBy(t => new
+					{
+						t.TransactionDate.Year,
+						t.TransactionDate.Month
+					})
+					.Select(g => new TrendRaw
+					{
+						Year = g.Key.Year,
+						Month = g.Key.Month,
+						Quarter = null,
+						Amount = g.Sum(x => x.AmountPaid)
+					})
+					.OrderBy(x => x.Year).ThenBy(x => x.Month)
+					.ToListAsync();
+			}
+
+			// ✅ Step 2: Safe conversion (NO confusion now)
+			var result = raw.Select(x =>
+			{
+				if (groupBy == "Y")
+				{
+					return new TrendPointDto
+					{
+						Period = new DateTime(x.Year, 1, 1),
+						Amount = x.Amount
+					};
+				}
+
+				if (groupBy == "Q")
+				{
+					int startMonth = ((x.Quarter ?? 1) - 1) * 3 + 1;
+
+					return new TrendPointDto
+					{
+						Period = new DateTime(x.Year, startMonth, 1),
+						Amount = x.Amount
+					};
+				}
+
+				return new TrendPointDto
+				{
+					Period = new DateTime(x.Year, x.Month ?? 1, 1),
+					Amount = x.Amount
+				};
+			}).ToList();
 
 			return result;
 		}

@@ -1,0 +1,17 @@
+﻿@page "/test-barchart"
+@rendermode InteractiveServer
+
+
+<h5>Test Bar Chart</h5>
+
+<BarChart Labels="@labels" Data="@values" />
+
+@code {
+
+    private double[] values = new[] { 10000d, 20000d, 15000d, 30000d, 25000d };
+
+    private string[] labels = new[]
+    {
+        "Jan", "Feb", "Mar", "Apr", "May"
+    };
+    }

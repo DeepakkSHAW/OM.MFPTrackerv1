@@ -116,7 +116,11 @@ else if (currentTab == 2)
                 }
             </select>
         </div>
-
+        <button class="btn btn-sm btn-outline-primary"
+                title="Open detailed analysis"
+                @onclick="GoToAnalysis">
+            <i class="bi bi-graph-up"></i>
+        </button>
     </div>
 
     <span class="small text-muted">
@@ -659,24 +663,6 @@ else if (currentTab == 3)
             await Reload();
     }
 
-    // private async Task PrevPage()
-    // {
-    //     if (pageNumber > 1)
-    //     {
-    //         pageNumber--;
-    //         await Reload();
-    //     }
-    // }
-
-    // private async Task NextPage()
-    // {
-    //     if ((pageNumber * pageSize) < totalCount)
-    //     {
-    //         pageNumber++;
-    //         await Reload();
-    //     }
-    // }
-
     private void LimitUnits() => editModel.Units = Math.Round(editModel.Units, 5);
     private void LimitNav() => editModel.NAV = Math.Round(editModel.NAV, 5);
 
@@ -796,6 +782,11 @@ else if (currentTab == 3)
             nameof(MutualFundTransaction.TxnType) => x.TxnType,
             _ => x.TransactionDate
         };
+    }
+    private void GoToAnalysis()
+    {
+        //Nav.NavigateTo("/TransactionsOverTime");
+        Nav.NavigateTo($"/transactions-over-time?range={selectedRange}");
     }
     //********** Code for tab 3 ********//
    private List<FundSummary> fundSummary = new();

@@ -1,0 +1,196 @@
+﻿@page "/TransactionsOverTime"
+@using OM.MFPTrackerV1.Data.Models
+@using OM.MFPTrackerV1.Data.Services
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "User,Admin")]
+
+@inject IMutualFundTransactionRepo TxnRepo
+@inject NavigationManager Nav
+
+<!-- ================= FILTER CARD ================= -->
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+
+        <div class="row g-3 align-items-end">
+
+            <div class="col-auto">
+                <label class="form-label small">From</label>
+                <InputDate class="form-control form-control-sm" @bind-Value="fromDate" />
+            </div>
+
+            <div class="col-auto">
+                <label class="form-label small">To</label>
+                <InputDate class="form-control form-control-sm" @bind-Value="toDate" />
+            </div>
+
+            <div class="col-auto">
+                <label class="form-label small">Group By</label>
+                <select class="form-select form-select-sm" @bind="groupBy">
+                    <option value="W">Weekly</option>
+                    <option value="M">Monthly</option>
+                    <option value="Q">Quarterly</option>
+                    <option value="Y">Yearly</option>
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <button class="btn btn-primary btn-sm" @onclick="LoadChart">
+                    Apply
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= CHART / TABLE ================= -->
+
+<div class="card shadow-sm">
+    <div class="card-body">
+
+        <!-- Header + Toggle -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+                Investment Trend Time
+                <span class="text-muted small ms-1" style="font-size: 0.75rem;">
+                    [@fromDate.ToString("dd MMM yyyy") → @toDate.ToString("dd MMM yyyy") Grouped by @groupBy]        
+                </span>
+            </h5>
+
+            <div class="btn-group btn-group-sm">
+
+                <button class="btn @(viewMode == "chart" ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="SetChartView">
+                    Chart
+                </button>
+
+                <button class="btn @(viewMode == "table" ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="SetTableView">
+                    Table
+                </button>
+
+            </div>
+
+        </div>
+
+        @if (labels.Length == 0)
+        {
+            <div class="text-center text-muted py-4">
+                No data available. Click <b>Apply</b> to load results.
+            </div>
+        }
+        else if (viewMode == "chart")
+        {
+            <BarChart Labels="@labels" Data="@values" />
+        }
+        else
+        {
+            <div class="table-responsive">
+
+                <table class="table table-sm table-hover align-middle">
+
+                    <thead class="table-light">
+                        <tr>
+                            <th>Period</th>
+                            <th class="text-end">Investment (₹)</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @for (int i = 0; i < labels.Length; i++)
+                        {
+                            <tr>
+                                <td>@labels[i]</td>
+                                <td class="text-end">
+                                    @values[i].ToString("N0")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td>Total</td>
+                            <td class="text-end">
+                                @values.Sum().ToString("N0")
+                            </td>
+                        </tr>
+                    </tfoot>
+
+                </table>
+
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+
+    private string viewMode = "chart";
+    private DateTime fromDate;
+    private DateTime toDate;
+    private string groupBy = "M";
+
+    private string[] labels = [];
+    private double[] values = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        // ✅ Default → Last 1 year
+        toDate = DateTime.Today;
+        fromDate = toDate.AddYears(-1);
+
+        if (query.TryGetValue("range", out var value))
+        {
+            var rangeValue = value.ToString();
+
+            (fromDate, toDate, groupBy) = rangeValue switch
+            {
+                "1M" => (DateTime.Today.AddMonths(-1), DateTime.Today, "W"),
+                "6M" => (DateTime.Today.AddMonths(-6), DateTime.Today, "M"),
+                "1Y" => (DateTime.Today.AddYears(-1), DateTime.Today, "M"),
+                "3Y" => (DateTime.Today.AddYears(-3), DateTime.Today, "Q"),
+                _ => (fromDate, toDate, "M")
+            };
+
+            await LoadChart();  // ✅ auto load
+        }
+    }
+
+    private async Task LoadChart()
+    {
+        var trend = await TxnRepo.GetInvestmentTrendAsync(new TransactionFilter
+        {
+            StartDate = fromDate,
+            EndDate = toDate
+        }, groupBy);
+
+        labels = trend
+            .Select(x => FormatLabel(x.Period))
+            .ToArray();
+
+        values = trend
+            .Select(x => (double)x.Amount)
+            .ToArray();
+
+        StateHasChanged(); // ✅ force UI update
+    }
+
+    private string FormatLabel(DateTime dt)
+    {
+        return groupBy switch
+        {
+            "Y" => dt.ToString("yyyy"),
+            "Q" => $"{dt:yyyy} Q{((dt.Month - 1) / 3 + 1)}",
+            _ => dt.ToString("MMM yy")
+        };
+    }
+
+    private void SetChartView() => viewMode = "chart";
+    private void SetTableView() => viewMode = "table";
+}

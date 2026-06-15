@@ -162,4 +162,10 @@ namespace OM.MFPTrackerV1.Data.Models
 
 		public string? FreeText { get; set; }
 	}
+	public class TrendPointDto
+	{
+		public DateTime Period { get; set; }
+		public decimal Amount { get; set; }
+	}
+
 }
