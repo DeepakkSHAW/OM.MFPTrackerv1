@@ -798,8 +798,25 @@ else if (currentTab == 3)
         };
     }
     //********** Code for tab 3 ********//
-    private List<FundSummary> fundSummary = new();
+   private List<FundSummary> fundSummary = new();
     private decimal totalInvestment;
+    private async Task LoadSummary()
+    {
+        var data = await TxnRepo.GetFundSummaryAsync();
+
+        fundSummary = data
+            .Select(x => new FundSummary
+            {
+                FundName = x.FundName,
+                TotalInvestment = x.TotalInvestment,
+                TotalUnits = x.TotalUnits,
+                AvgNav = x.AvgNav,
+                TxnCount = x.TxnCount
+            })
+            .ToList();
+
+        totalInvestment = fundSummary.Sum(x => x.TotalInvestment);
+    }
 
     private class FundSummary
     {
@@ -808,33 +825,5 @@ else if (currentTab == 3)
         public decimal TotalUnits { get; set; }
         public decimal AvgNav { get; set; }
         public int TxnCount { get; set; }
-    }
-    private async Task LoadSummary()
-    {
-        var r = await TxnRepo.GetAsync(
-            null,               // ✅ all folios
-            null,               // ✅ all funds
-            sortBy,
-            sortDesc,
-            1,
-            int.MaxValue);
-
-        var data = r.Items;
-
-        fundSummary = data
-            .GroupBy(x => x.Fund.FundName)
-            .Select(g => new FundSummary
-            {
-                FundName = g.Key,
-                TotalInvestment = g.Sum(x => x.AmountPaid),
-                TotalUnits = g.Sum(x => x.Units),
-                AvgNav = g.Sum(x => x.AmountPaid) /
-                         (g.Sum(x => x.Units) == 0 ? 1 : g.Sum(x => x.Units)),
-                TxnCount = g.Count()
-            })
-            .OrderByDescending(x => x.TotalInvestment)
-            .ToList();
-
-        totalInvestment = fundSummary.Sum(x => x.TotalInvestment);
     }
 }

@@ -65,7 +65,14 @@ namespace OM.MFPTrackerV1.Data.Models
 				   $"{InvalidRows} skipped (invalid rows)";
 		}
 	}
-
+	public class FundSummaryDto
+	{
+		public string FundName { get; set; } = "";
+		public decimal TotalInvestment { get; set; }
+		public decimal TotalUnits { get; set; }
+		public decimal AvgNav { get; set; }
+		public int TxnCount { get; set; }
+	}
 	public sealed record FundLookupDto(int Id, string Name);
 	public sealed record FundNavPoint(
 		DateTime NavDate,

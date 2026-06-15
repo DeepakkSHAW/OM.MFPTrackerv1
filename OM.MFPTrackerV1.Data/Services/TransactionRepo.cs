@@ -31,6 +31,8 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task<List<BubblePointDto>> GetBubbleDataAsync(TransactionFilter filter);
 		Task<List<BubblePointDto>> GetTransactionExplorerAsync(TransactionExplorerFilter filter);
 		Task<List<(int FolioId, int FundId)>> GetDistinctFolioFundPairsAsync();
+		Task<List<FundSummaryDto>> GetFundSummaryAsync();
+
 	}
 	public sealed class MutualFundTransactionRepo : IMutualFundTransactionRepo
 	{
@@ -584,6 +586,26 @@ namespace OM.MFPTrackerV1.Data.Services
 				.Distinct()
 				.Select(x => new ValueTuple<int, int>(x.FolioId, x.FundId))
 				.ToListAsync();
+		}
+		public async Task<List<FundSummaryDto>> GetFundSummaryAsync()
+		{
+			var result = await _db.MutualFundTransactions
+				.Include(t => t.Fund)
+				.AsNoTracking()
+				.GroupBy(t => t.Fund.FundName)
+				.Select(g => new FundSummaryDto
+				{
+					FundName = g.Key,
+					TotalInvestment = g.Sum(x => x.AmountPaid),
+					TotalUnits = g.Sum(x => x.Units),
+					AvgNav = g.Sum(x => x.AmountPaid) /
+							 (g.Sum(x => x.Units) == 0 ? 1 : g.Sum(x => x.Units)),
+					TxnCount = g.Count()
+				})
+				.OrderByDescending(x => x.TotalInvestment)
+				.ToListAsync();
+
+			return result;
 		}
 	}
 }
