@@ -1,6 +1,7 @@
 ﻿@page "/TransactionsOverTime"
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
+@using OM.MFPTrackerV1.Web.Helpers
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "User,Admin")]
 
@@ -9,71 +10,54 @@
 
 <!-- ================= FILTER CARD ================= -->
 
-<div class="card shadow-sm mb-3">
-    <div class="card-body">
+<div class="d-flex justify-content-between align-items-center mb-3">
 
-        <div class="row g-3 align-items-end">
+    <!-- LEFT: Title + Range Info -->
+    <div>
+        <h5 class="mb-0">
+            Investment Trends (Timeline)
+        </h5>
+        <div class="text-muted" style="font-size: 0.75rem;">
+            @fromDate.ToString("dd MMM yyyy") → @toDate.ToString("dd MMM yyyy") •
+            @DateParser.TimeRanges.First(x => x.Key == selectedRange).Value
+        </div>
+    </div>
 
-            <div class="col-auto">
-                <label class="form-label small">From</label>
-                <InputDate class="form-control form-control-sm" @bind-Value="fromDate" />
-            </div>
+    <!-- RIGHT: Range Dropdown + Toggle -->
+    <div class="d-flex align-items-center gap-2">
 
-            <div class="col-auto">
-                <label class="form-label small">To</label>
-                <InputDate class="form-control form-control-sm" @bind-Value="toDate" />
-            </div>
+        <!-- Range dropdown -->
+        <select class="form-select form-select-sm w-auto"
+                @bind="selectedRange"
+                @bind:after="LoadChart">
 
-            <div class="col-auto">
-                <label class="form-label small">Group By</label>
-                <select class="form-select form-select-sm" @bind="groupBy">
-                    <option value="W">Weekly</option>
-                    <option value="M">Monthly</option>
-                    <option value="Q">Quarterly</option>
-                    <option value="Y">Yearly</option>
-                </select>
-            </div>
+            @foreach (var r in DateParser.TimeRanges)
+            {
+                <option value="@r.Key">@r.Value</option>
+            }
+        </select>
 
-            <div class="col-auto">
-                <button class="btn btn-primary btn-sm" @onclick="LoadChart">
-                    Apply
-                </button>
-            </div>
+        <!-- Chart/Table toggle -->
+        <div class="btn-group btn-group-sm">
+            <button class="btn @(viewMode == "chart" ? "btn-primary" : "btn-outline-primary")"
+                    @onclick="SetChartView">
+                Chart
+            </button>
+
+            <button class="btn @(viewMode == "table" ? "btn-primary" : "btn-outline-primary")"
+                    @onclick="SetTableView">
+                Table
+            </button>
         </div>
 
     </div>
+
 </div>
 
 <!-- ================= CHART / TABLE ================= -->
 
 <div class="card shadow-sm">
     <div class="card-body">
-
-        <!-- Header + Toggle -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">
-                Investment Trend Time
-                <span class="text-muted small ms-1" style="font-size: 0.75rem;">
-                    [@fromDate.ToString("dd MMM yyyy") → @toDate.ToString("dd MMM yyyy") Grouped by @groupBy]        
-                </span>
-            </h5>
-
-            <div class="btn-group btn-group-sm">
-
-                <button class="btn @(viewMode == "chart" ? "btn-primary" : "btn-outline-primary")"
-                        @onclick="SetChartView">
-                    Chart
-                </button>
-
-                <button class="btn @(viewMode == "table" ? "btn-primary" : "btn-outline-primary")"
-                        @onclick="SetTableView">
-                    Table
-                </button>
-
-            </div>
-
-        </div>
-
         @if (labels.Length == 0)
         {
             <div class="text-center text-muted py-4">
@@ -135,40 +119,47 @@
 
     private string[] labels = [];
     private double[] values = [];
+    private string selectedRange = "1Y";
 
     protected override async Task OnInitializedAsync()
     {
         var uri = Nav.ToAbsoluteUri(Nav.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
 
-        // ✅ Default → Last 1 year
-        toDate = DateTime.Today;
-        fromDate = toDate.AddYears(-1);
-
         if (query.TryGetValue("range", out var value))
         {
-            var rangeValue = value.ToString();
-
-            (fromDate, toDate, groupBy) = rangeValue switch
-            {
-                "1M" => (DateTime.Today.AddMonths(-1), DateTime.Today, "W"),
-                "6M" => (DateTime.Today.AddMonths(-6), DateTime.Today, "M"),
-                "1Y" => (DateTime.Today.AddYears(-1), DateTime.Today, "M"),
-                "3Y" => (DateTime.Today.AddYears(-3), DateTime.Today, "Q"),
-                _ => (fromDate, toDate, "M")
-            };
-
-            await LoadChart();  // ✅ auto load
+            selectedRange = value.ToString();
         }
+
+        // ✅ derive everything from helper
+        var (from, to) = selectedRange.GetDateRange();
+
+        fromDate = from;
+        toDate = to;
+
+        groupBy = DateParser.GetGrouping(selectedRange);  // ✅ new
+
+        await LoadChart();
     }
 
     private async Task LoadChart()
     {
-        var trend = await TxnRepo.GetInvestmentTrendAsync(new TransactionFilter
-        {
-            StartDate = fromDate,
-            EndDate = toDate
-        }, groupBy);
+        // ✅ always recalc from range
+        var (from, to) = selectedRange.GetDateRange();
+
+        fromDate = from;
+        toDate = to;
+
+        groupBy = DateParser.GetGrouping(selectedRange);
+
+        var trend = await TxnRepo.GetInvestmentTrendAsync(
+            new TransactionFilter
+            {
+                StartDate = fromDate,
+                EndDate = toDate
+            },
+            groupBy
+        );
 
         labels = trend
             .Select(x => FormatLabel(x.Period))
@@ -177,18 +168,35 @@
         values = trend
             .Select(x => (double)x.Amount)
             .ToArray();
-
-        StateHasChanged(); // ✅ force UI update
     }
+
 
     private string FormatLabel(DateTime dt)
     {
-        return groupBy switch
+        // ✅ Weekly → show date range
+        if (groupBy == "W")
         {
-            "Y" => dt.ToString("yyyy"),
-            "Q" => $"{dt:yyyy} Q{((dt.Month - 1) / 3 + 1)}",
-            _ => dt.ToString("MMM yy")
-        };
+            var start = dt;
+            var end = dt.AddDays(6);
+
+            return $"{start:dd MMM} - {end:dd MMM}";
+        }
+
+        // ✅ Quarterly
+        if (groupBy == "Q")
+        {
+            int quarter = ((dt.Month - 1) / 3) + 1;
+            return $"Q{quarter} {dt:yyyy}";
+        }
+
+        // ✅ Yearly
+        if (groupBy == "Y")
+        {
+            return dt.ToString("yyyy");
+        }
+
+        // ✅ Monthly (default)
+        return dt.ToString("MMM yyyy");
     }
 
     private void SetChartView() => viewMode = "chart";

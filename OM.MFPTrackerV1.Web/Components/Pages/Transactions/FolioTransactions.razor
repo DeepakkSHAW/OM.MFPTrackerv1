@@ -5,6 +5,7 @@
 @using System.ComponentModel.DataAnnotations
 @using OM.MFPTrackerV1.Data.Models
 @using OM.MFPTrackerV1.Data.Services
+@using OM.MFPTrackerV1.Web.Helpers
 
 @inject IMutualFundTransactionRepo TxnRepo
 @inject IFolioRepo FolioRepo
@@ -125,6 +126,7 @@ else if (currentTab == 2)
 
     <span class="small text-muted">
         Showing: @timeRanges.First(x => x.Key == selectedRange).Value
+        <span class="text-muted small">Total: @totalCount</span>
     </span>
 }
 else if (currentTab == 3)
@@ -190,7 +192,8 @@ else if (currentTab == 3)
     }
 }
 
-@if (selectedFolioId.HasValue && (currentTab == 1 || currentTab == 2))
+@* @if (selectedFolioId.HasValue && (currentTab == 1 || currentTab == 2)) *@
+@if ((currentTab == 1 && selectedFolioId.HasValue) || (currentTab == 2))
 {
     <div class="table-responsive">
         <table class="table table-sm table-hover align-middle">
@@ -249,8 +252,6 @@ else if (currentTab == 3)
 
     <!-- Paging -->
     <div class="d-flex align-items-center mt-2 gap-2">
-        <span class="text-muted small">Total: @totalCount</span>
-
         <div class="ms-auto d-flex align-items-center gap-2">
             <button class="btn btn-sm btn-outline-primary"
                     disabled="@(pageNumber == 1)"
@@ -702,77 +703,42 @@ else if (currentTab == 3)
 
     //********** Code for tab 2 ********//
     private string selectedRange = "1M";
+    private bool useSelectedFolio = false;
+    private async Task OnScopeChanged(bool useSelected)
+    {
+        useSelectedFolio = useSelected;
+        pageNumber = 1;
 
+        await ReloadTimeView();
+    }
     private List<KeyValuePair<string, string>> timeRanges = new()
     {
         new("1M", "Current Month"),
         new("LM", "Last Month"),
-        new("Q", "Last Quarter"),
+        new("CQ", "Current Quarter"),
+        new("LQ", "Last Quarter"),
         new("6M", "Last 6 Months"),
         new("1Y", "Last Year"),
         new("3Y", "Last 3 Years"),
         new("ALL", "Since Inception")
     };
 
-    private (DateTime from, DateTime to) GetDateRange()
-    {
-        var now = DateTime.Today;
-
-        if (selectedRange == "LM")
-        {
-            var first = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
-            var last = first.AddMonths(1).AddDays(-1);
-            return (first, last);
-        }
-
-        return selectedRange switch
-        {
-            "1M" => (new DateTime(now.Year, now.Month, 1), now),
-            "Q" => (now.AddMonths(-3), now),
-            "6M" => (now.AddMonths(-6), now),
-            "1Y" => (now.AddYears(-1), now),
-            "3Y" => (now.AddYears(-3), now),
-            _ => (DateTime.MinValue, now)
-        };
-    }
+    
     private async Task ReloadTimeView()
     {
-        if (!selectedFolioId.HasValue)
-        {
-            items.Clear();
-            totalCount = 0;
-            return;
-        }
+        var (from, to) = selectedRange.GetDateRange();
 
-        // ✅ Step 1: Load all data (no paging)
-        var r = await TxnRepo.GetAsync(
-            null,
+        var r = await TxnRepo.GetByDateRangeAsync(
+            from,
+            to,
             null,
             sortBy,
             sortDesc,
-            1,
-            int.MaxValue);
+            pageNumber,
+            pageSize);
 
-        var allItems = r.Items;
-
-        // ✅ Step 2: Apply date filter
-        var (from, to) = GetDateRange();
-
-        var filtered = allItems
-            .Where(x => x.TransactionDate >= from && x.TransactionDate <= to);
-
-        // ✅ Step 3: Apply sorting (important!)
-        filtered = sortDesc
-            ? filtered.OrderByDescending(x => GetSortValue(x))
-            : filtered.OrderBy(x => GetSortValue(x));
-
-        // ✅ Step 4: Apply pagination AFTER filtering
-        totalCount = filtered.Count();
-
-        items = filtered
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
+        items = r.Items.ToList();
+        totalCount = r.TotalCount;
     }
     private object GetSortValue(MutualFundTransaction x)
     {
@@ -785,8 +751,8 @@ else if (currentTab == 3)
     }
     private void GoToAnalysis()
     {
-        //Nav.NavigateTo("/TransactionsOverTime");
-        Nav.NavigateTo($"/transactions-over-time?range={selectedRange}");
+
+        Nav.NavigateTo($"/TransactionsOverTime?range={selectedRange}");
     }
     //********** Code for tab 3 ********//
    private List<FundSummary> fundSummary = new();
