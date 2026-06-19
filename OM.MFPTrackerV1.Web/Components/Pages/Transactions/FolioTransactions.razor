@@ -629,9 +629,16 @@ else if (currentTab == 3)
 
     private void SortBy(string field)
     {
-        if (sortBy == field) sortDesc = !sortDesc;
-        else { sortBy = field; sortDesc = false; }
-        _ = Reload();
+        if (sortBy == field)
+            sortDesc = !sortDesc;
+        else
+        {
+            sortBy = field;
+            sortDesc = false;
+        }
+
+        // ✅ FIX: reload based on active tab
+        _ = ReloadByTab();
     }
 
     private RenderFragment SortIcon(string f) => b =>
