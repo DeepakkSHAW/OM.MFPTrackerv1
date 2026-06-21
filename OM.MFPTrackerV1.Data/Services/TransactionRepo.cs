@@ -66,6 +66,60 @@ namespace OM.MFPTrackerV1.Data.Services
 			_db = db;
 		}
 
+		private IQueryable<MutualFundTransaction> ApplySorting(	IQueryable<MutualFundTransaction> q,	string? sortBy,	bool sortDesc)
+		{
+			var key = (sortBy ?? nameof(MutualFundTransaction.TransactionDate)).Trim();
+
+			return (key, sortDesc) switch
+			{
+				// ✅ Date
+				(nameof(MutualFundTransaction.TransactionDate), false) =>
+					q.OrderBy(x => x.TransactionDate).ThenBy(x => x.TransactionId),
+
+				(nameof(MutualFundTransaction.TransactionDate), true) =>
+					q.OrderByDescending(x => x.TransactionDate).ThenBy(x => x.TransactionId),
+
+				// ✅ Type
+				(nameof(MutualFundTransaction.TxnType), false) =>
+					q.OrderBy(x => x.TxnType).ThenBy(x => x.TransactionDate),
+
+				(nameof(MutualFundTransaction.TxnType), true) =>
+					q.OrderByDescending(x => x.TxnType).ThenBy(x => x.TransactionDate),
+
+				// ✅ Units
+				(nameof(MutualFundTransaction.Units), false) =>
+					q.OrderBy(x => x.Units),
+
+				(nameof(MutualFundTransaction.Units), true) =>
+					q.OrderByDescending(x => x.Units),
+
+				// ✅ NAV
+				(nameof(MutualFundTransaction.NAV), false) =>
+					q.OrderBy(x => x.NAV),
+
+				(nameof(MutualFundTransaction.NAV), true) =>
+					q.OrderByDescending(x => x.NAV),
+
+				// ✅ Amount
+				(nameof(MutualFundTransaction.AmountPaid), false) =>
+					q.OrderBy(x => x.AmountPaid),
+
+				(nameof(MutualFundTransaction.AmountPaid), true) =>
+					q.OrderByDescending(x => x.AmountPaid),
+
+				// ✅ Fund Name
+				("FundName", false) =>
+					q.OrderBy(x => x.Fund.FundName),
+
+				("FundName", true) =>
+					q.OrderByDescending(x => x.Fund.FundName),
+
+				// ✅ Default
+				_ =>
+					q.OrderByDescending(x => x.TransactionDate)
+			};
+		}
+		
 		// -------------------------------------------------
 		// GET: Transaction list (paging + sorting)
 		// -------------------------------------------------
@@ -94,27 +148,7 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			var key = (sortBy ?? nameof(MutualFundTransaction.TransactionDate)).Trim();
 
-			q = (key, sortDesc) switch
-			{
-				(nameof(MutualFundTransaction.TransactionDate), false) =>
-					q.OrderBy(x => x.TransactionDate)
-					 .ThenBy(x => x.TransactionId),
-
-				(nameof(MutualFundTransaction.TransactionDate), true) =>
-					q.OrderByDescending(x => x.TransactionDate)
-					 .ThenBy(x => x.TransactionId),
-
-				(nameof(MutualFundTransaction.TxnType), false) =>
-					q.OrderBy(x => x.TxnType)
-					 .ThenBy(x => x.TransactionDate),
-
-				(nameof(MutualFundTransaction.TxnType), true) =>
-					q.OrderByDescending(x => x.TxnType)
-					 .ThenBy(x => x.TransactionDate),
-
-				_ =>
-					q.OrderByDescending(x => x.TransactionDate)
-			};
+			q = ApplySorting(q, sortBy, sortDesc);
 
 			var total = await q.CountAsync();
 
@@ -766,9 +800,11 @@ namespace OM.MFPTrackerV1.Data.Services
 			if (folioId.HasValue)
 				q = q.Where(x => x.FolioId == folioId.Value);
 
-			q = sortDesc
-				? q.OrderByDescending(x => x.TransactionDate)
-				: q.OrderBy(x => x.TransactionDate);
+			//q = sortDesc
+			//	? q.OrderByDescending(x => x.TransactionDate)
+			//	: q.OrderBy(x => x.TransactionDate);
+
+			q = ApplySorting(q, sortBy, sortDesc);
 
 			var total = await q.CountAsync();
 

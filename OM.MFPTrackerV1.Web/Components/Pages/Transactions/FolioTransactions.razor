@@ -192,27 +192,45 @@ else if (currentTab == 3)
     }
 }
 
-@* @if (selectedFolioId.HasValue && (currentTab == 1 || currentTab == 2)) *@
 @if ((currentTab == 1 && selectedFolioId.HasValue) || (currentTab == 2))
 {
     <div class="table-responsive">
         <table class="table table-sm table-hover align-middle">
             <thead class="table-light">
                 <tr>
-                    <th role="button" @onclick="@(() => SortBy(nameof(MutualFundTransaction.TransactionDate)))">
+                    <th role="button" style="cursor:pointer"
+                        @onclick="@(() => SortBy(nameof(MutualFundTransaction.TransactionDate)))">
                         Date @SortIcon(nameof(MutualFundTransaction.TransactionDate))
                     </th>
-                    <th>Fund</th>
-                    <th role="button" @onclick="@(() => SortBy(nameof(MutualFundTransaction.TxnType)))">
+
+                    <th role="button" style="cursor:pointer"
+                        @onclick="@(() => SortBy("FundName"))">
+                        Fund @SortIcon("FundName")
+                    </th>
+
+                    <th role="button" style="cursor:pointer"
+                        @onclick="@(() => SortBy(nameof(MutualFundTransaction.TxnType)))">
                         Type @SortIcon(nameof(MutualFundTransaction.TxnType))
                     </th>
-                    <th class="text-end">Units</th>
-                    <th class="text-end">NAV</th>
-                    <th class="text-end">Amount</th>
+
+                    <th class="text-end" role="button" style="cursor:pointer"
+                        @onclick="@(() => SortBy(nameof(MutualFundTransaction.Units)))">
+                        Units @SortIcon(nameof(MutualFundTransaction.Units))
+                    </th>
+
+                    <th class="text-end" role="button" style="cursor:pointer"
+                        @onclick="@(() => SortBy(nameof(MutualFundTransaction.NAV)))">
+                        NAV @SortIcon(nameof(MutualFundTransaction.NAV))
+                    </th>
+
+                    <th class="text-end" role="button" style="cursor:pointer"
+                        @onclick="@(() => SortBy(nameof(MutualFundTransaction.AmountPaid)))">
+                        Amount @SortIcon(nameof(MutualFundTransaction.AmountPaid))
+                    </th>
+
                     <th style="width:140px"></th>
                 </tr>
             </thead>
-
             <tbody>
                 @if (items.Count == 0)
                 {
@@ -228,7 +246,7 @@ else if (currentTab == 3)
                     {
                         <tr>
                             <td>@row.TransactionDate.ToString("dd-MMM-yyyy")</td>
-                            <td>@row.Fund.FundName</td>
+                            <td class="fund-cell text-truncate" style="max-width: 150px; font-size: 0.8rem;" title="@row.Fund.FundName">@row.Fund.FundName</td>
                             <td>@row.TxnType</td>
                             <td class="text-end">@row.Units.ToString("0.#####")</td>
                             <td class="text-end">@row.NAV.ToString("0.#####")</td>
@@ -269,14 +287,18 @@ else if (currentTab == 3)
                 ›
             </button>
 
+
             <select class="form-select form-select-sm"
                     style="width:90px"
-                    @bind="pageSize">
+                    @bind="pageSize"
+                    @bind:after="OnPageSizeChanged">
                 <option>5</option>
                 <option>10</option>
                 <option>20</option>
                 <option>50</option>
+                <option>100</option>
             </select>
+
         </div>
     </div>
 }
@@ -547,7 +569,11 @@ else if (currentTab == 3)
 
         showModal = true;
     }
-
+    private async Task OnPageSizeChanged()
+    {
+        pageNumber = 1;   // ✅ reset to first page
+        await ReloadByTab();
+    }
     private void CloseModal() => showModal = false;
 
     private async Task SaveAsync()
@@ -730,7 +756,7 @@ else if (currentTab == 3)
         new("ALL", "Since Inception")
     };
 
-    
+
     private async Task ReloadTimeView()
     {
         var (from, to) = selectedRange.GetDateRange();
@@ -747,22 +773,13 @@ else if (currentTab == 3)
         items = r.Items.ToList();
         totalCount = r.TotalCount;
     }
-    private object GetSortValue(MutualFundTransaction x)
-    {
-        return sortBy switch
-        {
-            nameof(MutualFundTransaction.TransactionDate) => x.TransactionDate,
-            nameof(MutualFundTransaction.TxnType) => x.TxnType,
-            _ => x.TransactionDate
-        };
-    }
     private void GoToAnalysis()
     {
 
         Nav.NavigateTo($"/TransactionsOverTime?range={selectedRange}");
     }
     //********** Code for tab 3 ********//
-   private List<FundSummary> fundSummary = new();
+    private List<FundSummary> fundSummary = new();
     private decimal totalInvestment;
     private async Task LoadSummary()
     {
