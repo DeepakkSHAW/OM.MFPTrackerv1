@@ -16,29 +16,53 @@
 
 <!-- ================= TABS ================= -->
 <ul class="nav nav-tabs mb-3">
+
     <li class="nav-item">
         <button class="nav-link @(currentTab == 1 ? "active" : "")"
                 @onclick="() => SwitchTab(1)">
-            Current
+            <i class="bi bi-list-ul me-1"></i> Folio View
         </button>
     </li>
+
     <li class="nav-item">
         <button class="nav-link @(currentTab == 2 ? "active" : "")"
                 @onclick="() => SwitchTab(2)">
-            Time View
+            <i class="bi bi-clock-history me-1"></i> Time View
         </button>
     </li>
+
     <li class="nav-item">
         <button class="nav-link @(currentTab == 3 ? "active" : "")"
                 @onclick="() => SwitchTab(3)">
-            Summary
+            <i class="bi bi-pie-chart me-1"></i> Summary
         </button>
     </li>
+
 </ul>
 
 @if (currentTab == 1)
 {
-    <h4 class="mt-2 mb-3">Folio Transactions</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <div>
+            <h4 class="mb-0">
+                <i class="bi bi-list-ul me-1"></i> Folio Transactions
+            </h4>
+            <div class="text-muted small">
+                @GetFundCount() funds •
+                <span class="fw-semibold text-primary">
+                    ₹@GetTotalInvestment().ToString("N0")
+                </span>
+            </div>
+        </div>
+
+        <button class="btn btn-primary"
+                @onclick="OpenAdd"
+                @attributes="(selectedFolioId is null ? DisabledAttr : null)">
+            Add Transaction
+        </button>
+
+    </div>
 
     <!-- ================= Toolbar ================= -->
     <div class="row g-2 align-items-end mb-3">
@@ -87,15 +111,6 @@
                 }
             </select>
         </div>
-
-        <div class="col text-end">
-            <label class="form-label small fw-bold d-block">&nbsp;</label>
-            <button class="btn btn-primary"
-                    @onclick="OpenAdd"
-                    @attributes="(selectedFolioId is null ? DisabledAttr : null)">
-                Add Transaction
-            </button>
-        </div>
     </div>
 }
 else if (currentTab == 2)
@@ -103,7 +118,9 @@ else if (currentTab == 2)
 
     <div class="d-flex align-items-center justify-content-between mb-3">
 
-        <h4 class="mb-0">Time View</h4>
+        <h4 class="mb-0">
+            <i class="bi bi-clock-history me-1"></i> Time View
+        </h4>
 
         <div class="d-flex align-items-center gap-2">
             <span class="small text-muted">Range:</span>
@@ -117,6 +134,7 @@ else if (currentTab == 2)
                 }
             </select>
         </div>
+
         <button class="btn btn-sm btn-outline-primary"
                 title="Open detailed analysis"
                 @onclick="GoToAnalysis">
@@ -124,10 +142,13 @@ else if (currentTab == 2)
         </button>
     </div>
 
-    <span class="small text-muted">
-        Showing: @timeRanges.First(x => x.Key == selectedRange).Value
-        <span class="text-muted small">Total: @totalCount</span>
-    </span>
+    <div class="text-muted small">
+        @timeRanges.First(x => x.Key == selectedRange).Value •
+        @totalCount transactions •
+        <span class="fw-semibold text-primary">
+            ₹@GetTotalInvestment().ToString("N0")
+        </span>
+    </div>
 }
 else if (currentTab == 3)
 {
@@ -135,7 +156,9 @@ else if (currentTab == 3)
 
         <!-- Left: Title + Context -->
         <div>
-            <h4 class="mb-1">Portfolio Summary</h4>
+            <h4 class="mb-1">
+                <i class="bi bi-pie-chart me-1"></i> Portfolio Summary
+            </h4>
             <div class="text-muted small">
                 Across @fundSummary.Count funds
             </div>
@@ -637,20 +660,17 @@ else if (currentTab == 3)
         }
     }
 
-    private void OnAmcChanged_DEL()
+    private int GetFundCount()
     {
-        filteredFolios = allFolios
-            .Where(f => f.AMCId == selectedAmcId)
-            .OrderBy(f => f.FolioNumber)
-            .ToList();
+        return items
+            .Select(x => x.FundId)
+            .Distinct()
+            .Count();
+    }
 
-        filteredFunds = allFunds
-            .Where(f => f.AMCId == selectedAmcId)
-            .OrderBy(f => f.FundName)
-            .ToList();
-
-        selectedFolioId = null;
-        selectedFundId = null;
+    private decimal GetTotalInvestment()
+    {
+        return items.Sum(x => x.AmountPaid);
     }
 
     private void SortBy(string field)
