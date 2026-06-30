@@ -18,19 +18,19 @@
     <li class="nav-item">
         <button class="nav-link @(currentTab == 1 ? "active" : "")"
                 @onclick="() => SwitchTab(1)">
-            Single Investment
+            <i class="bi bi-calendar4-event"></i> Single Investment
         </button>
     </li>
     <li class="nav-item">
         <button class="nav-link @(currentTab == 2 ? "active" : "")"
                 @onclick="() => SwitchTab(2)">
-            Full Portfolio
+            <i class="bi bi-calendar4-week"></i> Full Portfolio
         </button>
     </li>
     <li class="nav-item">
         <button class="nav-link @(currentTab == 3 ? "active" : "")"
                 @onclick="() => SwitchTab(3)">
-            Custom Query
+            <i class="bi bi-calendar4-range"></i> Custom Query
         </button>
     </li>
 </ul>
@@ -38,8 +38,6 @@
 <!-- ================= TAB CONTENT ================= -->
 @if (currentTab == 1)
 {
-    <!-- ================= YOUR EXISTING UI (UNCHANGED) ================= -->
-
     <div class="row g-2 align-items-end mb-3">
 
         <!-- Folio -->
@@ -96,8 +94,17 @@
                             <div class="small text-muted">Avg Days</div>
                             <div class="fw-bold">
                                 @result.WeightedAverageDays.ToString("0") days
-                            </div>
+                                @{
+                                    var years = result.WeightedAverageDays / 365m;
+                                }
+                                @if (years >= 1)
+                                {
+                                    <span class="text-muted" style="font-size: 0.8rem;">
+                                        (@years.ToString("0.0") yrs)
+                                    </span>
+                                }
                         </div>
+                    </div>
                         <div class="col">
                             <div class="small text-muted">Absolute Return</div>
 
@@ -117,8 +124,8 @@
                                     <div class="small text-muted">XIRR</div>
                                     <div class="fw-bold">
                                         @(result.Xirr.HasValue
-                                                                        ? (result.Xirr.Value * 100).ToString("0.00") + "%"
-                                                                        : "N/A")
+                                   ? (result.Xirr.Value * 100).ToString("0.00") + "%"
+                                   : "N/A")
                                     </div>
                                 </div>
 
@@ -312,12 +319,8 @@ else if (currentTab == 2)
                     @foreach (var row in portfolioResults)
                     {
                         <tr>
-                            <td>@row.FolioDisplay</td>
-                            <td>
-                                <div class="small">
-                                    @row.FundDisplay
-                                </div>
-                            </td>
+                            <td class="fund-cell text-truncate" style="max-width: 150px; font-size: 0.8rem;" title="@row.FolioDisplay">@row.FolioDisplay</td>
+                            <td class="fund-cell text-truncate" style="max-width: 150px; font-size: 0.8rem;" title="@row.FundDisplay">@row.FundDisplay</td>
 
                             <td class="text-end">
                                 @* @row.InvestedAmount.ToString("0.00") *@
@@ -335,14 +338,22 @@ else if (currentTab == 2)
                                     (@row.AbsoluteReturn.ToString("0.00")%)
                                 </span>
                             </td>
-                            <td>
+                            <td style="font-size: 0.8rem;">
                                 @(row.Xirr.HasValue
                                                     ? (row.Xirr.Value * 100).ToString("0.00") + "%"
                                                     : "N/A")
                             </td>
-
-                            <td class="text-end">
+                            <td class="small fw-semibold">
                                 @row.WeightedAverageDays.ToString("0")
+                                @{
+                                    var years = row.WeightedAverageDays / 365m;
+                                }
+                                @if (years >= 1)
+                                {
+                                    <span class="text-muted" style="font-size: 0.75rem;">
+                                        (@years.ToString("0.0")y)
+                                    </span>
+                                }
                             </td>
                         </tr>
                     }
