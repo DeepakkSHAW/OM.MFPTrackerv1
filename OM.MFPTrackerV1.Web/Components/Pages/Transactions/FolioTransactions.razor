@@ -48,10 +48,23 @@
             <h4 class="mb-0">
                 <i class="bi bi-list-ul me-1"></i> Folio Transactions
             </h4>
-            <div class="text-muted small">
+@*             <div class="text-muted small">
                 @GetFundCount() funds •
                 <span class="fw-semibold text-primary">
                     ₹@GetTotalInvestment().ToString("N0")
+                </span>
+            </div> *@
+            <div class="text-muted small">
+                @displayedFundCount funds •
+                <span class="fw-semibold text-primary">
+                    ₹@displayedInvestmentAmount.ToString("N0")
+                </span>
+                shown
+                <span class="ms-1">
+                    (Total Folio:
+                    <span class="fw-semibold">
+                        ₹@totalInvestmentAmount.ToString("N0")
+                    </span>)
                 </span>
             </div>
         </div>
@@ -142,11 +155,28 @@ else if (currentTab == 2)
         </button>
     </div>
 
-    <div class="text-muted small">
+@*     <div class="text-muted small">
         @timeRanges.First(x => x.Key == selectedRange).Value •
         @totalCount transactions •
         <span class="fw-semibold text-primary">
             ₹@GetTotalInvestment().ToString("N0")
+        </span>
+    </div> *@
+    <div class="text-muted small">
+        @timeRanges.First(x => x.Key == selectedRange).Value • 
+        @totalCount transactions •
+
+        <span class="fw-semibold text-primary">
+            ₹@displayedInvestmentAmount.ToString("N0")
+        </span>
+
+        shown
+
+        <span class="ms-1">
+            (Total:
+            <span class="fw-semibold">
+                ₹@totalInvestmentAmount.ToString("N0")
+            </span>)
         </span>
     </div>
 }
@@ -320,6 +350,7 @@ else if (currentTab == 3)
                 <option>20</option>
                 <option>50</option>
                 <option>100</option>
+                <option>200</option>
             </select>
 
         </div>
@@ -476,6 +507,10 @@ else if (currentTab == 3)
     private int pageNumber = 1;
     private int pageSize = 10;
     private int totalCount;
+    private int totalFundCount;
+    private decimal displayedInvestmentAmount;
+    private int displayedFundCount;
+    private decimal totalInvestmentAmount;
     private string sortBy = nameof(MutualFundTransaction.TransactionDate);
     private bool sortDesc = true;
     private string? serverError;
@@ -543,16 +578,31 @@ else if (currentTab == 3)
             return;
         }
 
-        var r = await TxnRepo.GetAsync(
-            selectedFolioId.Value,
-            selectedFundId,
-            sortBy,
-            sortDesc,
-            pageNumber,
-            pageSize);
+        // var r = await TxnRepo.GetAsync(
+        //     selectedFolioId.Value,
+        //     selectedFundId,
+        //     sortBy,
+        //     sortDesc,
+        //     pageNumber,
+        //     pageSize);
+        var r = await TxnRepo.GetWithSummaryAsync(selectedFolioId.Value, selectedFundId, sortBy, sortDesc, pageNumber, pageSize);
 
+        // items = r.Items.ToList();
+        // totalCount = r.TotalCount;
         items = r.Items.ToList();
+
         totalCount = r.TotalCount;
+
+        totalFundCount = r.FundCount;
+        totalInvestmentAmount = r.TotalInvestment;
+
+        displayedFundCount = items
+            .Select(x => x.FundId)
+            .Distinct()
+            .Count();
+
+        displayedInvestmentAmount = items
+            .Sum(x => x.AmountPaid);
     }
 
     private void ReloadWrapper() => _ = Reload();
@@ -660,18 +710,18 @@ else if (currentTab == 3)
         }
     }
 
-    private int GetFundCount()
-    {
-        return items
-            .Select(x => x.FundId)
-            .Distinct()
-            .Count();
-    }
+    // private int GetFundCount()
+    // {
+    //     return items
+    //         .Select(x => x.FundId)
+    //         .Distinct()
+    //         .Count();
+    // }
 
-    private decimal GetTotalInvestment()
-    {
-        return items.Sum(x => x.AmountPaid);
-    }
+    // private decimal GetTotalInvestment()
+    // {
+    //     return items.Sum(x => x.AmountPaid);
+    // }
 
     private void SortBy(string field)
     {
@@ -777,11 +827,28 @@ else if (currentTab == 3)
     };
 
 
+    // private async Task ReloadTimeView()
+    // {
+    //     var (from, to) = selectedRange.GetDateRange();
+
+    //     // var r = await TxnRepo.GetByDateRangeAsync(
+    //     //     from,
+    //     //     to,
+    //     //     null,
+    //     //     sortBy,
+    //     //     sortDesc,
+    //     //     pageNumber,
+    //     //     pageSize);
+    //     var r = await TxnRepo.GetByDateRangeWithSummaryAsync(from, to, null, sortBy, sortDesc, pageNumber, pageSize);
+
+    //     items = r.Items.ToList();
+    //     totalCount = r.TotalCount;
+    // }
     private async Task ReloadTimeView()
     {
         var (from, to) = selectedRange.GetDateRange();
 
-        var r = await TxnRepo.GetByDateRangeAsync(
+        var r = await TxnRepo.GetByDateRangeWithSummaryAsync(
             from,
             to,
             null,
@@ -791,7 +858,19 @@ else if (currentTab == 3)
             pageSize);
 
         items = r.Items.ToList();
+
         totalCount = r.TotalCount;
+
+        totalFundCount = r.FundCount;
+        totalInvestmentAmount = r.TotalInvestment;
+
+        displayedFundCount = items
+            .Select(x => x.FundId)
+            .Distinct()
+            .Count();
+
+        displayedInvestmentAmount = items
+            .Sum(x => x.AmountPaid);
     }
     private void GoToAnalysis()
     {

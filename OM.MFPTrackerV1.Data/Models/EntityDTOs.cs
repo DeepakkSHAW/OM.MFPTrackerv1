@@ -17,6 +17,17 @@ namespace OM.MFPTrackerV1.Data.Models
 				   $"{InvalidRows} skipped (invalid rows)";
 		}
 	}
+	
+	public sealed class TransactionPagedSummaryResult
+	{
+		public IReadOnlyList<MutualFundTransaction> Items { get; init; } = Array.Empty<MutualFundTransaction>();
+
+		public int TotalCount { get; init; }
+
+		public decimal TotalInvestment { get; init; }
+
+		public int FundCount { get; init; }
+	}
 
 	public sealed class FolioTransactionPreviewRow
 	{

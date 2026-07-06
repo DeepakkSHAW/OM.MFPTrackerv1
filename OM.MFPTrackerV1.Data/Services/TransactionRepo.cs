@@ -34,6 +34,8 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task<List<FundSummaryDto>> GetFundSummaryAsync();
 		Task<List<TrendPointDto>> GetInvestmentTrendAsync(TransactionFilter filter, string groupBy);
 		Task<(IReadOnlyList<MutualFundTransaction> Items, int TotalCount)> GetByDateRangeAsync(DateTime from, DateTime to, int? folioId, string? sortBy, bool sortDesc, int pageNumber, int pageSize);
+		Task<TransactionPagedSummaryResult> GetWithSummaryAsync(int? folioId, int? fundId, string? sortBy, bool sortDesc, int pageNumber, int pageSize);
+		Task<TransactionPagedSummaryResult> GetByDateRangeWithSummaryAsync(DateTime from, DateTime to, int? folioId, string? sortBy, bool sortDesc, int pageNumber, int pageSize);
 	}
 	public sealed class MutualFundTransactionRepo : IMutualFundTransactionRepo
 	{
@@ -66,7 +68,7 @@ namespace OM.MFPTrackerV1.Data.Services
 			_db = db;
 		}
 
-		private IQueryable<MutualFundTransaction> ApplySorting(	IQueryable<MutualFundTransaction> q,	string? sortBy,	bool sortDesc)
+		private IQueryable<MutualFundTransaction> ApplySorting(IQueryable<MutualFundTransaction> q, string? sortBy, bool sortDesc)
 		{
 			var key = (sortBy ?? nameof(MutualFundTransaction.TransactionDate)).Trim();
 
@@ -119,7 +121,7 @@ namespace OM.MFPTrackerV1.Data.Services
 					q.OrderByDescending(x => x.TransactionDate)
 			};
 		}
-		
+
 		// -------------------------------------------------
 		// GET: Transaction list (paging + sorting)
 		// -------------------------------------------------
@@ -158,6 +160,96 @@ namespace OM.MFPTrackerV1.Data.Services
 				.ToListAsync();
 
 			return (items, total);
+		}
+		public async Task<TransactionPagedSummaryResult> GetWithSummaryAsync(int? folioId, int? fundId, string? sortBy, bool sortDesc, int pageNumber, int pageSize)
+		{
+			if (pageNumber < 1) pageNumber = 1;
+			if (pageSize < 1) pageSize = 10;
+			if (pageSize > 200) pageSize = 200;
+
+			IQueryable<MutualFundTransaction> q = _db.Set<MutualFundTransaction>()
+				.Include(x => x.Folio)
+				.Include(x => x.Fund)
+				.AsNoTracking();
+
+			if (folioId.HasValue)
+				q = q.Where(x => x.FolioId == folioId.Value);
+
+			if (fundId.HasValue)
+				q = q.Where(x => x.FundId == fundId.Value);
+
+			q = ApplySorting(q, sortBy, sortDesc);
+
+			// Summary values BEFORE paging
+			var totalCount = await q.CountAsync();
+
+			var totalInvestment = totalCount == 0
+				? 0
+				: await q.SumAsync(x => x.AmountPaid);
+
+			var fundCount = await q
+				.Select(x => x.FundId)
+				.Distinct()
+				.CountAsync();
+
+			// Page data
+			var items = await q
+				.Skip((pageNumber - 1) * pageSize)
+				.Take(pageSize)
+				.ToListAsync();
+
+			return new TransactionPagedSummaryResult
+			{
+				Items = items,
+				TotalCount = totalCount,
+				TotalInvestment = totalInvestment,
+				FundCount = fundCount
+			};
+		}
+
+		public async Task<TransactionPagedSummaryResult>	GetByDateRangeWithSummaryAsync(DateTime from, DateTime to, int? folioId, string? sortBy, bool sortDesc, int pageNumber, int pageSize)
+		{
+			if (pageNumber < 1) pageNumber = 1;
+			if (pageSize < 1) pageSize = 10;
+			if (pageSize > 200) pageSize = 200;
+
+			IQueryable<MutualFundTransaction> q = _db.MutualFundTransactions
+				.Include(x => x.Fund)
+				.AsNoTracking()
+				.Where(x =>
+					x.TransactionDate >= from &&
+					x.TransactionDate <= to);
+
+			if (folioId.HasValue)
+				q = q.Where(x => x.FolioId == folioId.Value);
+
+			q = ApplySorting(q, sortBy, sortDesc);
+
+			// Summary values BEFORE paging
+			var totalCount = await q.CountAsync();
+
+			var totalInvestment = totalCount == 0
+				? 0
+				: await q.SumAsync(x => x.AmountPaid);
+
+			var fundCount = await q
+				.Select(x => x.FundId)
+				.Distinct()
+				.CountAsync();
+
+			// Page data
+			var items = await q
+				.Skip((pageNumber - 1) * pageSize)
+				.Take(pageSize)
+				.ToListAsync();
+
+			return new TransactionPagedSummaryResult
+			{
+				Items = items,
+				TotalCount = totalCount,
+				TotalInvestment = totalInvestment,
+				FundCount = fundCount
+			};
 		}
 
 		// -------------------------------------------------
@@ -785,7 +877,7 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			return result;
 		}
-		
+
 		public async Task<(IReadOnlyList<MutualFundTransaction> Items, int TotalCount)> GetByDateRangeAsync(DateTime from, DateTime to, int? folioId, string? sortBy, bool sortDesc, int pageNumber, int pageSize)
 		{
 			if (pageNumber < 1) pageNumber = 1;
