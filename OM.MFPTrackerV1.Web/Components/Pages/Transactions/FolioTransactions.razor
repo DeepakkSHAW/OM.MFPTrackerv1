@@ -48,12 +48,6 @@
             <h4 class="mb-0">
                 <i class="bi bi-list-ul me-1"></i> Folio Transactions
             </h4>
-@*             <div class="text-muted small">
-                @GetFundCount() funds •
-                <span class="fw-semibold text-primary">
-                    ₹@GetTotalInvestment().ToString("N0")
-                </span>
-            </div> *@
             <div class="text-muted small">
                 @displayedFundCount funds •
                 <span class="fw-semibold text-primary">
@@ -154,14 +148,6 @@ else if (currentTab == 2)
             <i class="bi bi-graph-up"></i>
         </button>
     </div>
-
-@*     <div class="text-muted small">
-        @timeRanges.First(x => x.Key == selectedRange).Value •
-        @totalCount transactions •
-        <span class="fw-semibold text-primary">
-            ₹@GetTotalInvestment().ToString("N0")
-        </span>
-    </div> *@
     <div class="text-muted small">
         @timeRanges.First(x => x.Key == selectedRange).Value • 
         @totalCount transactions •
@@ -227,9 +213,7 @@ else if (currentTab == 3)
                 <tbody>
                     @foreach (var f in fundSummary)
                     {
-
                         var allocation = totalInvestment == 0 ? 0 : (f.TotalInvestment / totalInvestment) * 100;
-
                         <tr>
                             <td>@f.FundName</td>
                             <td class="text-end">@f.TotalInvestment.ToString("N0")</td>
@@ -422,7 +406,6 @@ else if (currentTab == 3)
                                              step="0.00001"
                                              @bind-Value="editModel.Units"
                                              @bind-Value:after="LimitUnits" />
-                                @*  <ValidationMessage For="@(() => editModel.Units)" /> *@
                             </div>
 
                             <div class="col-md-4">
@@ -431,7 +414,6 @@ else if (currentTab == 3)
                                              step="0.00001"
                                              @bind-Value="editModel.NAV"
                                              @bind-Value:after="LimitNav" />
-                                @*  <ValidationMessage For="@(() => editModel.NAV)" /> *@
                             </div>
 
                             <div class="col-md-6">
@@ -577,18 +559,7 @@ else if (currentTab == 3)
             totalCount = 0;
             return;
         }
-
-        // var r = await TxnRepo.GetAsync(
-        //     selectedFolioId.Value,
-        //     selectedFundId,
-        //     sortBy,
-        //     sortDesc,
-        //     pageNumber,
-        //     pageSize);
         var r = await TxnRepo.GetWithSummaryAsync(selectedFolioId.Value, selectedFundId, sortBy, sortDesc, pageNumber, pageSize);
-
-        // items = r.Items.ToList();
-        // totalCount = r.TotalCount;
         items = r.Items.ToList();
 
         totalCount = r.TotalCount;
@@ -644,7 +615,7 @@ else if (currentTab == 3)
     }
     private async Task OnPageSizeChanged()
     {
-        pageNumber = 1;   // ✅ reset to first page
+        pageNumber = 1;   // reset to first page
         await ReloadByTab();
     }
     private void CloseModal() => showModal = false;
@@ -702,26 +673,13 @@ else if (currentTab == 3)
             .OrderBy(f => f.FundName)
             .ToList();
 
-        // ✅ ONLY clear if NOT coming from route
+        // ONLY clear if NOT coming from route
         if (!FolioId.HasValue)
         {
             selectedFolioId = null;
             selectedFundId = null;
         }
     }
-
-    // private int GetFundCount()
-    // {
-    //     return items
-    //         .Select(x => x.FundId)
-    //         .Distinct()
-    //         .Count();
-    // }
-
-    // private decimal GetTotalInvestment()
-    // {
-    //     return items.Sum(x => x.AmountPaid);
-    // }
 
     private void SortBy(string field)
     {
@@ -733,7 +691,7 @@ else if (currentTab == 3)
             sortDesc = false;
         }
 
-        // ✅ FIX: reload based on active tab
+        // FIX: reload based on active tab
         _ = ReloadByTab();
     }
 
@@ -826,24 +784,6 @@ else if (currentTab == 3)
         new("ALL", "Since Inception")
     };
 
-
-    // private async Task ReloadTimeView()
-    // {
-    //     var (from, to) = selectedRange.GetDateRange();
-
-    //     // var r = await TxnRepo.GetByDateRangeAsync(
-    //     //     from,
-    //     //     to,
-    //     //     null,
-    //     //     sortBy,
-    //     //     sortDesc,
-    //     //     pageNumber,
-    //     //     pageSize);
-    //     var r = await TxnRepo.GetByDateRangeWithSummaryAsync(from, to, null, sortBy, sortDesc, pageNumber, pageSize);
-
-    //     items = r.Items.ToList();
-    //     totalCount = r.TotalCount;
-    // }
     private async Task ReloadTimeView()
     {
         var (from, to) = selectedRange.GetDateRange();
