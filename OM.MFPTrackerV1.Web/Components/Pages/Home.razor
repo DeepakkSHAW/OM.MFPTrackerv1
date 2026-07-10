@@ -1,7 +1,288 @@
 ﻿@page "/"
 @attribute [AllowAnonymous]
+
+@using OM.MFPTrackerV1.Data.Services
+
+@inject ISystemStateRepo SystemStateRepo
+@inject IFolioRepo FolioRepo
+@inject IMFFundRepo FundRepo
+@inject IMutualFundTransactionRepo TxnRepo
+
 <PageTitle>Home</PageTitle>
 
-<h1>CMT - PoC</h1>
+<div class="container py-2">
 
-Welcome CMT proof of concept
+    <!-- ==================================================
+         Hero Section
+         ================================================== -->
+    <div class="text-center mt-5">
+        <h1 class="display-5 mb-2">
+            Mutual Fund Portfolio Tracker
+        </h1>
+
+        <div class="text-muted mb-3">
+            Portfolio insights, transactions and performance tracking
+        </div>
+    </div>
+
+    <!-- ==================================================
+         Dashboard Cards
+         ================================================== -->
+    <div class="row g-3">
+
+        <!-- ==============================================
+             Card 1 : Portfolio Snapshot
+             ============================================== -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+
+                    <div class="fw-semibold mb-3">
+                        <i class="bi bi-speedometer2 me-2"></i>
+                        Portfolio Snapshot
+                    </div>
+
+                    <div class="mb-2">
+                        <i class="bi bi-folder2-open text-primary me-2"></i>
+                        Folios:
+                        <span class="fw-bold">@totalFolios</span>
+                    </div>
+
+                    <div class="mb-2">
+                        <i class="bi bi-bank text-success me-2"></i>
+                        Funds:
+                        <span class="fw-bold">@totalFunds</span>
+                    </div>
+
+                    <div>
+                        <i class="bi bi-cash-stack text-warning me-2"></i>
+                        Total Investment:
+                        <span class="fw-bold">
+                            ₹@totalInvestment.ToString("N0")
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- ==============================================
+        Card 2 : Top 5 Holdings
+        ============================================== -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-trophy text-warning me-2"></i>
+
+                        <span class="fw-semibold">
+                            Top 5 Holdings
+                        </span>
+                    </div>
+
+                    @if (!topHoldings.Any())
+                    {
+                        <div class="text-muted small">
+                            No data available
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var fund in topHoldings)
+                        {
+                            <div class="d-flex justify-content-between mb-1">
+
+                                <span class="text-truncate"
+                                      style="max-width:220px;"
+                                      title="@fund.FundName">
+                                    @fund.FundName
+                                </span>
+
+                                <span class="fw-semibold text-primary">
+                                    @fund.AllocationPct.ToString("N1")%
+                                </span>
+
+                            </div>
+                        }
+                    }
+
+                </div>
+
+            </div>
+        </div>
+             <!-- ==============================================
+             Card 3 : Investment Growth
+             TODO:
+             - 12 Month Investment Trend
+             - Line Chart
+             ============================================== -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body text-center">
+                    coming soon
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ==============================================
+          Card 4 : Portfolio Insights
+          TODO:
+          - Top Funds
+          - Top AMC Allocation
+          ============================================== -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-header p-0">
+                    coming soon
+                </div>
+
+                <div class="card-body p-2">
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ==================================================
+         Footer / Status Area
+         ================================================== -->
+    @if (!string.IsNullOrWhiteSpace(appName))
+    {
+        <div class="text-center text-muted small mt-3">
+
+            @if (lastNavSyncUtc.HasValue)
+            {
+                <span class="me-2">
+                    <i class="bi bi-cloud-check"></i>
+                    NAV Sync:
+                    @lastNavSyncUtc.Value
+                    .ToLocalTime()
+                    .ToString("dd-MMM-yyyy HH:mm")
+                </span>
+            }
+
+            <span>
+                • @appName v@(appVersion)
+            </span>
+
+        </div>
+    }
+
+</div>
+
+@code {
+
+    // =====================================================
+    // Application Metadata
+    // =====================================================
+
+    private string appName = "";
+    private string appVersion = "";
+    private DateTime? lastNavSyncUtc;
+
+    // =====================================================
+    // Future Card 2 Tab State
+    // =====================================================
+
+    private int insightTab = 1;
+
+    // =====================================================
+    // Portfolio Snapshot KPIs
+    // =====================================================
+
+    private int totalFolios;
+    private int totalFunds;
+    private decimal totalInvestment;
+
+    // =====================================================
+    // Top Holdings Model
+    // =====================================================
+
+    private sealed class TopHolding
+    {
+        public string FundName { get; set; } = "";
+        public decimal AllocationPct { get; set; }
+    }
+
+    private List<TopHolding> topHoldings = new();
+
+    // =====================================================
+    // Page Initialisation
+    // =====================================================
+
+    protected override async Task OnInitializedAsync()
+    {
+        // -------------------------------------------------
+        // Application Information
+        // -------------------------------------------------
+
+        var appInfo = await SystemStateRepo.GetAppInfoAsync();
+
+        if (appInfo.HasValue)
+        {
+            appName = appInfo.Value.AppName;
+            appVersion = appInfo.Value.AppVersion;
+        }
+
+        lastNavSyncUtc =
+            await SystemStateRepo.GetLastNavSyncUtcAsync();
+
+        // -------------------------------------------------
+        // Portfolio Snapshot
+        // -------------------------------------------------
+
+        var folioResult =
+            await FolioRepo.GetAsync(
+                null,
+                null,
+                false,
+                1,
+                1);
+
+        totalFolios =
+            folioResult.TotalCount;
+
+        var fundResult =
+            await FundRepo.GetAsync(
+                null,
+                null,
+                false,
+                1,
+                1);
+
+        totalFunds =
+            fundResult.TotalCount;
+
+        // -------------------------------------------------
+        // Fund Summary
+        // -------------------------------------------------
+
+        var summary =
+            await TxnRepo.GetFundSummaryAsync();
+
+        totalInvestment =
+            summary.Sum(x => x.TotalInvestment);
+
+        // -------------------------------------------------
+        // Top 5 Holdings by Allocation
+        // -------------------------------------------------
+
+        topHoldings = summary
+            .OrderByDescending(x => x.TotalInvestment)
+            .Take(5)
+            .Select(x => new TopHolding
+            {
+                FundName = x.FundName,
+
+                AllocationPct = totalInvestment == 0
+                    ? 0
+                    : (x.TotalInvestment / totalInvestment) * 100
+            })
+            .ToList();
+    }
+}
