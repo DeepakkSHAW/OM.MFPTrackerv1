@@ -17,7 +17,7 @@ namespace OM.MFPTrackerV1.Data.Models
 				   $"{InvalidRows} skipped (invalid rows)";
 		}
 	}
-	
+
 	public sealed class TransactionPagedSummaryResult
 	{
 		public IReadOnlyList<MutualFundTransaction> Items { get; init; } = Array.Empty<MutualFundTransaction>();
@@ -76,12 +76,26 @@ namespace OM.MFPTrackerV1.Data.Models
 				   $"{InvalidRows} skipped (invalid rows)";
 		}
 	}
+	// public class FundSummaryDto
+	// {
+	// 	public string FundName { get; set; } = "";
+	// 	public decimal TotalInvestment { get; set; }
+	// 	public decimal TotalUnits { get; set; }
+	// 	public decimal AvgNav { get; set; }
+	// 	public int TxnCount { get; set; }
+	// }
 	public class FundSummaryDto
 	{
 		public string FundName { get; set; } = "";
+
 		public decimal TotalInvestment { get; set; }
 		public decimal TotalUnits { get; set; }
 		public decimal AvgNav { get; set; }
+
+		public decimal LatestNav { get; set; }
+		public DateTime? LatestNavDate { get; set; }
+		public decimal CurrentValue { get; set; }
+
 		public int TxnCount { get; set; }
 	}
 	public sealed record FundLookupDto(int Id, string Name);
@@ -159,6 +173,24 @@ namespace OM.MFPTrackerV1.Data.Models
 		public decimal AbsoluteReturn { get; set; }
 		public decimal AbsoluteReturnAmount { get; set; }
 		public decimal WeightedAverageDays { get; set; }
+	}
+	public class MonthlyPortfolioValueDto
+	{
+		public DateTime Month { get; set; }
+		public decimal TotalInvestment { get; set; }
+		public decimal CurrentValue { get; set; }
+	}
+	public class MonthlyFundPerformancePointDto
+	{
+		public DateTime Month { get; set; }
+		public decimal TotalInvestment { get; set; }
+		public decimal CurrentValue { get; set; }
+		public decimal ReturnPercent { get; set; }
+	}
+	public class FundPerformanceTrendDto
+	{
+		public string FundName { get; set; } = "";
+		public List<MonthlyFundPerformancePointDto> Points { get; set; } = new();
 	}
 	public class PortfolioAdvancedFilter
 	{

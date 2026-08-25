@@ -207,7 +207,7 @@ namespace OM.MFPTrackerV1.Data.Services
 			};
 		}
 
-		public async Task<TransactionPagedSummaryResult>	GetByDateRangeWithSummaryAsync(DateTime from, DateTime to, int? folioId, string? sortBy, bool sortDesc, int pageNumber, int pageSize)
+		public async Task<TransactionPagedSummaryResult> GetByDateRangeWithSummaryAsync(DateTime from, DateTime to, int? folioId, string? sortBy, bool sortDesc, int pageNumber, int pageSize)
 		{
 			if (pageNumber < 1) pageNumber = 1;
 			if (pageSize < 1) pageSize = 10;
@@ -721,27 +721,103 @@ namespace OM.MFPTrackerV1.Data.Services
 				.ToListAsync();
 		}
 
+		// public async Task<List<FundSummaryDto>> GetFundSummaryAsync()
+		// {
+		// 	var result = await _db.MutualFundTransactions
+		// 		.Include(t => t.Fund)
+		// 		.AsNoTracking()
+		// 		.GroupBy(t => t.Fund.FundName)
+		// 		.Select(g => new FundSummaryDto
+		// 		{
+		// 			FundName = g.Key,
+		// 			TotalInvestment = g.Sum(x => x.AmountPaid),
+		// 			TotalUnits = g.Sum(x => x.Units),
+		// 			AvgNav = g.Sum(x => x.AmountPaid) /
+		// 					 (g.Sum(x => x.Units) == 0 ? 1 : g.Sum(x => x.Units)),
+		// 			TxnCount = g.Count()
+		// 		})
+		// 		.OrderByDescending(x => x.TotalInvestment)
+		// 		.ToListAsync();
+
+		// 	return result;
+		// }
 		public async Task<List<FundSummaryDto>> GetFundSummaryAsync()
 		{
-			var result = await _db.MutualFundTransactions
+			var transactionSummary = await _db.MutualFundTransactions
 				.Include(t => t.Fund)
 				.AsNoTracking()
-				.GroupBy(t => t.Fund.FundName)
-				.Select(g => new FundSummaryDto
+				.GroupBy(t => new
 				{
-					FundName = g.Key,
+					t.FundId,
+					t.Fund.FundName
+				})
+				.Select(g => new
+				{
+					g.Key.FundId,
+					g.Key.FundName,
+
 					TotalInvestment = g.Sum(x => x.AmountPaid),
-					TotalUnits = g.Sum(x => x.Units),
+
+					NetUnits =
+						g.Where(x => AddUnitTypes.Contains(x.TxnType))
+							.Sum(x => x.Units)
+						-
+						g.Where(x => SubtractUnitTypes.Contains(x.TxnType))
+							.Sum(x => x.Units),
+
 					AvgNav = g.Sum(x => x.AmountPaid) /
 							 (g.Sum(x => x.Units) == 0 ? 1 : g.Sum(x => x.Units)),
+
 					TxnCount = g.Count()
 				})
-				.OrderByDescending(x => x.TotalInvestment)
 				.ToListAsync();
+
+			var fundIds = transactionSummary
+				.Select(x => x.FundId)
+				.ToList();
+
+			var latestNavByFundId = await _db.FundNavs
+				.AsNoTracking()
+				.Where(n => fundIds.Contains(n.FundId))
+				.GroupBy(n => n.FundId)
+				.Select(g => g
+					.OrderByDescending(n => n.NavDate)
+					.Select(n => new
+					{
+						n.FundId,
+						n.NavDate,
+						n.NavValue
+					})
+					.First())
+				.ToDictionaryAsync(x => x.FundId);
+
+			var result = transactionSummary
+				.Select(x =>
+				{
+					latestNavByFundId.TryGetValue(x.FundId, out var latestNav);
+
+					var latestNavValue = latestNav?.NavValue ?? 0m;
+
+					return new FundSummaryDto
+					{
+						FundName = x.FundName,
+
+						TotalInvestment = x.TotalInvestment,
+						TotalUnits = x.NetUnits,
+						AvgNav = x.AvgNav,
+
+						LatestNav = latestNavValue,
+						LatestNavDate = latestNav?.NavDate,
+						CurrentValue = x.NetUnits * latestNavValue,
+
+						TxnCount = x.TxnCount
+					};
+				})
+				.OrderByDescending(x => x.TotalInvestment)
+				.ToList();
 
 			return result;
 		}
-
 		public async Task<List<TrendPointDto>> GetInvestmentTrendAsync(TransactionFilter filter, string groupBy)
 		{
 			var q = _db.MutualFundTransactions

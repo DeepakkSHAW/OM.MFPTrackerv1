@@ -1,5 +1,6 @@
 ﻿@page "/"
 @attribute [AllowAnonymous]
+@rendermode InteractiveServer
 
 @using OM.MFPTrackerV1.Data.Services
 
@@ -7,21 +8,43 @@
 @inject IFolioRepo FolioRepo
 @inject IMFFundRepo FundRepo
 @inject IMutualFundTransactionRepo TxnRepo
+@inject IPortfolioReturnService PortfolioReturnService
+@inject ILogger<Home> Logger
 
 <PageTitle>Home</PageTitle>
 
 <div class="container py-2">
 
     <!-- ==================================================
-         Hero Section
+         Header Section
          ================================================== -->
-    <div class="text-center mt-5">
-        <h1 class="display-5 mb-2">
-            Mutual Fund Portfolio Tracker
-        </h1>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom pb-3 mb-3">
+        <div>
+            <h1 class="h3 mb-1">
+                Mutual Fund Portfolio Tracker
+            </h1>
 
-        <div class="text-muted mb-3">
-            Portfolio insights, transactions and performance tracking
+            <div class="text-muted small">
+                Portfolio insights, transactions and performance tracking
+            </div>
+        </div>
+
+        <div class="text-muted small text-md-end">
+            @if (lastNavSyncUtc.HasValue)
+            {
+                <div>
+                    <i class="bi bi-cloud-check me-1"></i>
+                    NAV Sync:
+                    @(lastNavSyncUtc.Value.ToLocalTime().ToString("dd-MMM-yyyy HH:mm"))
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(appName))
+            {
+                <div>
+                    @appName v@(appVersion)
+                </div>
+            }
         </div>
     </div>
 
@@ -33,7 +56,7 @@
         <!-- ==============================================
              Card 1 : Portfolio Snapshot
              ============================================== -->
-        <div class="col-md-6">
+        <div class="col-md-6 order-3 order-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
 
@@ -42,23 +65,41 @@
                         Portfolio Snapshot
                     </div>
 
-                    <div class="mb-2">
-                        <i class="bi bi-folder2-open text-primary me-2"></i>
-                        Folios:
-                        <span class="fw-bold">@totalFolios</span>
+                    <div class="d-flex flex-wrap gap-3 mb-2">
+                        <span>
+                            <i class="bi bi-collection text-primary me-2"></i>
+                            Folios:
+                            <span class="fw-bold">@totalFolios</span>
+                        </span>
+
+                        <span>
+                            <i class="bi bi-bank text-success me-2"></i>
+                            Unique Funds:
+                            <span class="fw-bold">@totalFunds</span>
+                        </span>
                     </div>
 
                     <div class="mb-2">
-                        <i class="bi bi-bank text-success me-2"></i>
-                        Funds:
-                        <span class="fw-bold">@totalFunds</span>
+                        <i class="bi bi-cash-stack text-warning me-2"></i>
+                        Total Investment (Cost Value):
+                        <span class="fw-bold">
+                            ₹@totalInvestment.ToString("N0")
+                        </span>
                     </div>
 
                     <div>
-                        <i class="bi bi-cash-stack text-warning me-2"></i>
-                        Total Investment:
+                        <i class="bi bi-graph-up-arrow text-info me-2"></i>
+                        Total Investment (Current Value):
                         <span class="fw-bold">
-                            ₹@totalInvestment.ToString("N0")
+                            ₹@totalCurrentValue.ToString("N0")
+                        </span>
+                    </div>
+
+                    <div class="mt-2">
+                        <i class="bi bi-percent text-danger me-2"></i>
+                        Portfolio XIRR:
+                        <span class="fw-bold">
+                            @PortfolioXirrText
                         </span>
                     </div>
 
@@ -68,7 +109,7 @@
         <!-- ==============================================
         Card 2 : Top 5 Holdings
         ============================================== -->
-        <div class="col-md-6">
+        <div class="col-md-6 order-4 order-md-4">
             <div class="card border-0 shadow-sm h-100">
 
                 <div class="card-body">
@@ -96,7 +137,7 @@
                                 <span class="text-truncate"
                                       style="max-width:220px;"
                                       title="@fund.FundName">
-                                    @fund.FundName
+                                    @ShortFundName(fund.FundName)
                                 </span>
 
                                 <span class="fw-semibold text-primary">
@@ -112,66 +153,77 @@
             </div>
         </div>
              <!-- ==============================================
-             Card 3 : Investment Growth
-             TODO:
-             - 12 Month Investment Trend
-             - Line Chart
+             Card 3 : Portfolio Value Trend
              ============================================== -->
-        <div class="col-md-6">
+        <div class="col-md-6 order-1 order-md-1">
             <div class="card border-0 shadow-sm h-100">
 
-                <div class="card-body text-center">
-                    coming soon
+                <div class="card-body">
+
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-activity text-primary me-2"></i>
+
+                        <span class="fw-semibold">
+                            Portfolio Value Trend
+                        </span>
+                    </div>
+
+                    @if (valueTrendLabels.Length == 0)
+                    {
+                        <div class="text-muted small">
+                            No data available
+                        </div>
+                    }
+                    else
+                    {
+                        <TwoLineChart Labels="valueTrendLabels"
+                                      FirstData="investmentTrendData"
+                                      SecondData="currentValueTrendData"
+                                      FirstLabel="Total Investment"
+                                      SecondLabel="Current Value" />
+                    }
+
                 </div>
 
             </div>
         </div>
 
         <!-- ==============================================
-          Card 4 : Portfolio Insights
-          TODO:
-          - Top Funds
-          - Top AMC Allocation
+          Card 4 : Top Fund Performance
           ============================================== -->
-        <div class="col-md-6">
+        <div class="col-md-6 order-2 order-md-2">
             <div class="card border-0 shadow-sm h-100">
 
-                <div class="card-header p-0">
-                    coming soon
-                </div>
+                <div class="card-body">
 
-                <div class="card-body p-2">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-stars text-success me-2"></i>
+
+                        <span class="fw-semibold">
+                            Top 3 Fund Performance
+                        </span>
+                    </div>
+
+                    @if (fundPerformanceSeriesLabels.Length == 0)
+                    {
+                        <div class="text-muted small">
+                            No data available
+                        </div>
+                    }
+                    else
+                    {
+                        <MultiLineChart Labels="fundPerformanceLabels"
+                                        SeriesLabels="fundPerformanceSeriesLabels"
+                                        SeriesData="fundPerformanceSeriesData"
+                                        ValueSuffix="%" />
+                    }
+
                 </div>
 
             </div>
         </div>
 
     </div>
-
-    <!-- ==================================================
-         Footer / Status Area
-         ================================================== -->
-    @if (!string.IsNullOrWhiteSpace(appName))
-    {
-        <div class="text-center text-muted small mt-3">
-
-            @if (lastNavSyncUtc.HasValue)
-            {
-                <span class="me-2">
-                    <i class="bi bi-cloud-check"></i>
-                    NAV Sync:
-                    @lastNavSyncUtc.Value
-                    .ToLocalTime()
-                    .ToString("dd-MMM-yyyy HH:mm")
-                </span>
-            }
-
-            <span>
-                • @appName v@(appVersion)
-            </span>
-
-        </div>
-    }
 
 </div>
 
@@ -186,18 +238,18 @@
     private DateTime? lastNavSyncUtc;
 
     // =====================================================
-    // Future Card 2 Tab State
-    // =====================================================
-
-    private int insightTab = 1;
-
-    // =====================================================
     // Portfolio Snapshot KPIs
     // =====================================================
 
     private int totalFolios;
     private int totalFunds;
     private decimal totalInvestment;
+    private decimal totalCurrentValue;
+    private decimal? portfolioXirr;
+
+    private string PortfolioXirrText => portfolioXirr.HasValue
+        ? (portfolioXirr.Value * 100).ToString("0.00") + "%"
+        : "N/A";
 
     // =====================================================
     // Top Holdings Model
@@ -210,6 +262,26 @@
     }
 
     private List<TopHolding> topHoldings = new();
+
+    // =====================================================
+    // Portfolio Value Trend
+    // =====================================================
+
+    private string[] valueTrendLabels = [];
+    private double[] investmentTrendData = [];
+    private double[] currentValueTrendData = [];
+
+    private string[] fundPerformanceLabels = [];
+    private string[] fundPerformanceSeriesLabels = [];
+    private double[][] fundPerformanceSeriesData = [];
+
+    private static string ShortFundName(string fundName, int maxLength = 34)
+    {
+        if (string.IsNullOrWhiteSpace(fundName) || fundName.Length <= maxLength)
+            return fundName;
+
+        return fundName[..(maxLength - 3)] + "...";
+    }
 
     // =====================================================
     // Page Initialisation
@@ -267,6 +339,53 @@
 
         totalInvestment =
             summary.Sum(x => x.TotalInvestment);
+
+        totalCurrentValue =
+            summary.Sum(x => x.CurrentValue);
+
+        try
+        {
+            portfolioXirr =
+                await PortfolioReturnService.CalculateOverallXirrAsync();
+
+            var valueTrend =
+                await PortfolioReturnService.GetLast12MonthPortfolioValueTrendAsync();
+
+            valueTrendLabels = valueTrend
+                .Select(x => x.Month.ToString("MMM-yy"))
+                .ToArray();
+
+            investmentTrendData = valueTrend
+                .Select(x => (double)x.TotalInvestment)
+                .ToArray();
+
+            currentValueTrendData = valueTrend
+                .Select(x => (double)x.CurrentValue)
+                .ToArray();
+
+            var fundPerformance =
+                await PortfolioReturnService.GetTopFundPerformanceTrendLast12MonthsAsync();
+
+            fundPerformanceLabels = fundPerformance
+                .FirstOrDefault()?
+                .Points
+                .Select(x => x.Month.ToString("MMM-yy"))
+                .ToArray() ?? [];
+
+            fundPerformanceSeriesLabels = fundPerformance
+                .Select(x => ShortFundName(x.FundName, 18))
+                .ToArray();
+
+            fundPerformanceSeriesData = fundPerformance
+                .Select(x => x.Points
+                    .Select(p => (double)p.ReturnPercent)
+                    .ToArray())
+                .ToArray();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load portfolio return trend for the Home page.");
+        }
 
         // -------------------------------------------------
         // Top 5 Holdings by Allocation

@@ -1,0 +1,46 @@
+@inject IJSRuntime JS
+@inject ILogger<TwoLineChart> Logger
+
+<div style="height:300px;">
+    <canvas id="@_id"></canvas>
+</div>
+
+@code {
+    [Parameter] public string[] Labels { get; set; } = [];
+    [Parameter] public double[] FirstData { get; set; } = [];
+    [Parameter] public double[] SecondData { get; set; } = [];
+    [Parameter] public string FirstLabel { get; set; } = "Total Investment";
+    [Parameter] public string SecondLabel { get; set; } = "Current Value";
+
+    private readonly string _id = $"chart_{Guid.NewGuid():N}";
+    private string _lastSignature = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Labels.Length == 0)
+            return;
+
+        var signature = $"{Labels.Length}:{FirstData.Length}:{SecondData.Length}:{FirstData.Sum()}:{SecondData.Sum()}";
+
+        if (_lastSignature == signature)
+            return;
+
+        _lastSignature = signature;
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "chartInterop.renderTwoLineChart",
+                _id,
+                Labels,
+                FirstData,
+                SecondData,
+                FirstLabel,
+                SecondLabel);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogError(ex, "Failed to render two-line chart {ChartId}.", _id);
+        }
+    }
+}

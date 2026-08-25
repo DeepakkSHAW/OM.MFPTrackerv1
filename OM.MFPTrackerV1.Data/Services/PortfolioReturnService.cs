@@ -1,4 +1,6 @@
-﻿using OM.MFPTrackerV1.Data.Helper;
+﻿using Microsoft.EntityFrameworkCore;
+using OM.MFPTrackerV1.Data;
+using OM.MFPTrackerV1.Data.Helper;
 using OM.MFPTrackerV1.Data.Models;
 using System;
 using System.Buffers.Text;
@@ -11,18 +13,23 @@ namespace OM.MFPTrackerV1.Data.Services
 	{
 		Task<PortfolioReturnResultDto> CalculatePortfolioReturnsAsync(int folioId, int fundId);
 		Task<List<PortfolioRowDto>> CalculatePortfolioReturnsForAllAsync();
+		Task<decimal?> CalculateOverallXirrAsync();
+		Task<List<MonthlyPortfolioValueDto>> GetLast12MonthPortfolioValueTrendAsync();
+		Task<List<FundPerformanceTrendDto>> GetTopFundPerformanceTrendLast12MonthsAsync(int count = 3);
 		Task<List<PortfolioRowDto>> CalculatePortfolioReturnsByFilterAsync(PortfolioAdvancedFilter filter);
 	}
 	public class PortfolioReturnService : IPortfolioReturnService
 	{
+		private readonly MFPTrackerDbContext _db;
 		private readonly IMutualFundTransactionRepo _txnRepo;
 		private readonly IFundNavRepo _navRepo;
 		private readonly IFolioRepo _folioRepo;
 		private readonly IMFFundRepo _fundRepo;
 
 
-		public PortfolioReturnService(IMutualFundTransactionRepo txnRepo, IFundNavRepo navRepo, IFolioRepo folioRepo, IMFFundRepo fundRepo)
+		public PortfolioReturnService(MFPTrackerDbContext db, IMutualFundTransactionRepo txnRepo, IFundNavRepo navRepo, IFolioRepo folioRepo, IMFFundRepo fundRepo)
 		{
+			_db = db;
 			_txnRepo = txnRepo;
 			_navRepo = navRepo;
 			_folioRepo = folioRepo;
@@ -204,8 +211,12 @@ namespace OM.MFPTrackerV1.Data.Services
 				// ✅ Attach Folio Display
 				if (folios.TryGetValue(folioId, out var folio))
 				{
+					var holderName = $"{folio.Holder?.FirstName} {folio.Holder?.LastName}".Trim();
+
 					row.FolioDisplay =
-						$"{folio.FolioNumber} - {folio.Holder.FirstName} {folio.Holder.LastName}";
+						string.IsNullOrWhiteSpace(holderName)
+							? folio.FolioNumber
+							: $"{folio.FolioNumber} - {holderName}";
 				}
 
 				// ✅ Attach Fund Display
@@ -219,6 +230,230 @@ namespace OM.MFPTrackerV1.Data.Services
 
 			return results;
 		}
+		public async Task<decimal?> CalculateOverallXirrAsync()
+		{
+			var pairs = await _txnRepo.GetDistinctFolioFundPairsAsync();
+			var xirrFlows = new List<(DateTime date, decimal amount)>();
+
+			foreach (var (folioId, fundId) in pairs)
+			{
+				var calc = await CalculatePortfolioReturnsAsync(folioId, fundId);
+
+				xirrFlows.AddRange(
+					calc.CashFlows.Select(x => (x.Date, x.Amount)));
+			}
+
+			return XirrCalculator.Calculate(xirrFlows);
+		}
+		public async Task<List<MonthlyPortfolioValueDto>> GetLast12MonthPortfolioValueTrendAsync()
+		{
+			var today = DateTime.Today;
+			var currentMonth = new DateTime(today.Year, today.Month, 1);
+
+			var months = Enumerable.Range(0, 12)
+				.Select(i => currentMonth.AddMonths(i - 11))
+				.Select(month => new
+				{
+					Month = month,
+					MonthEnd = month.Year == today.Year && month.Month == today.Month
+						? today
+						: month.AddMonths(1).AddDays(-1)
+				})
+				.ToList();
+
+			var latestMonthEnd = months.Max(x => x.MonthEnd);
+
+			var transactions = await _db.MutualFundTransactions
+				.AsNoTracking()
+				.Where(t => t.TransactionDate <= latestMonthEnd)
+				.Select(t => new
+				{
+					t.FundId,
+					t.TransactionDate,
+					t.TxnType,
+					t.Units,
+					t.AmountPaid
+				})
+				.ToListAsync();
+
+			var navsByFund = await _db.FundNavs
+				.AsNoTracking()
+				.Where(n => n.NavDate <= latestMonthEnd)
+				.Select(n => new
+				{
+					n.FundId,
+					n.NavDate,
+					n.NavValue
+				})
+				.ToListAsync();
+
+			var navLookup = navsByFund
+				.GroupBy(n => n.FundId)
+				.ToDictionary(
+					g => g.Key,
+					g => g.OrderByDescending(n => n.NavDate).ToList());
+
+			var result = new List<MonthlyPortfolioValueDto>();
+
+			foreach (var month in months)
+			{
+				var monthTransactions = transactions
+					.Where(t => t.TransactionDate <= month.MonthEnd)
+					.ToList();
+
+				var totalInvestment = monthTransactions.Sum(t =>
+					IsCashInflow(t.TxnType) ? -t.AmountPaid : t.AmountPaid);
+
+				var unitsByFund = monthTransactions
+					.GroupBy(t => t.FundId)
+					.Select(g => new
+					{
+						FundId = g.Key,
+						Units = g.Sum(t => AddsUnits(t.TxnType) ? t.Units : 0m)
+							- g.Sum(t => SubtractsUnits(t.TxnType) ? t.Units : 0m)
+					})
+					.Where(x => x.Units > 0)
+					.ToList();
+
+				decimal currentValue = 0m;
+
+				foreach (var holding in unitsByFund)
+				{
+					if (!navLookup.TryGetValue(holding.FundId, out var navs))
+						continue;
+
+					var latestNav = navs
+						.FirstOrDefault(n => n.NavDate <= month.MonthEnd);
+
+					if (latestNav != null)
+						currentValue += holding.Units * latestNav.NavValue;
+				}
+
+				result.Add(new MonthlyPortfolioValueDto
+				{
+					Month = month.Month,
+					TotalInvestment = Math.Round(totalInvestment, 2),
+					CurrentValue = Math.Round(currentValue, 2)
+				});
+			}
+
+			return result;
+		}
+		public async Task<List<FundPerformanceTrendDto>> GetTopFundPerformanceTrendLast12MonthsAsync(int count = 3)
+		{
+			var today = DateTime.Today;
+			var currentMonth = new DateTime(today.Year, today.Month, 1);
+
+			var months = Enumerable.Range(0, 12)
+				.Select(i => currentMonth.AddMonths(i - 11))
+				.Select(month => new
+				{
+					Month = month,
+					MonthEnd = month.Year == today.Year && month.Month == today.Month
+						? today
+						: month.AddMonths(1).AddDays(-1)
+				})
+				.ToList();
+
+			var latestMonthEnd = months.Max(x => x.MonthEnd);
+
+			var transactions = await _db.MutualFundTransactions
+				.AsNoTracking()
+				.Where(t => t.TransactionDate <= latestMonthEnd)
+				.Select(t => new
+				{
+					t.FundId,
+					t.Fund.FundName,
+					t.TransactionDate,
+					t.TxnType,
+					t.Units,
+					t.AmountPaid
+				})
+				.ToListAsync();
+
+			var navsByFund = await _db.FundNavs
+				.AsNoTracking()
+				.Where(n => n.NavDate <= latestMonthEnd)
+				.Select(n => new
+				{
+					n.FundId,
+					n.NavDate,
+					n.NavValue
+				})
+				.ToListAsync();
+
+			var navLookup = navsByFund
+				.GroupBy(n => n.FundId)
+				.ToDictionary(
+					g => g.Key,
+					g => g.OrderByDescending(n => n.NavDate).ToList());
+
+			var fundTrends = transactions
+				.GroupBy(t => new { t.FundId, t.FundName })
+				.Select(g =>
+				{
+					var fundTransactions = g.ToList();
+					var points = new List<MonthlyFundPerformancePointDto>();
+
+					foreach (var month in months)
+					{
+						var monthTransactions = fundTransactions
+							.Where(t => t.TransactionDate <= month.MonthEnd)
+							.ToList();
+
+						var totalInvestment = monthTransactions.Sum(t =>
+							IsCashInflow(t.TxnType) ? -t.AmountPaid : t.AmountPaid);
+
+						var units = monthTransactions.Sum(t => AddsUnits(t.TxnType) ? t.Units : 0m)
+							- monthTransactions.Sum(t => SubtractsUnits(t.TxnType) ? t.Units : 0m);
+
+						decimal currentValue = 0m;
+
+						if (units > 0 && navLookup.TryGetValue(g.Key.FundId, out var navs))
+						{
+							var latestNav = navs
+								.FirstOrDefault(n => n.NavDate <= month.MonthEnd);
+
+							if (latestNav != null)
+								currentValue = units * latestNav.NavValue;
+						}
+
+						var returnPercent = totalInvestment > 0
+							? ((currentValue - totalInvestment) / totalInvestment) * 100
+							: 0m;
+
+						points.Add(new MonthlyFundPerformancePointDto
+						{
+							Month = month.Month,
+							TotalInvestment = Math.Round(totalInvestment, 2),
+							CurrentValue = Math.Round(currentValue, 2),
+							ReturnPercent = Math.Round(returnPercent, 2)
+						});
+					}
+
+					return new FundPerformanceTrendDto
+					{
+						FundName = g.Key.FundName,
+						Points = points
+					};
+				})
+				.Where(x => x.Points.LastOrDefault()?.TotalInvestment > 0)
+				.OrderByDescending(x => x.Points.Last().ReturnPercent)
+				.Take(count)
+				.ToList();
+
+			return fundTrends;
+		}
+
+		private static bool IsCashInflow(TransactionType transactionType) =>
+			transactionType is TransactionType.SELL or TransactionType.SWITCH_OUT or TransactionType.DIV_PAYOUT;
+
+		private static bool AddsUnits(TransactionType transactionType) =>
+			transactionType is TransactionType.BUY or TransactionType.SIP or TransactionType.DIV_REINVEST or TransactionType.SWITCH_IN;
+
+		private static bool SubtractsUnits(TransactionType transactionType) =>
+			transactionType is TransactionType.SELL or TransactionType.SWITCH_OUT;
+
 		public async Task<List<PortfolioRowDto>> CalculatePortfolioReturnsByFilterAsync(PortfolioAdvancedFilter filter)
 		{
 			var results = new List<PortfolioRowDto>();
@@ -312,8 +547,12 @@ namespace OM.MFPTrackerV1.Data.Services
 
 				if (folioLookup.TryGetValue(c.FolioId, out var f))
 				{
+					var holderName = $"{f.Holder?.FirstName} {f.Holder?.LastName}".Trim();
+
 					row.FolioDisplay =
-						$"{f.FolioNumber} - {f.Holder.FirstName} {f.Holder.LastName}";
+						string.IsNullOrWhiteSpace(holderName)
+							? f.FolioNumber
+							: $"{f.FolioNumber} - {holderName}";
 				}
 
 				if (fundLookup.TryGetValue(c.FundId, out var fd))

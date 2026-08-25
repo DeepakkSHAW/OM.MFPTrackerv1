@@ -85,10 +85,10 @@ namespace OM.MFPTrackerV1.Data.Services
 				if (parts.Length < 6)
 					continue;
 
-				// Extract fields
-				var schemeCode = parts[0].Trim();
-				var navText = parts[4].Trim();
-				var dateText = parts[5].Trim();
+                // Extract fields
+                var schemeCode = parts[0].Trim();
+                var navText = parts[6].Trim();
+				var dateText = parts[7].Trim();
 
 				// SchemeCode MUST be numeric
 				if (!int.TryParse(schemeCode, out _))

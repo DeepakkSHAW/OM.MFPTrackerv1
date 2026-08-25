@@ -1,0 +1,48 @@
+@inject IJSRuntime JS
+@inject ILogger<MultiLineChart> Logger
+
+<div style="height:300px;">
+    <canvas id="@_id"></canvas>
+</div>
+
+@code {
+    [Parameter] public string[] Labels { get; set; } = [];
+    [Parameter] public string[] SeriesLabels { get; set; } = [];
+    [Parameter] public double[][] SeriesData { get; set; } = [];
+    [Parameter] public string ValuePrefix { get; set; } = "";
+    [Parameter] public string ValueSuffix { get; set; } = "";
+    [Parameter] public bool BeginAtZero { get; set; }
+
+    private readonly string _id = $"chart_{Guid.NewGuid():N}";
+    private string _lastSignature = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Labels.Length == 0 || SeriesLabels.Length == 0 || SeriesData.Length == 0)
+            return;
+
+        var signature = $"{Labels.Length}:{SeriesLabels.Length}:{SeriesData.Length}:{SeriesData.SelectMany(x => x).Sum()}";
+
+        if (_lastSignature == signature)
+            return;
+
+        _lastSignature = signature;
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "chartInterop.renderMultiLineChart",
+                _id,
+                Labels,
+                SeriesLabels,
+                SeriesData,
+                ValuePrefix,
+                ValueSuffix,
+                BeginAtZero);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogError(ex, "Failed to render multi-line chart {ChartId}.", _id);
+        }
+    }
+}

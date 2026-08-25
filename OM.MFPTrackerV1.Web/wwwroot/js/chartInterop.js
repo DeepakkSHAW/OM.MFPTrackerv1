@@ -113,6 +113,186 @@ window.chartInterop.renderLineChart = function (canvasId, labels, data) {
 };
 
 // ============================================================
+// ✅ TWO-LINE CHART (GENERIC)
+// ============================================================
+
+window.chartInterop.renderTwoLineChart = function (
+    canvasId,
+    labels,
+    firstData,
+    secondData,
+    firstLabel,
+    secondLabel
+) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    canvas._chartInstance?.destroy();
+
+    canvas._chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: firstLabel,
+                    data: firstData,
+                    borderColor: "rgba(54, 162, 235, 1)",
+                    backgroundColor: "rgba(54, 162, 235, 0.12)",
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false
+                },
+                {
+                    label: secondLabel,
+                    data: secondData,
+                    borderColor: "rgba(39, 174, 96, 1)",
+                    backgroundColor: "rgba(39, 174, 96, 0.12)",
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function (value) {
+                            return "₹" + Number(value).toLocaleString("en-IN", {
+                                maximumFractionDigits: 0
+                            });
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: "top",
+                    labels: {
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        padding: 8,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ": ₹" + Number(context.parsed.y).toLocaleString("en-IN", {
+                                maximumFractionDigits: 0
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+// ============================================================
+// ✅ MULTI-LINE CHART (GENERIC)
+// ============================================================
+
+window.chartInterop.renderMultiLineChart = function (
+    canvasId,
+    labels,
+    seriesLabels,
+    seriesData,
+    valuePrefix,
+    valueSuffix,
+    beginAtZero
+) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    canvas._chartInstance?.destroy();
+
+    const colors = [
+        "rgba(46, 134, 222, 1)",
+        "rgba(39, 174, 96, 1)",
+        "rgba(243, 156, 18, 1)",
+        "rgba(142, 68, 173, 1)",
+        "rgba(211, 84, 0, 1)"
+    ];
+
+    const datasets = seriesLabels.map((label, index) => ({
+        label,
+        data: seriesData[index] || [],
+        borderColor: colors[index % colors.length],
+        backgroundColor: colors[index % colors.length].replace("1)", "0.12)"),
+        borderWidth: 2,
+        tension: 0.3,
+        fill: false
+    }));
+
+    const formatValue = function (value) {
+        return `${valuePrefix || ""}${Number(value).toLocaleString("en-IN", {
+            maximumFractionDigits: 2
+        })}${valueSuffix || ""}`;
+    };
+
+    canvas._chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: beginAtZero === true,
+                    ticks: {
+                        callback: formatValue
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: "top"
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ": " + formatValue(context.parsed.y);
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+// ============================================================
 // ✅ BASIC  BAR CHART (GENERIC)
 // ============================================================
 
