@@ -185,7 +185,7 @@ namespace OM.MFPTrackerV1.Data.Models
 		public DateTime Month { get; set; }
 		public decimal TotalInvestment { get; set; }
 		public decimal CurrentValue { get; set; }
-		public decimal ReturnPercent { get; set; }
+		public decimal? Xirr { get; set; }
 	}
 	public class FundPerformanceTrendDto
 	{

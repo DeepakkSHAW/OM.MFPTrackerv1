@@ -82,6 +82,13 @@
             <i class="bi bi-arrow-down-circle"></i>  <span class="d-none d-md-inline"> CSV</span>
         </button>
 
+        <!-- ✅ Import AMFI History -->
+        <button class="btn btn-outline-success btn-sm"
+                title="Import historical AMFI NAV text file"
+                @onclick="OpenAmfiFileImport">
+            <i class="bi bi-file-earmark-arrow-up"></i>  <span class="d-none d-md-inline"> AMFI File</span>
+        </button>
+
         <!-- ✅ Bulk Import -->
         <button class="btn btn-outline-secondary btn-sm"
                 title="Paste multiple NAV entries for bulk import"
@@ -95,6 +102,64 @@
                 @onclick="OpenNavDashboard">
             <i class="bi bi-graph-up"></i>
         </button>
+
+
+<!-- ===================== IMPORT AMFI FILE MODAL ===================== -->
+@if (showAmfiFileImportModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header py-2">
+                    <h5 class="modal-title">Import NAV (AMFI File)</h5>
+                    <button class="btn-close" @onclick="CloseAmfiFileImport"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <InputFile OnChange="HandleAmfiFileSelected" accept=".txt,text/plain" />
+
+                    @if (amfiFile != null)
+                    {
+                        <div class="alert alert-info mt-3 py-2">
+                            Selected: @amfiFile.Name
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(amfiFileImportError))
+                    {
+                        <div class="alert alert-danger mt-3">
+                            @amfiFileImportError
+                        </div>
+                    }
+
+                </div>
+
+                <div class="modal-footer py-2">
+                    <button class="btn btn-primary btn-sm"
+                            disabled="@(amfiFile == null || isAmfiFileImportRunning)"
+                            @onclick="ConfirmAmfiFileImport">
+                        @if (isAmfiFileImportRunning)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-check-circle me-1"></i>
+                        Import
+                    </button>
+
+                    <button class="btn btn-outline-secondary btn-sm"
+                            disabled="@isAmfiFileImportRunning"
+                            @onclick="CloseAmfiFileImport">
+                        Close
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
 
     </div>
 </div>
@@ -438,6 +503,7 @@
 
     private bool showEditModal;
     private bool showImportModal;
+    private bool showAmfiFileImportModal;
     private bool showBulkImportModal;
     private NavEditModel editModel = new();
     private string editModalTitle = "";
@@ -447,6 +513,12 @@
     private bool showPreview;
     private List<NavCsvPreviewRow> previewRows = new();
     private NavSyncSummary previewSummary = new();
+
+    // ---------- AMFI file import ----------
+    private const long MaxAmfiFileSize = 50 * 1024 * 1024;
+    private IBrowserFile? amfiFile;
+    private bool isAmfiFileImportRunning;
+    private string? amfiFileImportError;
 
     // ---------- Bulk Import ----------
     private string bulkText = "";
@@ -742,6 +814,72 @@
 
         await Reload();
     }
+
+    private void OpenAmfiFileImport()
+    {
+        amfiFile = null;
+        amfiFileImportError = null;
+        showAmfiFileImportModal = true;
+    }
+
+    private void CloseAmfiFileImport()
+    {
+        if (isAmfiFileImportRunning)
+            return;
+
+        showAmfiFileImportModal = false;
+        amfiFile = null;
+        amfiFileImportError = null;
+    }
+
+    private void HandleAmfiFileSelected(InputFileChangeEventArgs e)
+    {
+        amfiFileImportError = null;
+        amfiFile = e.File;
+
+        if (!amfiFile.Name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+        {
+            amfiFileImportError = "Please select an AMFI .txt NAV file.";
+            amfiFile = null;
+        }
+    }
+
+    private async Task ConfirmAmfiFileImport()
+    {
+        if (amfiFile == null || isAmfiFileImportRunning)
+            return;
+
+        try
+        {
+            isAmfiFileImportRunning = true;
+            amfiFileImportError = null;
+            syncResult = null;
+            syncError = null;
+
+            await using var uploadStream = amfiFile.OpenReadStream(MaxAmfiFileSize);
+            await using var memoryStream = new MemoryStream();
+
+            await uploadStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            syncResult = await NavService
+                .ImportNavFromAmfiFileAsync(memoryStream);
+
+            await Reload();
+
+            showAmfiFileImportModal = false;
+            showSyncSummary = true;
+        }
+        catch (Exception ex)
+        {
+            amfiFileImportError = ex.Message;
+        }
+        finally
+        {
+            isAmfiFileImportRunning = false;
+        }
+    }
+
     //Bulk Import logic
     private void OpenBulkImport()
     {

@@ -397,37 +397,84 @@ namespace OM.MFPTrackerV1.Data.Services
 
 					foreach (var month in months)
 					{
-						var monthTransactions = fundTransactions
+						var startDate = month.Month.AddMonths(-12);
+
+						var openingTransactions = fundTransactions
+							.Where(t => t.TransactionDate < startDate)
+							.ToList();
+
+						var periodTransactions = fundTransactions
+							.Where(t => t.TransactionDate >= startDate &&
+										t.TransactionDate <= month.MonthEnd)
+							.ToList();
+
+						var allTransactionsToMonthEnd = fundTransactions
 							.Where(t => t.TransactionDate <= month.MonthEnd)
 							.ToList();
 
-						var totalInvestment = monthTransactions.Sum(t =>
+						var totalInvestment = allTransactionsToMonthEnd.Sum(t =>
 							IsCashInflow(t.TxnType) ? -t.AmountPaid : t.AmountPaid);
 
-						var units = monthTransactions.Sum(t => AddsUnits(t.TxnType) ? t.Units : 0m)
-							- monthTransactions.Sum(t => SubtractsUnits(t.TxnType) ? t.Units : 0m);
+						var openingUnits = openingTransactions.Sum(t => AddsUnits(t.TxnType) ? t.Units : 0m)
+							- openingTransactions.Sum(t => SubtractsUnits(t.TxnType) ? t.Units : 0m);
+
+						var units = allTransactionsToMonthEnd.Sum(t => AddsUnits(t.TxnType) ? t.Units : 0m)
+							- allTransactionsToMonthEnd.Sum(t => SubtractsUnits(t.TxnType) ? t.Units : 0m);
 
 						decimal currentValue = 0m;
+						decimal openingValue = 0m;
 
-						if (units > 0 && navLookup.TryGetValue(g.Key.FundId, out var navs))
+						if (navLookup.TryGetValue(g.Key.FundId, out var navs))
 						{
-							var latestNav = navs
+							if (openingUnits > 0)
+							{
+								var openingNav = navs
+									.FirstOrDefault(n => n.NavDate <= startDate);
+
+								if (openingNav != null)
+									openingValue = openingUnits * openingNav.NavValue;
+							}
+
+							if (units > 0)
+							{
+								var latestNav = navs
 								.FirstOrDefault(n => n.NavDate <= month.MonthEnd);
 
-							if (latestNav != null)
-								currentValue = units * latestNav.NavValue;
+								if (latestNav != null)
+									currentValue = units * latestNav.NavValue;
+							}
 						}
 
-						var returnPercent = totalInvestment > 0
-							? ((currentValue - totalInvestment) / totalInvestment) * 100
-							: 0m;
+						var cashFlows = new List<(DateTime date, decimal amount)>();
+
+						if (openingValue > 0)
+							cashFlows.Add((startDate, -openingValue));
+
+						cashFlows.AddRange(periodTransactions.Select(t =>
+						{
+							var amount = IsCashInflow(t.TxnType)
+								? t.AmountPaid
+								: -t.AmountPaid;
+
+							return (t.TransactionDate, amount);
+						}));
+
+						if (currentValue > 0)
+							cashFlows.Add((month.MonthEnd, currentValue));
+
+						var hasPositiveFlow = cashFlows.Any(x => x.amount > 0);
+						var hasNegativeFlow = cashFlows.Any(x => x.amount < 0);
+
+						var xirr = hasPositiveFlow && hasNegativeFlow
+							? XirrCalculator.Calculate(cashFlows)
+							: null;
 
 						points.Add(new MonthlyFundPerformancePointDto
 						{
 							Month = month.Month,
 							TotalInvestment = Math.Round(totalInvestment, 2),
 							CurrentValue = Math.Round(currentValue, 2),
-							ReturnPercent = Math.Round(returnPercent, 2)
+							Xirr = xirr
 						});
 					}
 
@@ -438,7 +485,7 @@ namespace OM.MFPTrackerV1.Data.Services
 					};
 				})
 				.Where(x => x.Points.LastOrDefault()?.TotalInvestment > 0)
-				.OrderByDescending(x => x.Points.Last().ReturnPercent)
+				.OrderByDescending(x => x.Points.Last().Xirr ?? decimal.MinValue)
 				.Take(count)
 				.ToList();
 

@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 
 @using OM.MFPTrackerV1.Data.Services
+@using OM.MFPTrackerV1.Web.Helpers
 
 @inject ISystemStateRepo SystemStateRepo
 @inject IFolioRepo FolioRepo
@@ -140,8 +141,11 @@
                                     @ShortFundName(fund.FundName)
                                 </span>
 
-                                <span class="fw-semibold text-primary">
-                                    @fund.AllocationPct.ToString("N1")%
+                                <span class="fw-semibold text-primary text-nowrap">
+                                    ₹@CurrencyFormatter.FormatAmount(fund.TotalInvestment)
+                                    <span class="text-muted small">
+                                        (@fund.AllocationPct.ToString("N1")%)
+                                    </span>
                                 </span>
 
                             </div>
@@ -200,7 +204,7 @@
                         <i class="bi bi-stars text-success me-2"></i>
 
                         <span class="fw-semibold">
-                            Top 3 Fund Performance
+                            Top 5 Fund Performance
                         </span>
                     </div>
 
@@ -258,6 +262,7 @@
     private sealed class TopHolding
     {
         public string FundName { get; set; } = "";
+        public decimal TotalInvestment { get; set; }
         public decimal AllocationPct { get; set; }
     }
 
@@ -364,7 +369,7 @@
                 .ToArray();
 
             var fundPerformance =
-                await PortfolioReturnService.GetTopFundPerformanceTrendLast12MonthsAsync();
+                await PortfolioReturnService.GetTopFundPerformanceTrendLast12MonthsAsync(5);
 
             fundPerformanceLabels = fundPerformance
                 .FirstOrDefault()?
@@ -373,12 +378,12 @@
                 .ToArray() ?? [];
 
             fundPerformanceSeriesLabels = fundPerformance
-                .Select(x => ShortFundName(x.FundName, 18))
+                .Select(x => ShortFundName(x.FundName, 14))
                 .ToArray();
 
             fundPerformanceSeriesData = fundPerformance
                 .Select(x => x.Points
-                    .Select(p => (double)p.ReturnPercent)
+                    .Select(p => (double)((p.Xirr ?? 0m) * 100))
                     .ToArray())
                 .ToArray();
         }
@@ -397,6 +402,7 @@
             .Select(x => new TopHolding
             {
                 FundName = x.FundName,
+                TotalInvestment = x.TotalInvestment,
 
                 AllocationPct = totalInvestment == 0
                     ? 0

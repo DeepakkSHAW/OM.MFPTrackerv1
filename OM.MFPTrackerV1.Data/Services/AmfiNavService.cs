@@ -27,6 +27,8 @@ namespace OM.MFPTrackerV1.Data.Services
 		/// </summary>
 		Task<NavSyncSummary> ImportNavFromCsvAsync(Stream csvStream);
 
+		Task<NavSyncSummary> ImportNavFromAmfiFileAsync(Stream amfiStream);
+
 		Task<NavSyncSummary> ImportNavForFundAsync(int fundId, IEnumerable<(DateTime Date, decimal Nav)> navs);
 	}
 
@@ -35,7 +37,6 @@ namespace OM.MFPTrackerV1.Data.Services
 		private readonly IHttpClientFactory _httpClientFactory;
 		private readonly MFPTrackerDbContext _db;
 		private readonly ILogger<AmfiNavService> _logger;
-		private readonly char[] _delimiters = { ',', ';', ' ', '|' };
 		public AmfiNavService(IHttpClientFactory httpClientFactory, MFPTrackerDbContext db, ILogger<AmfiNavService> logger)
 		{
 			_httpClientFactory = httpClientFactory;
@@ -72,6 +73,18 @@ namespace OM.MFPTrackerV1.Data.Services
 			int fundNotFound = 0;
 			int invalidRows = 0;
 
+			if (!TryGetAmfiColumnIndexes(lines, out var schemeCodeIndex, out var navIndex, out var dateIndex))
+			{
+				_logger.LogWarning("AMFI NAV file header did not contain required columns.");
+
+				return new NavSyncSummary
+				{
+					InvalidRows = lines.Count
+				};
+			}
+
+			var requiredColumnCount = Math.Max(schemeCodeIndex, Math.Max(navIndex, dateIndex)) + 1;
+
 			DateTime fetchedAt = DateTime.UtcNow;
 			foreach (var line in lines)
 			{
@@ -82,13 +95,13 @@ namespace OM.MFPTrackerV1.Data.Services
 				var parts = line.Split(';');
 
 				// Skip non-data lines
-				if (parts.Length < 6)
+				if (parts.Length < requiredColumnCount)
 					continue;
 
-                // Extract fields
-                var schemeCode = parts[0].Trim();
-                var navText = parts[6].Trim();
-				var dateText = parts[7].Trim();
+				// Extract fields
+				var schemeCode = parts[schemeCodeIndex].Trim();
+				var navText = parts[navIndex].Trim();
+				var dateText = parts[dateIndex].Trim();
 
 				// SchemeCode MUST be numeric
 				if (!int.TryParse(schemeCode, out _))
@@ -178,18 +191,26 @@ namespace OM.MFPTrackerV1.Data.Services
 				.AsNoTracking()
 				.ToDictionaryAsync(f => f.SchemeCode);
 
+			if (!TryGetAmfiColumnIndexes(lines, out var schemeCodeIndex, out var navIndex, out var dateIndex))
+			{
+				_logger.LogWarning("AMFI NAV file header did not contain required columns.");
+				return 0;
+			}
+
+			var requiredColumnCount = Math.Max(schemeCodeIndex, Math.Max(navIndex, dateIndex)) + 1;
+
 			int inserted = 0;
 			DateTime fetchedAt = DateTime.UtcNow;
 
 			foreach (var line in lines.Skip(1)) // skip header
 			{
-				var parts = line.Split(_delimiters, StringSplitOptions.RemoveEmptyEntries);
-				if (parts.Length < 6)
+				var parts = line.Split(';');
+				if (parts.Length < requiredColumnCount)
 					continue;
 
-				var schemeCode = parts[0].Trim();
-				var navText = parts[4].Trim();
-				var dateText = parts[5].Trim();
+				var schemeCode = parts[schemeCodeIndex].Trim();
+				var navText = parts[navIndex].Trim();
+				var dateText = parts[dateIndex].Trim();
 
 				if (!fundBySchemeCode.TryGetValue(schemeCode, out var fund))
 					continue;
@@ -241,6 +262,158 @@ namespace OM.MFPTrackerV1.Data.Services
 			}
 
 			return inserted;
+		}
+
+		private static bool TryGetAmfiColumnIndexes(
+			IEnumerable<string> lines,
+			out int schemeCodeIndex,
+			out int navIndex,
+			out int dateIndex)
+		{
+			schemeCodeIndex = -1;
+			navIndex = -1;
+			dateIndex = -1;
+
+			var headerLine = lines.FirstOrDefault(line =>
+				line.Contains("Scheme Code", StringComparison.OrdinalIgnoreCase) &&
+				line.Contains("Net Asset Value", StringComparison.OrdinalIgnoreCase) &&
+				line.Contains("Date", StringComparison.OrdinalIgnoreCase));
+
+			if (string.IsNullOrWhiteSpace(headerLine))
+				return false;
+
+			var columns = headerLine
+				.Split(';')
+				.Select((name, index) => new
+				{
+					Name = name.Trim(),
+					Index = index
+				})
+				.ToDictionary(
+					column => column.Name,
+					column => column.Index,
+					StringComparer.OrdinalIgnoreCase);
+
+			return columns.TryGetValue("Scheme Code", out schemeCodeIndex) &&
+				columns.TryGetValue("Net Asset Value", out navIndex) &&
+				columns.TryGetValue("Date", out dateIndex);
+		}
+
+		public async Task<NavSyncSummary> ImportNavFromAmfiFileAsync(Stream amfiStream)
+		{
+			using var reader = new StreamReader(amfiStream);
+
+			var lines = new List<string>();
+			while (!reader.EndOfStream)
+			{
+				var line = await reader.ReadLineAsync();
+				if (!string.IsNullOrWhiteSpace(line))
+					lines.Add(line);
+			}
+
+			if (!TryGetAmfiColumnIndexes(lines, out var schemeCodeIndex, out var navIndex, out var dateIndex))
+			{
+				_logger.LogWarning("AMFI NAV file header did not contain required columns.");
+
+				return new NavSyncSummary
+				{
+					InvalidRows = lines.Count
+				};
+			}
+
+			var requiredColumnCount = Math.Max(schemeCodeIndex, Math.Max(navIndex, dateIndex)) + 1;
+
+			var fundBySchemeCode = await _db.Funds
+				.AsNoTracking()
+				.ToDictionaryAsync(f => f.SchemeCode);
+
+			var existingKeys = new HashSet<(int FundId, DateTime NavDate)>(
+				(await _db.FundNavs
+					.AsNoTracking()
+					.Select(n => new
+					{
+						n.FundId,
+						NavDate = n.NavDate
+					})
+					.ToListAsync())
+				.Select(x => (x.FundId, x.NavDate.Date)));
+
+			var batchKeys = new HashSet<(int FundId, DateTime NavDate)>();
+
+			int inserted = 0;
+			int skippedDuplicate = 0;
+			int fundNotFound = 0;
+			int invalidRows = 0;
+
+			DateTime fetchedAt = DateTime.UtcNow;
+
+			foreach (var line in lines)
+			{
+				if (line.StartsWith("-"))
+					continue;
+
+				var parts = line.Split(';');
+				if (parts.Length < requiredColumnCount)
+					continue;
+
+				var schemeCode = parts[schemeCodeIndex].Trim();
+				var navText = parts[navIndex].Trim();
+				var dateText = parts[dateIndex].Trim();
+
+				if (!int.TryParse(schemeCode, out _))
+					continue;
+
+				if (!decimal.TryParse(navText, NumberStyles.Any, CultureInfo.InvariantCulture, out var navValue) ||
+					navValue <= 0)
+				{
+					invalidRows++;
+					continue;
+				}
+
+				if (!DateTime.TryParseExact(dateText, "dd-MMM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var navDate))
+				{
+					invalidRows++;
+					continue;
+				}
+
+				if (!fundBySchemeCode.TryGetValue(schemeCode, out var fund))
+				{
+					fundNotFound++;
+					continue;
+				}
+
+				navDate = navDate.Date;
+				var key = (fund.FundId, navDate);
+
+				if (existingKeys.Contains(key) || batchKeys.Contains(key))
+				{
+					skippedDuplicate++;
+					continue;
+				}
+
+				_db.FundNavs.Add(new FundNav
+				{
+					FundId = fund.FundId,
+					NavDate = navDate,
+					NavValue = navValue,
+					Source = "AMFI-FILE",
+					FetchedAt = fetchedAt
+				});
+
+				batchKeys.Add(key);
+				inserted++;
+			}
+
+			if (inserted > 0)
+				await _db.SaveChangesAsync();
+
+			return new NavSyncSummary
+			{
+				Inserted = inserted,
+				SkippedAsDuplicate = skippedDuplicate,
+				FundNotFound = fundNotFound,
+				InvalidRows = invalidRows
+			};
 		}
 
 		// =====================================================
