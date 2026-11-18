@@ -19,6 +19,7 @@ namespace OM.MFPTrackerV1.Data.Services
 		Task AddRangeAsync(IEnumerable<FundNav> navs);
 
 		Task<IReadOnlyList<FundNavPoint>> GetNavHistoryAsync(int fundId, DateTime fromDate, DateTime toDate);
+		Task<DateTime?> GetLatestNavDateAsync();
 	}
 
 	public sealed class FundNavRepo : IFundNavRepo
@@ -175,6 +176,13 @@ namespace OM.MFPTrackerV1.Data.Services
 					n.NavDate,
 					n.NavValue))
 				.ToListAsync();
+		}
+
+		public async Task<DateTime?> GetLatestNavDateAsync()
+		{
+			return await _db.FundNavs
+				.AsNoTracking()
+				.MaxAsync(n => (DateTime?)n.NavDate);
 		}
 
 	}

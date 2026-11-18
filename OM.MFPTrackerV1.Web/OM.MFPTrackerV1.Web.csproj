@@ -30,4 +30,10 @@
     <Folder Include="data\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="data\portfolio.db">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

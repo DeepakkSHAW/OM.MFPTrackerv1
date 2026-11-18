@@ -8,6 +8,7 @@
 @inject ISystemStateRepo SystemStateRepo
 @inject IFolioRepo FolioRepo
 @inject IMFFundRepo FundRepo
+@inject IFundNavRepo FundNavRepo
 @inject IMutualFundTransactionRepo TxnRepo
 @inject IPortfolioReturnService PortfolioReturnService
 @inject ILogger<Home> Logger
@@ -307,7 +308,7 @@
         }
 
         lastNavSyncUtc =
-            await SystemStateRepo.GetLastNavSyncUtcAsync();
+            await FundNavRepo.GetLatestNavDateAsync();
 
         // -------------------------------------------------
         // Portfolio Snapshot
