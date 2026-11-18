@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/OM.MFPTrackerV1.Web/data/portfolio.db-shm
+/OM.MFPTrackerV1.Web/data/portfolio.db-wal
